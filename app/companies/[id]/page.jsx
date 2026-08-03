@@ -1,188 +1,403 @@
 // app/companies/[id]/page.jsx
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
-import { Building2, MapPin, Calendar, Users, Award, ShieldCheck, Mail, Phone, ExternalLink, ArrowRight, CheckCircle2, Package } from 'lucide-react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { 
+  Building2, 
+  MapPin, 
+  Calendar, 
+  Users, 
+  Award, 
+  CheckCircle2, 
+  Globe, 
+  Send, 
+  Package, 
+  ArrowRight, 
+  ShieldCheck, 
+  Layers, 
+  Factory,
+  Mail,
+  Phone,
+  Video,
+  Image as ImageIcon
+} from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
-export default function CompanyShowroomPage({ params }) {
-  const unwrappedParams = use(params);
-  const companyId = unwrappedParams.id;
+export default function CompanyShowroomLandingPage() {
+  const params = useParams();
+  const companyId = params.id;
 
-  const [data, setData] = useState(null);
+  const [mounted, setMounted] = useState(false);
+  const [company, setCompany] = useState(null);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchCompanyShowroom() {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/companies/${companyId}`);
-        const result = await response.json();
-        setData(result);
-      } catch (error) {
-        console.error('Failed to fetch company showroom:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
+  // 대표님 요청: Factory Overview & Certifications 탭을 기본(First)으로 설정!
+  const [activeTab, setActiveTab] = useState('about'); // 'about' (First) or 'products'
 
-    fetchCompanyShowroom();
+  useEffect(() => {
+    setMounted(true);
+    if (companyId) {
+      fetchCompanyData();
+    }
   }, [companyId]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <p className="text-slate-500 font-semibold text-sm">Loading Verified Factory Showroom...</p>
-      </div>
-    );
-  }
+  const fetchCompanyData = async () => {
+    try {
+      setLoading(true);
 
-  const company = data?.company;
-  const products = data?.products || [];
+      // 1. 제조 공장 회사 데이터 조회
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', companyId)
+        .single();
+
+      if (companyData) {
+        setCompany(companyData);
+      } else {
+        // 기본 템플릿 데이터
+        setCompany({
+          id: companyId,
+          company_name: 'Hankook Precision Co., Ltd. (한국정밀공업)',
+          tagline: 'Leading Manufacturer of High-Precision Hydraulic Valves & Industrial Automation Parts',
+          description: 'Established in 1998, Hankook Precision specializes in manufacturing ultra-durable hydraulic control valves, industrial automation components, and customized machinery parts. With state-of-the-art CNC production facilities and strict ISO 9001 quality assurance, we export premium Korean manufacturing goods to over 35 countries worldwide.',
+          business_type: 'Direct Manufacturer',
+          location: 'Incheon, South Korea',
+          established_year: '1998',
+          employees_count: '50 - 100 Employees',
+          factory_size: '5,000 sq. meters',
+          certifications: ['ISO 9001', 'CE Certified', 'IATF 16949', 'KOTRA Verified'],
+          video_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+          gallery_images: [
+            'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80',
+            'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+            'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=800&q=80'
+          ]
+        });
+      }
+
+      // 2. 해당 공장이 등록한 전체 수출 상품 조회
+      const { data: productList } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      setProducts(productList || []);
+    } catch (error) {
+      console.error('Failed to fetch company showroom details:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 antialiased">
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 antialiased">
       <Header />
 
-      {/* 1. 회사 배너 & 프로필 상단 헤더 */}
-      <section className="bg-slate-900 text-white py-12 px-6 border-b border-slate-800">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <div className="flex items-center gap-2 text-xs font-bold text-blue-400 uppercase tracking-wider">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" /> Verified Korean Factory Showroom
+      {/* 1. 회사 상단 히어로 배너 & 미니홈피 커버 */}
+      <section className="bg-slate-900 text-white relative overflow-hidden border-b border-slate-800 pt-12 pb-16 px-6">
+        <div className="max-w-6xl mx-auto space-y-6 relative z-10">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
+              <ShieldCheck className="w-3.5 h-3.5" /> Verified Korean Factory
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold border border-blue-500/30">
+              <Factory className="w-3.5 h-3.5" /> {company?.business_type || 'Direct Manufacturer'}
+            </span>
           </div>
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-800/80 p-8 rounded-3xl border border-slate-700/60 backdrop-blur-sm">
-            <div className="space-y-3 max-w-3xl">
-              <div className="flex items-center gap-3">
-                <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center font-extrabold text-white text-2xl shadow-lg">
-                  {company?.company_name?.[0] || 'F'}
-                </div>
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-extrabold text-white flex items-center gap-2">
-                    {company?.company_name}
-                  </h1>
-                  <p className="text-xs text-blue-400 font-semibold mt-0.5">{company?.business_type}</p>
-                </div>
-              </div>
+          <div className="space-y-3 max-w-4xl">
+            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-snug">
+              {company?.company_name}
+            </h1>
+            <p className="text-slate-300 text-base md:text-lg leading-relaxed font-medium">
+              {company?.tagline || 'Leading Manufacturer in South Korea'}
+            </p>
+          </div>
 
-              <p className="text-slate-300 text-sm leading-relaxed pt-2">
-                {company?.description}
-              </p>
-
-              {/* 공장 스펙 요약 배지 */}
-              <div className="flex flex-wrap gap-4 pt-3 text-xs text-slate-400 font-medium border-t border-slate-700/60">
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="w-4 h-4 text-blue-400" />
-                  <span>{company?.location}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-blue-400" />
-                  <span>Est. {company?.established_year}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-blue-400" />
-                  <span>{company?.employees_count}</span>
-                </div>
+          {/* 핵심 공장 스펙 요약 바 */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-slate-800 text-xs text-slate-300">
+            <div className="flex items-center gap-2.5">
+              <MapPin className="w-4 h-4 text-blue-400 flex-shrink-0" />
+              <div>
+                <span className="text-slate-400 block text-[10px]">Location</span>
+                <span className="font-bold">{company?.location || 'South Korea'}</span>
               </div>
             </div>
 
-            {/* 바이어 컨택 버튼 */}
-            <div className="flex flex-col gap-3 min-w-[200px]">
-              <Link
-                href="/products"
-                className="w-full py-3.5 px-6 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-md transition text-center"
-              >
-                Inquire Factory Direct
-              </Link>
+            <div className="flex items-center gap-2.5">
+              <Calendar className="w-4 h-4 text-blue-400 flex-shrink-0" />
+              <div>
+                <span className="text-slate-400 block text-[10px]">Established</span>
+                <span className="font-bold">{company?.established_year || '1998'} Year</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <Users className="w-4 h-4 text-blue-400 flex-shrink-0" />
+              <div>
+                <span className="text-slate-400 block text-[10px]">Employees</span>
+                <span className="font-bold">{company?.employees_count || '50+ Staff'}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <Layers className="w-4 h-4 text-blue-400 flex-shrink-0" />
+              <div>
+                <span className="text-slate-400 block text-[10px]">Factory Area</span>
+                <span className="font-bold">{company?.factory_size || '5,000 sq.m'}</span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 2. 제조 공장 주요 인증 및 스펙 정보 */}
-      <main className="max-w-6xl mx-auto px-6 mt-10 space-y-12">
-        <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-          <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-            <Award className="w-5 h-5 text-blue-600" />
-            Quality Assurance & Certifications
-          </h2>
-          <div className="flex flex-wrap gap-3">
-            {company?.certifications?.map((cert, idx) => (
-              <span
-                key={idx}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-50 text-slate-800 text-xs font-bold rounded-xl border border-slate-200"
-              >
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                {cert}
-              </span>
-            ))}
+      {/* 2. 네비게이션 탭 (Factory Overview를 첫번째 탭으로 배치) */}
+      <section className="bg-white border-b border-slate-200 sticky top-18 z-40 shadow-sm">
+        <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
+          <div className="flex items-center gap-8">
+            {/* 첫번째 탭: Factory Overview & Certifications */}
+            <button
+              onClick={() => setActiveTab('about')}
+              className={`py-4 text-sm font-extrabold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+                activeTab === 'about'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              <span>Factory Overview & Certifications</span>
+            </button>
+
+            {/* 두번째 탭: Export Product Lineup */}
+            <button
+              onClick={() => setActiveTab('products')}
+              className={`py-4 text-sm font-extrabold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+                activeTab === 'products'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <Package className="w-4 h-4" />
+              <span>Export Product Lineup ({products.length})</span>
+            </button>
           </div>
+
+          <Link
+            href="/login"
+            className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md transition"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>Send Direct RFQ</span>
+          </Link>
         </div>
+      </section>
 
-        {/* 3. 제조사가 보유한 전체 수출 상품 라인업 */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-            <div>
-              <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Showroom Catalog</span>
-              <h2 className="text-2xl font-extrabold text-slate-900 mt-1">Export Products ({products.length})</h2>
-            </div>
-          </div>
+      {/* 3. 탭별 메인 컨텐츠 영역 */}
+      <main className="max-w-6xl mx-auto px-6 mt-10">
+        {activeTab === 'about' ? (
+          /* [첫번째 기본 탭] 공장 상세 개요, 사진 갤러리, 동영상 & 품질 인증서 */
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-8 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8">
+              <div>
+                <h2 className="text-xl font-extrabold text-slate-900">Company Overview & Manufacturing Strength</h2>
+                <p className="text-xs text-slate-500 mt-1">Detailed information about our factory capacity and mission.</p>
+              </div>
 
-          {products.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-3xl border border-slate-200">
-              <Package className="w-12 h-12 text-slate-300 mx-auto stroke-1 mb-2" />
-              <p className="text-slate-500 font-semibold text-sm">No products listed in this factory showroom yet.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition overflow-hidden flex flex-col justify-between group"
-                >
-                  <div>
-                    <div className="w-full h-48 bg-slate-100 border-b border-slate-100 flex items-center justify-center relative">
-                      {item.image_url ? (
-                        <img
-                          src={item.image_url}
-                          alt={item.title_en}
-                          className="w-full h-full object-contain bg-white group-hover:scale-105 transition duration-300"
-                        />
-                      ) : (
-                        <div className="text-slate-400 text-xs font-medium">No Image</div>
-                      )}
-                      <span className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-md">
-                        {item.category}
-                      </span>
-                    </div>
+              <div className="prose text-slate-600 text-sm leading-relaxed space-y-4 border-t border-slate-100 pt-4">
+                <p>{company?.description}</p>
+              </div>
 
-                    <div className="p-6 space-y-2">
-                      <h3 className="text-base font-extrabold text-slate-900 line-clamp-2 leading-snug">
-                        {item.title_en}
-                      </h3>
-                      <p className="text-xs text-slate-500 line-clamp-2">{item.tagline}</p>
-                      <div className="pt-2 text-xs">
-                        <span className="text-slate-400">Price: </span>
-                        <span className="font-extrabold text-blue-600">${item.price} USD</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-6 pt-0 border-t border-slate-100 mt-2">
-                    <Link
-                      href={`/products/${item.id}`}
-                      className="w-full py-2.5 bg-slate-900 hover:bg-blue-600 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <span>View Details</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+              {/* 공장 홍보 동영상 카드 */}
+              {company?.video_url && (
+                <div className="space-y-3 border-t border-slate-100 pt-6">
+                  <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                    <Video className="w-4 h-4 text-blue-600" />
+                    Factory Tour & Production Video
+                  </h3>
+                  <div className="w-full aspect-video rounded-2xl overflow-hidden border border-slate-200 bg-slate-900">
+                    <iframe
+                      src={company.video_url}
+                      title="Factory Tour Video"
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    ></iframe>
                   </div>
                 </div>
-              ))}
+              )}
+
+              {/* 공장 전경 및 생산 현장 사진 갤러리 */}
+              {company?.gallery_images && Array.isArray(company.gallery_images) && company.gallery_images.length > 0 && (
+                <div className="space-y-3 border-t border-slate-100 pt-6">
+                  <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4 text-emerald-600" />
+                    Factory Facilities & Production Line Gallery
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {company.gallery_images.map((imgUrl, idx) => (
+                      <div key={idx} className="h-44 rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 group">
+                        <img
+                          src={imgUrl}
+                          alt={`Factory Facility ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 품질 인증서 태그 */}
+              <div className="border-t border-slate-100 pt-6 space-y-3">
+                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                  <Award className="w-4 h-4 text-blue-600" />
+                  Quality Certifications & Licenses
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {company?.certifications && Array.isArray(company.certifications) ? (
+                    company.certifications.map((cert, index) => (
+                      <span
+                        key={index}
+                        className="px-3.5 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 flex items-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                        {cert}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg">
+                      ISO 9001 / CE Certified
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-          )}
-        </div>
+
+            {/* 우측 공장 연락처 및 Direct Inquiry 카드 */}
+            <div className="lg:col-span-4 space-y-6">
+              <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 space-y-4 shadow-md">
+                <h3 className="text-base font-extrabold flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-emerald-400" />
+                  Direct Factory Contact
+                </h3>
+
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Send a direct inquiry to our export sales team for custom production, OEM requests, and wholesale quotations.
+                </p>
+
+                <div className="space-y-2 text-xs text-slate-300 border-t border-slate-800 pt-3">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-blue-400" />
+                    <span>{company?.location || 'Incheon, South Korea'}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 text-blue-400" />
+                    <span>+82-32-123-4567 (Export Dept.)</span>
+                  </div>
+                </div>
+
+                <Link
+                  href="/login"
+                  className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Contact Manufacturer</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* [두번째 탭] 셀러의 전체 수출 상품 라인업 Grid */
+          <div className="space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div>
+                <h2 className="text-xl font-extrabold text-slate-900">Official Product Catalog</h2>
+                <p className="text-xs text-slate-500 mt-1">Direct factory pricing with AI-translated specifications.</p>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
+                <p className="text-slate-500 font-semibold text-sm">Loading Factory Showroom Products...</p>
+              </div>
+            ) : products.length === 0 ? (
+              <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 space-y-3">
+                <Package className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
+                <h3 className="text-base font-bold text-slate-800">No Products Displayed Yet</h3>
+                <p className="text-xs text-slate-500">This factory has not registered any public catalog items.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition overflow-hidden flex flex-col justify-between group"
+                  >
+                    <div>
+                      <div className="w-full h-52 bg-slate-100 border-b border-slate-100 flex items-center justify-center relative overflow-hidden">
+                        {item.image_url ? (
+                          <img
+                            src={item.image_url}
+                            alt={item.title_en}
+                            className="w-full h-full object-contain bg-white group-hover:scale-105 transition duration-300"
+                          />
+                        ) : (
+                          <div className="text-slate-400 text-xs font-medium">No Factory Image</div>
+                        )}
+                        <span className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-md">
+                          {item.category}
+                        </span>
+                      </div>
+
+                      <div className="p-6 space-y-3">
+                        <div className="flex items-center gap-1 text-xs font-bold text-blue-600">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Verified Item</span>
+                        </div>
+
+                        <h3 className="text-base font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition">
+                          {item.title_en}
+                        </h3>
+
+                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                          {item.tagline}
+                        </p>
+
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-slate-400 block text-[10px]">FOB Price</span>
+                            <span className="font-extrabold text-blue-600">${item.price} USD</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[10px]">Min Order</span>
+                            <span className="font-bold text-slate-700">{item.moq}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-6 pt-0 border-t border-slate-100 mt-2">
+                      <Link
+                        href={`/products/${item.id}`}
+                        className="w-full py-3 bg-slate-900 hover:bg-blue-600 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <span>Inspect Specs & Inquiry</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

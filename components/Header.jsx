@@ -3,11 +3,17 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Globe, PlusCircle, LayoutDashboard, UserCheck, ChevronDown } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Globe, PlusCircle, LayoutDashboard, UserCheck, ChevronDown, LogOut, User, Building2, MessageSquare, FileText, Home } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 export default function Header() {
+  const router = useRouter();
   const [currentLang, setCurrentLang] = useState('EN');
   const [isLangOpen, setIsLangOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const pathname = usePathname();
 
   const languages = [
     { code: 'en', label: 'EN', name: 'English (US)' },
@@ -18,8 +24,55 @@ export default function Header() {
     { code: 'ar', label: 'AR', name: 'العربية (AR)' },
   ];
 
+  // 구글 번역 쿠키 설정 및 셀렉터 변경 트리거 (강화 버전)
+  const setGoogleTranslateCookie = (langCode) => {
+    if (!langCode) return;
+    const domain = window.location.hostname;
+    
+    // 1. 쿠키 이중 경로 저장
+    document.cookie = `googtrans=/en/${langCode}; path=/;`;
+    document.cookie = `googtrans=/en/${langCode}; path=/; domain=${domain};`;
+
+    // 2. 구글 번역 드롭다운 셀렉터 이벤트 강제 발생
+    const triggerGoogleCombo = () => {
+      const googleCombo = document.querySelector('.goog-te-combo');
+      if (googleCombo) {
+        googleCombo.value = langCode;
+        googleCombo.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    };
+
+    triggerGoogleCombo();
+    // DOM 렌더링 지연 대비 0.3초 후 2차 트리거
+    setTimeout(triggerGoogleCombo, 300);
+  };
+
   useEffect(() => {
-    // 1. 구글 번역 스크립트 글로벌 주입
+    // 1. Supabase 세션 초기 조회 및 이중 재검증
+    const fetchUserSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+      } else {
+        setTimeout(async () => {
+          const { data: { session: retrySession } } = await supabase.auth.getSession();
+          setUser(retrySession?.user || null);
+        }, 300);
+      }
+    };
+    fetchUserSession();
+
+    // 2. Supabase 세션 상태 변화 실시간 감지
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+
+    // 3. 저장된 언어 불러오기 (기본값: EN)
+    const savedCode = localStorage.getItem('klick_lang_code') || 'en';
+    const savedLabel = localStorage.getItem('klick_lang_label') || 'EN';
+    setCurrentLang(savedLabel);
+
+    // 4. 구글 번역 스크립트 동적 주입 및 리스너 등록
     if (!document.getElementById('google-translate-script')) {
       const addScript = document.createElement('script');
       addScript.id = 'google-translate-script';
@@ -37,26 +90,60 @@ export default function Header() {
           'google_translate_element'
         );
 
-        // 2. 접속 국가 감지 (한국 접속 시 한국어로 즉시 자동 변경)
-        const userLang = navigator.language || navigator.userLanguage;
-        if (userLang.includes('ko')) {
-          changeLanguage('ko', 'KO');
+        if (savedCode && savedCode !== 'en') {
+          setTimeout(() => {
+            setGoogleTranslateCookie(savedCode);
+          }, 200);
         }
       };
+    } else {
+      if (savedCode && savedCode !== 'en') {
+        setTimeout(() => {
+          setGoogleTranslateCookie(savedCode);
+        }, 200);
+      }
     }
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
   }, []);
 
-  // 구글 번역 드롭다운 셀렉트 변경 트리거
+  // 5. 페이지 이동(pathname 변경) 감지 시 번역 쿠키 유지 및 재스캔
+  useEffect(() => {
+    const savedCode = localStorage.getItem('klick_lang_code');
+    if (savedCode && savedCode !== 'en') {
+      const timer = setTimeout(() => {
+        setGoogleTranslateCookie(savedCode);
+      }, 300);
+
+      return () => clearTimeout(timer);
+    }
+  }, [pathname]);
+
   const changeLanguage = (langCode, label) => {
     setCurrentLang(label);
     setIsLangOpen(false);
 
-    const googleCombo = document.querySelector('.goog-te-combo');
-    if (googleCombo) {
-      googleCombo.value = langCode;
-      googleCombo.dispatchEvent(new Event('change'));
-    }
+    localStorage.setItem('klick_lang_code', langCode);
+    localStorage.setItem('klick_lang_label', label);
+
+    setGoogleTranslateCookie(langCode);
+    // 번역 엔진 쿠키 적용을 위해 새로고침
+    window.location.reload();
   };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setIsUserMenuOpen(false);
+    router.push('/');
+  };
+
+  const userRole = user?.user_metadata?.role || 'seller';
+  const displayName = userRole === 'seller'
+    ? (user?.user_metadata?.company_name || user?.email?.split('@')[0])
+    : (user?.user_metadata?.buyer_name || user?.email?.split('@')[0]);
 
   return (
     <header className="sticky top-0 z-[99999] bg-slate-900 text-white border-b border-slate-800 shadow-md">
@@ -64,32 +151,153 @@ export default function Header() {
       <div id="google_translate_element" className="hidden"></div>
 
       <div className="max-w-7xl mx-auto px-6 h-18 flex items-center justify-between gap-4">
-        {/* KLICK 브랜드 로고 - notranslate 적용하여 로고/그림 변형 방지 */}
+        {/* KLICK 브랜드 로고 */}
         <Link href="/" className="flex items-center gap-2.5 cursor-pointer group notranslate" translate="no">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-extrabold text-white text-xl shadow-lg group-hover:bg-blue-500 transition notranslate">
+          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-extrabold text-white text-xl shadow-lg group-hover:bg-blue-500 transition">
             K
           </div>
-          <div className="flex flex-col notranslate">
-            <span className="font-extrabold text-xl tracking-tight text-white flex items-center gap-1 notranslate">
-              KLICK <span className="text-xs font-semibold bg-blue-600/30 text-blue-400 px-2 py-0.5 rounded-full border border-blue-500/30 notranslate">B2B</span>
+          <div className="flex flex-col">
+            <span className="font-extrabold text-xl tracking-tight text-white flex items-center gap-1">
+              KLICK <span className="text-xs font-semibold bg-blue-600/30 text-blue-400 px-2 py-0.5 rounded-full border border-blue-500/30">B2B</span>
             </span>
-            <span className="text-[10px] text-slate-400 font-medium tracking-wider notranslate">
+            <span className="text-[10px] text-slate-400 font-medium tracking-wider">
               Global Trade Marketplace
             </span>
           </div>
         </Link>
 
-        {/* 내비게이션 & 언어 변경 메뉴 */}
+        {/* 내비게이션 & 사용자 맞춤 버튼 영역 */}
         <nav className="flex items-center gap-3">
-          {/* 구글 실시간 언어 전환 드롭다운 */}
-          <div className="relative">
+          {/* 1. 홈 바로가기 버튼 */}
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition"
+          >
+            <Home className="w-4 h-4 text-blue-400" />
+            <span>Home</span>
+          </Link>
+
+          {/* 2. 공개 RFQ 게시판 바로가기 버튼 */}
+          <Link
+            href="/rfq"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition cursor-pointer"
+          >
+            <FileText className="w-4 h-4 text-emerald-400" />
+            <span>RFQ Board</span>
+          </Link>
+
+          {/* 3. 로그인 상태 분기 UI (드롭다운 내로 기능 통합) */}
+          {user ? (
+            <div className="relative">
+              <button
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer"
+              >
+                <User className="w-4 h-4 text-blue-400" />
+                <span className="max-w-[120px] truncate">
+                  {userRole === 'seller' ? `[Seller] ${displayName}` : `[Buyer] ${displayName}`}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+
+              {isUserMenuOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-fadeIn">
+                  <div className="px-4 py-2 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    {userRole === 'seller' ? 'Seller Control Hub' : 'Buyer Sourcing Center'}
+                  </div>
+
+                  {userRole === 'seller' ? (
+                    <>
+                      <Link
+                        href="/products"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
+                      >
+                        <LayoutDashboard className="w-4 h-4 text-emerald-500" />
+                        <span>Product Dashboard</span>
+                      </Link>
+
+                      <Link
+                        href="/chat"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
+                      >
+                        <MessageSquare className="w-4 h-4 text-blue-500" />
+                        <span>Live Chat Hub</span>
+                      </Link>
+
+                      <Link
+                        href="/seller/profile"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
+                      >
+                        <Building2 className="w-4 h-4 text-blue-500" />
+                        <span>Factory Profile & Showroom</span>
+                      </Link>
+
+                      <Link
+                        href="/products/new"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
+                      >
+                        <PlusCircle className="w-4 h-4 text-blue-500" />
+                        <span>Register New Product</span>
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href="/buyer/profile"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
+                      >
+                        <Building2 className="w-4 h-4 text-blue-500" />
+                        <span>Buyer Company Profile Hub</span>
+                      </Link>
+
+                      <Link
+                        href="/chat"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
+                      >
+                        <MessageSquare className="w-4 h-4 text-blue-500" />
+                        <span>Live Chat Hub</span>
+                      </Link>
+                    </>
+                  )}
+
+                  <div className="border-t border-slate-100 mt-1 pt-1">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 transition flex items-center gap-2 cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* 비로그인 상태인 경우만 Sign In / Up 버튼 노출 */
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+            >
+              <UserCheck className="w-4 h-4 text-blue-400" />
+              <span>Sign In / Up</span>
+            </Link>
+          )}
+
+          {/* 4. [가장 우측 상단] 구글 다국어 언어 선택 드롭다운 */}
+          <div className="relative border-l border-slate-800 pl-2 ml-1">
             <button
               onClick={() => setIsLangOpen(!isLangOpen)}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer"
             >
-              <Globe className="w-4 h-4 text-blue-400 notranslate" />
+              <Globe className="w-4 h-4 text-blue-400" />
               <span className="notranslate" translate="no">{currentLang}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 notranslate" />
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </button>
 
             {isLangOpen && (
@@ -112,42 +320,6 @@ export default function Header() {
               </div>
             )}
           </div>
-
-          {/* 글로벌 B2B 마켓플레이스 메인 홈 */}
-          <Link
-            href="/"
-            className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition"
-          >
-            <span>Marketplace</span>
-          </Link>
-
-          {/* 등록 상품 대시보드 */}
-          <Link
-            href="/products"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition"
-          >
-            <LayoutDashboard className="w-4 h-4 text-emerald-400 notranslate" />
-            <span>My Dashboard</span>
-          </Link>
-
-          {/* 제조사/셀러 로그인 */}
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
-          >
-            <UserCheck className="w-4 h-4 text-blue-400 notranslate" />
-            <span>Seller Login</span>
-          </Link>
-
-          {/* 입점 상품 등록 CTA */}
-          <Link
-            href="/products/new"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs md:text-sm rounded-xl shadow-md transition cursor-pointer"
-          >
-            <PlusCircle className="w-4 h-4 notranslate" />
-            <span className="hidden sm:inline">AI Product Setup</span>
-            <span className="sm:hidden">Setup</span>
-          </Link>
         </nav>
       </div>
     </header>

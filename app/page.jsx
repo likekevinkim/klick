@@ -18,13 +18,15 @@ import {
   ChevronRight,
   TrendingUp,
   Award,
-  PlusCircle
+  PlusCircle,
+  ChevronDown
 } from 'lucide-react';
 
 export default function GlobalMarketplaceHomePage() {
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [recentProducts, setRecentProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -59,6 +61,8 @@ export default function GlobalMarketplaceHomePage() {
 
   if (!mounted) return null;
 
+  const currentCategoryName = categories.find((c) => c.id === selectedCategory)?.name || 'All Categories';
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 antialiased">
       <Header />
@@ -85,23 +89,45 @@ export default function GlobalMarketplaceHomePage() {
             </p>
           </div>
 
-          {/* 통합 B2B 검색 바 */}
-          <div className="bg-white p-2 md:p-3 rounded-2xl shadow-xl max-w-4xl flex flex-col md:flex-row items-center gap-2 border border-slate-200 text-slate-900">
-            <div className="flex items-center gap-2 px-3 py-2 w-full md:w-auto border-b md:border-b-0 md:border-r border-slate-200">
-              <Globe className="w-5 h-5 text-slate-400" />
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="bg-transparent font-semibold text-slate-700 text-sm focus:outline-none cursor-pointer w-full"
+          {/* B2B 검색 바 */}
+          <div className="bg-white p-2 md:p-3 rounded-2xl shadow-xl max-w-4xl flex flex-col md:flex-row items-center gap-2 border border-slate-200 text-slate-900 relative z-30">
+            {/* 커스텀 카테고리 선택 드롭다운 */}
+            <div className="relative w-full md:w-auto border-b md:border-b-0 md:border-r border-slate-200 px-3 py-2">
+              <button
+                type="button"
+                onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                className="flex items-center justify-between gap-2 w-full md:w-52 text-left font-bold text-slate-700 text-sm py-1 cursor-pointer"
               >
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
+                <div className="flex items-center gap-2 truncate">
+                  <Globe className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  <span className="truncate">{currentCategoryName}</span>
+                </div>
+                <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              </button>
+
+              {isCategoryOpen && (
+                <div className="absolute top-full left-0 mt-2 w-60 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-fadeIn">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory(cat.id);
+                        setIsCategoryOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-bold transition flex items-center justify-between hover:bg-slate-50 cursor-pointer ${
+                        selectedCategory === cat.id ? 'text-blue-600 bg-blue-50/60' : 'text-slate-700'
+                      }`}
+                    >
+                      <span>{cat.name}</span>
+                      {selectedCategory === cat.id && <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
+            {/* 검색어 입력란 */}
             <div className="flex items-center gap-2 px-3 py-2 flex-1 w-full">
               <Search className="w-5 h-5 text-slate-400 flex-shrink-0" />
               <input
@@ -158,26 +184,26 @@ export default function GlobalMarketplaceHomePage() {
         </div>
       </section>
 
-      {/* 3. RFQ 원클릭 요청 배너 */}
+      {/* 3. RFQ 게시판 연결 배너 (수정: /rfq 로 연결!) */}
       <section className="max-w-7xl mx-auto px-6 mt-12">
         <div className="bg-slate-900 text-white rounded-3xl p-8 md:p-10 shadow-md border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="space-y-3 max-w-2xl">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-              <Send className="w-3.5 h-3.5" /> One-Stop B2B Sourcing (RFQ)
+              <Send className="w-3.5 h-3.5" /> One-Stop B2B Sourcing (RFQ Marketplace)
             </span>
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              Need custom factory quotes?
+              Need custom factory quotes or open sourcing?
             </h2>
             <p className="text-slate-300 text-sm md:text-base">
-              Submit your specifications once. Verified Korean manufacturers will review and respond with direct price quotes.
+              Browse global buyer purchasing demands or post your custom specifications. Korean manufacturers submit wholesale price proposals directly.
             </p>
           </div>
 
           <Link
-            href="/products"
+            href="/rfq"
             className="w-full md:w-auto px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-base rounded-2xl shadow-lg transition flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
           >
-            <span>Request Instant RFQ</span>
+            <span>Explore Public RFQ Board</span>
             <ChevronRight className="w-5 h-5" />
           </Link>
         </div>

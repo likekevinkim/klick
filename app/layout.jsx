@@ -2,14 +2,14 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'KLICK - Global B2B Export Platform',
-  description: '대한민국 제조업 전용 글로벌 B2B 수출 플랫폼',
+  title: 'KLICK - Global B2B Trade Marketplace',
+  description: 'Verified Korean Manufacturers Direct Trade Platform',
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="ko">
-      <body className="antialiased">
+    <html lang="en">
+      <body className="bg-slate-50 text-slate-900 antialiased">
         {children}
       </body>
     </html>
