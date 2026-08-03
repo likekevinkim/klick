@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
+import B2bPaymentModal from '@/components/B2bPaymentModal';
 import { 
   Send, 
   Building2, 
@@ -15,7 +16,9 @@ import {
   Clock,
   CheckCheck,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  CreditCard,
+  ArrowRight
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -24,19 +27,21 @@ export default function RealtimeChatPage() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState('seller');
 
-  // 독립된 대화방 목록 및 현재 열려있는 대화방 ID 상태
+  // 대화방 목록 및 선택 상태
   const [rooms, setRooms] = useState([]);
   const [activeRoomId, setActiveRoomId] = useState(1);
-  
-  // 대화방별 메시지 맵 상태
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
   const [newMessage, setNewMessage] = useState('');
 
-  // RFQ 견적서 발송 팝업 모달 상태
+  // RFQ 견적서 작성 팝업 모달 상태
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [quotePrice, setQuotePrice] = useState('150.00');
   const [quoteMoq, setQuoteMoq] = useState('100 Units');
   const [quoteNote, setQuoteNote] = useState('Includes FOB shipping to Incheon Port. Lead time 14 days.');
+
+  // ★ B2B 3가지 결제 모달 연동 상태
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentQuoteData, setPaymentQuoteData] = useState(null);
 
   const messagesEndRef = useRef(null);
 
@@ -45,7 +50,6 @@ export default function RealtimeChatPage() {
     initChatSession();
   }, []);
 
-  // 대화 내용 업데이트 시 하단 스크롤 자동 고정
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [roomMessagesMap, activeRoomId]);
@@ -62,7 +66,6 @@ export default function RealtimeChatPage() {
     }
   };
 
-  // 테스트용 독립 멀티 대화방 데이터
   const initMockMultiRooms = () => {
     const mockRooms = [
       {
@@ -75,14 +78,6 @@ export default function RealtimeChatPage() {
       },
       {
         id: 2,
-        product_title: 'Precision Hydraulic Control Valve HV-300',
-        buyer_name: 'Michael Brown (Germany Tech GmbH)',
-        seller_name: 'Hankook Precision Co., Ltd.',
-        last_message: 'What is the lead time for 1,000 units to Hamburg?',
-        updated_at: '09:15 AM',
-      },
-      {
-        id: 3,
         product_title: 'Organic K-Beauty Repair Serum 50ml',
         buyer_name: 'Elena Rostova (Euro Cosmetics Import)',
         seller_name: 'Hankook Precision Co., Ltd.',
@@ -118,17 +113,6 @@ export default function RealtimeChatPage() {
         {
           id: 201,
           room_id: 2,
-          sender_role: 'buyer',
-          message: 'What is the lead time for 1,000 units shipped to Hamburg port?',
-          translated_message: '함부르크 항구로 배송 시 1,000개 주문의 생산 및 납기 기간은 얼마나 걸리나요?',
-          is_quote: false,
-          created_at: '09:15 AM',
-        }
-      ],
-      3: [
-        {
-          id: 301,
-          room_id: 3,
           sender_role: 'buyer',
           message: 'Is OEM private labeling available for this serum? We need custom packaging.',
           translated_message: '이 세럼 제품에 대해 OEM 자사 브랜드 라벨링이 가능한가요? 맞춤형 패키징이 필요합니다.',
@@ -183,7 +167,6 @@ export default function RealtimeChatPage() {
     }
   };
 
-  // 선택된 대화방에 메시지 발송
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !activeRoomId) return;
@@ -191,7 +174,6 @@ export default function RealtimeChatPage() {
     const currentText = newMessage;
     setNewMessage('');
 
-    // AI 자동 번역 시뮬레이션
     let autoTranslation = '';
     if (/[ㄱ-ㅎ|가-힣]/.test(currentText)) {
       autoTranslation = `[AI Trans] ${currentText}`;
@@ -230,7 +212,6 @@ export default function RealtimeChatPage() {
     }
   };
 
-  // RFQ 견적서 발송
   const handleSendQuote = async () => {
     if (!activeRoomId) return;
 
@@ -263,6 +244,16 @@ export default function RealtimeChatPage() {
     }
   };
 
+  // ★ 결제 모달 열기 함수
+  const handleOpenPaymentModal = (msg, room) => {
+    setPaymentQuoteData({
+      amount: msg.quote_price ? msg.quote_price.split(' ')[0] : '145.00',
+      title: room.product_title,
+      sellerCompany: room.seller_name,
+    });
+    setIsPaymentModalOpen(true);
+  };
+
   if (!mounted) return null;
 
   return (
@@ -270,7 +261,6 @@ export default function RealtimeChatPage() {
       <Header />
 
       <main className="max-w-5xl mx-auto px-6 mt-8 space-y-6">
-        {/* 상단 영문 기본 타이틀 배너 */}
         <div className="bg-slate-900 text-white rounded-3xl p-6 md:p-8 shadow-md border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
@@ -289,7 +279,6 @@ export default function RealtimeChatPage() {
           </div>
         </div>
 
-        {/* 대화 상대별 아코디언 인라인 메시지 리스트 */}
         <div className="space-y-4">
           {rooms.map((room) => {
             const isOpen = activeRoomId === room.id;
@@ -303,7 +292,7 @@ export default function RealtimeChatPage() {
                   isOpen ? 'border-blue-600 ring-2 ring-blue-600/10' : 'border-slate-200 hover:border-blue-300'
                 }`}
               >
-                {/* 대화 상대 및 제목 헤더 카드 (클릭 시 토글) */}
+                {/* 대화 제목 헤더 */}
                 <button
                   onClick={() => setActiveRoomId(isOpen ? null : room.id)}
                   className="w-full text-left p-6 flex items-center justify-between gap-4 cursor-pointer bg-white hover:bg-slate-50/80 transition"
@@ -339,10 +328,9 @@ export default function RealtimeChatPage() {
                   </div>
                 </button>
 
-                {/* 클릭 시 제목 밑에 바로 나타나는 대화 내역 및 입력창 */}
+                {/* 제목 클릭 시 바로 전개되는 메시지 스레드 */}
                 {isOpen && (
                   <div className="border-t border-slate-100 bg-slate-50/50 flex flex-col">
-                    {/* 상단 액션 바 (견적서 발송 CTA) */}
                     <div className="px-6 py-3 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between text-xs">
                       <span className="font-bold text-slate-600 flex items-center gap-1.5">
                         <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
@@ -360,8 +348,7 @@ export default function RealtimeChatPage() {
                       )}
                     </div>
 
-                    {/* 해당 대화방의 메시지 스레드 */}
-                    <div className="p-6 space-y-4 max-h-[420px] overflow-y-auto bg-white">
+                    <div className="p-6 space-y-4 max-h-[480px] overflow-y-auto bg-white">
                       {messages.map((msg) => {
                         const isMyMsg = msg.sender_role === userRole;
                         return (
@@ -373,9 +360,9 @@ export default function RealtimeChatPage() {
                               {msg.sender_role === 'seller' ? 'Korean Seller' : 'Global Buyer'} • {msg.created_at}
                             </span>
 
+                            {/* 견적서 카드 타입인 경우 */}
                             {msg.is_quote ? (
-                              /* B2B 견적서 카드 메시지 */
-                              <div className="max-w-md w-full bg-slate-900 text-white p-5 rounded-2xl shadow-md space-y-3 border border-slate-800">
+                              <div className="max-w-md w-full bg-slate-900 text-white p-5 rounded-2xl shadow-lg space-y-4 border border-slate-800">
                                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                                   <span className="text-xs font-extrabold text-emerald-400 flex items-center gap-1">
                                     <DollarSign className="w-4 h-4" /> Official Wholesale Quotation
@@ -399,6 +386,19 @@ export default function RealtimeChatPage() {
                                 <p className="text-xs text-slate-300 leading-relaxed pt-1">
                                   {msg.message}
                                 </p>
+
+                                {/* ★ 바이어 결제 진입 초록색 버튼 (항상 명확히 노출!) */}
+                                <div className="pt-2 border-t border-slate-800">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenPaymentModal(msg, room)}
+                                    className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer ring-2 ring-emerald-500/30"
+                                  >
+                                    <CreditCard className="w-4 h-4" />
+                                    <span>Pay / Proceed to Checkout</span>
+                                    <ArrowRight className="w-4 h-4" />
+                                  </button>
+                                </div>
                               </div>
                             ) : (
                               /* 일반 대화 말풍선 */
@@ -429,7 +429,6 @@ export default function RealtimeChatPage() {
                       <div ref={messagesEndRef} />
                     </div>
 
-                    {/* 대화제목 바로 아래 배치된 입력창 */}
                     <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-200 flex items-center gap-2 bg-slate-50">
                       <input
                         type="text"
@@ -455,7 +454,7 @@ export default function RealtimeChatPage() {
         </div>
       </main>
 
-      {/* 셀러 RFQ 견적서 발송 팝업 모달 */}
+      {/* 셀러 RFQ 견적서 발송 모달 */}
       {isQuoteModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6">
@@ -523,6 +522,13 @@ export default function RealtimeChatPage() {
           </div>
         </div>
       )}
+
+      {/* ★ 바이어용 3가지 통합 B2B 결제 팝업 모달 연결 */}
+      <B2bPaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        quoteData={paymentQuoteData}
+      />
     </div>
   );
 }
