@@ -1,26 +1,72 @@
+/* app/globals.css */
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html, body {
+    top: 0px !important;
+    position: static !important;
+    margin-top: 0px !important;
+    padding-top: 0px !important;
+    background-color: #f8fafc;
+    color: #0f172a;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
+/* ==========================================================================
+   구글 번역(Google Translate) 상단 툴바 및 배너 100% 완전 차단 (헤더 가림 방지)
+   ========================================================================== */
+
+/* 1. 구글 번역 iframe 및 배너 완벽 제거 */
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate,
+iframe.goog-te-banner-frame,
+iframe[id*=":1.container"],
+iframe[class*="goog"],
+.VIpgFt-b6pR4b-y2rowd,
+.VIpgFt-b6pR4b-y2rowd-a4fA3c {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0px !important;
+  width: 0px !important;
+  max-height: 0px !important;
+  pointer-events: none !important;
+}
+
+/* 2. 구글 번역이 body에 강제로 주입하는 상단 여백(40px) 강제 무효화 */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  top: 0px !important;
+  position: static !important;
+  margin-top: 0px !important;
+  padding-top: 0px !important;
+}
+
+/* 3. 구글 번역 위젯 텍스트 요소 비가시화 */
+.goog-te-gadget {
+  font-size: 0px !important;
+  color: transparent !important;
+}
+
+.goog-te-gadget span,
+.goog-te-gadget div {
+  display: none !important;
+}
+
+/* 4. 텍스트 선택 시 뜨는 구글 번역 툴팁 팝업 숨김 */
+#goog-gt-tt,
+.goog-te-balloon-frame {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+.goog-text-highlight {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
 }
