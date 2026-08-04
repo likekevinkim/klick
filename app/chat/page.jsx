@@ -18,7 +18,9 @@ import {
   ChevronDown,
   ChevronUp,
   CreditCard,
-  ArrowRight
+  ArrowRight,
+  Download,
+  Loader2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -35,13 +37,16 @@ export default function RealtimeChatPage() {
 
   // RFQ 견적서 작성 팝업 모달 상태
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
-  const [quotePrice, setQuotePrice] = useState('150.00');
-  const [quoteMoq, setQuoteMoq] = useState('100 Units');
+  const [quotePrice, setQuotePrice] = useState('145.00');
+  const [quoteMoq, setQuoteMoq] = useState('500 Units');
   const [quoteNote, setQuoteNote] = useState('Includes FOB shipping to Incheon Port. Lead time 14 days.');
 
-  // ★ B2B 3가지 결제 모달 연동 상태
+  // 결제 모달 상태
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentQuoteData, setPaymentQuoteData] = useState(null);
+
+  // PDF 다운로드 로딩 상태
+  const [pdfDownloadingId, setPdfDownloadingId] = useState(null);
 
   const messagesEndRef = useRef(null);
 
@@ -244,7 +249,43 @@ export default function RealtimeChatPage() {
     }
   };
 
-  // ★ 결제 모달 열기 함수
+  // ★ Proforma Invoice (PI) PDF 자동 다운로드 처리 함수
+  const handleDownloadPiPdf = async (msg, room) => {
+    setPdfDownloadingId(msg.id);
+
+    try {
+      const response = await fetch('/api/pdf/pi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemTitle: room.product_title,
+          sellerCompany: room.seller_name,
+          buyerCompany: room.buyer_name,
+          quantity: msg.quote_moq || '500 Units',
+          unitPrice: msg.quote_price ? msg.quote_price.split(' ')[0] : '145.00',
+        }),
+      });
+
+      const htmlContent = await response.text();
+
+      // 브라우저 인쇄 / PDF 저장 창 즉시 호출
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      }
+    } catch (error) {
+      console.error('Failed to download PI PDF:', error);
+      alert('Failed to generate Proforma Invoice PDF.');
+    } finally {
+      setPdfDownloadingId(null);
+    }
+  };
+
   const handleOpenPaymentModal = (msg, room) => {
     setPaymentQuoteData({
       amount: msg.quote_price ? msg.quote_price.split(' ')[0] : '145.00',
@@ -292,7 +333,6 @@ export default function RealtimeChatPage() {
                   isOpen ? 'border-blue-600 ring-2 ring-blue-600/10' : 'border-slate-200 hover:border-blue-300'
                 }`}
               >
-                {/* 대화 제목 헤더 */}
                 <button
                   onClick={() => setActiveRoomId(isOpen ? null : room.id)}
                   className="w-full text-left p-6 flex items-center justify-between gap-4 cursor-pointer bg-white hover:bg-slate-50/80 transition"
@@ -328,7 +368,6 @@ export default function RealtimeChatPage() {
                   </div>
                 </button>
 
-                {/* 제목 클릭 시 바로 전개되는 메시지 스레드 */}
                 {isOpen && (
                   <div className="border-t border-slate-100 bg-slate-50/50 flex flex-col">
                     <div className="px-6 py-3 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between text-xs">
@@ -360,7 +399,6 @@ export default function RealtimeChatPage() {
                               {msg.sender_role === 'seller' ? 'Korean Seller' : 'Global Buyer'} • {msg.created_at}
                             </span>
 
-                            {/* 견적서 카드 타입인 경우 */}
                             {msg.is_quote ? (
                               <div className="max-w-md w-full bg-slate-900 text-white p-5 rounded-2xl shadow-lg space-y-4 border border-slate-800">
                                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
@@ -387,21 +425,34 @@ export default function RealtimeChatPage() {
                                   {msg.message}
                                 </p>
 
-                                {/* ★ 바이어 결제 진입 초록색 버튼 (항상 명확히 노출!) */}
-                                <div className="pt-2 border-t border-slate-800">
+                                {/* ★ 1. 공식 Proforma Invoice (PI) PDF 다운로드 버튼 */}
+                                <div className="pt-2 border-t border-slate-800 grid grid-cols-2 gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDownloadPiPdf(msg, room)}
+                                    disabled={pdfDownloadingId === msg.id}
+                                    className="py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-xs rounded-xl border border-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                  >
+                                    {pdfDownloadingId === msg.id ? (
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    ) : (
+                                      <Download className="w-3.5 h-3.5 text-blue-400" />
+                                    )}
+                                    <span>Download PI (PDF)</span>
+                                  </button>
+
+                                  {/* 2. 결제 진입 버튼 */}
                                   <button
                                     type="button"
                                     onClick={() => handleOpenPaymentModal(msg, room)}
-                                    className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer ring-2 ring-emerald-500/30"
+                                    className="py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
                                   >
-                                    <CreditCard className="w-4 h-4" />
-                                    <span>Pay / Proceed to Checkout</span>
-                                    <ArrowRight className="w-4 h-4" />
+                                    <CreditCard className="w-3.5 h-3.5" />
+                                    <span>Pay / Checkout</span>
                                   </button>
                                 </div>
                               </div>
                             ) : (
-                              /* 일반 대화 말풍선 */
                               <div
                                 className={`max-w-md p-4 rounded-2xl text-xs leading-relaxed shadow-sm space-y-2 ${
                                   isMyMsg
@@ -474,7 +525,7 @@ export default function RealtimeChatPage() {
                     type="text"
                     value={quotePrice}
                     onChange={(e) => setQuotePrice(e.target.value)}
-                    placeholder="150.00"
+                    placeholder="145.00"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
@@ -485,7 +536,7 @@ export default function RealtimeChatPage() {
                     type="text"
                     value={quoteMoq}
                     onChange={(e) => setQuoteMoq(e.target.value)}
-                    placeholder="100 Units"
+                    placeholder="500 Units"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
@@ -523,7 +574,7 @@ export default function RealtimeChatPage() {
         </div>
       )}
 
-      {/* ★ 바이어용 3가지 통합 B2B 결제 팝업 모달 연결 */}
+      {/* B2B 3가지 통합 결제 팝업 모달 */}
       <B2bPaymentModal
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
