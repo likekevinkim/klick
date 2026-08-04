@@ -62,25 +62,29 @@ export default function AuthPage() {
 
         // Save metadata according to user role
         if (data?.user) {
-          if (userRole === 'seller') {
-            await supabase.from('companies').insert([
-              {
-                company_name: companyName || 'Korean Manufacturer',
-                description: `Official Global B2B Showroom of ${companyName}.`,
-                business_type: 'Direct Manufacturer',
-                location: 'South Korea',
-              },
-            ]);
-          } else {
-            await supabase.from('buyers').insert([
-              {
-                auth_user_id: data.user.id,
-                buyer_name: buyerName || 'Global Buyer',
-                buyer_email: email,
-                country: country,
-                interest_category: category,
-              },
-            ]);
+          try {
+            if (userRole === 'seller') {
+              await supabase.from('companies').insert([
+                {
+                  company_name: companyName || 'Korean Manufacturer',
+                  description: `Official Global B2B Showroom of ${companyName}.`,
+                  business_type: 'Direct Manufacturer',
+                  location: 'South Korea',
+                },
+              ]);
+            } else {
+              await supabase.from('buyers').insert([
+                {
+                  auth_user_id: data.user.id,
+                  buyer_name: buyerName || 'Global Buyer',
+                  buyer_email: email,
+                  country: country,
+                  interest_category: category,
+                },
+              ]);
+            }
+          } catch (dbErr) {
+            console.warn('Metadata DB Insert skipped:', dbErr);
           }
         }
 
@@ -115,14 +119,18 @@ export default function AuthPage() {
       }
     } catch (error) {
       console.error('Auth Error:', error);
-      let msg = error.message;
-      if (msg.includes('Invalid login credentials')) {
+      let msg = error.message || 'Authentication failed.';
+
+      if (msg.includes('Failed to fetch') || msg.includes('fetch')) {
+        msg = 'Connection to Supabase server failed. Please check your Supabase URL & Anon Key in Vercel Environment Variables.';
+      } else if (msg.includes('Invalid login credentials')) {
         msg = 'Invalid email or password. Please check your credentials.';
       } else if (msg.includes('User already registered')) {
         msg = 'This email is already registered. Please switch to Sign In mode.';
       } else if (msg.includes('Password should be at least')) {
         msg = 'Password must be at least 6 characters long.';
       }
+
       setErrorMessage(msg);
     } finally {
       setIsLoading(false);
