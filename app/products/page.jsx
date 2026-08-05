@@ -35,12 +35,25 @@ export default function SellerProductsDashboardPage() {
       if (session?.user) {
         setUser(session.user);
         const meta = session.user.user_metadata || {};
-        if (meta.company_name_en || meta.company_name) {
-          setCompanyName(meta.company_name_en || meta.company_name);
+        if (meta.company_name_en) {
+          setCompanyName(meta.company_name_en);
+        } else if (meta.company_name) {
+          setCompanyName(meta.company_name);
         }
       }
 
-      // Supabase에서 등록된 상품 목록 조회
+      // 1. 쇼룸(companies) 테이블에서 최신 공식 회사명 조회하여 완벽 동기화
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('*')
+        .limit(1)
+        .single();
+
+      if (companyData && companyData.company_name) {
+        setCompanyName(companyData.company_name);
+      }
+
+      // 2. Supabase에서 등록된 상품 목록 조회
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -102,7 +115,7 @@ export default function SellerProductsDashboardPage() {
       <Header />
 
       <main className="max-w-6xl mx-auto px-6 mt-10 space-y-8">
-        {/* 상단 대시보드 브랜딩 헤더 */}
+        {/* 상단 대시보드 브랜딩 헤더 (쇼룸과 동기화된 정식 회사명 출력) */}
         <div className="bg-slate-900 text-white rounded-3xl p-8 md:p-10 shadow-md border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
@@ -116,7 +129,6 @@ export default function SellerProductsDashboardPage() {
             </p>
           </div>
 
-          {/* ★ 글로벌 B2B 표준 영문 표기 [+ Register Product] 버튼 */}
           <Link
             href="/products/new"
             className="px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs md:text-sm rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer self-start md:self-auto flex-shrink-0"
@@ -144,7 +156,6 @@ export default function SellerProductsDashboardPage() {
               <p className="text-xs text-slate-400">Loading catalog items...</p>
             </div>
           ) : products.length === 0 ? (
-            /* 등록된 제품이 비어있을 때 안내 화면 */
             <div className="text-center py-16 bg-slate-50 rounded-3xl border border-dashed border-slate-200 space-y-4">
               <Package className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
               <div className="space-y-1">
@@ -165,7 +176,6 @@ export default function SellerProductsDashboardPage() {
               </div>
             </div>
           ) : (
-            /* 등록된 수출 제품 카드 리스트 */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map((item, idx) => (
                 <div
