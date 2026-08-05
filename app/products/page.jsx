@@ -35,7 +35,9 @@ export default function SellerProductsDashboardPage() {
       if (session?.user) {
         setUser(session.user);
         const meta = session.user.user_metadata || {};
-        if (meta.company_name) setCompanyName(meta.company_name);
+        if (meta.company_name_en || meta.company_name) {
+          setCompanyName(meta.company_name_en || meta.company_name);
+        }
       }
 
       // Supabase에서 등록된 상품 목록 조회
@@ -114,13 +116,13 @@ export default function SellerProductsDashboardPage() {
             </p>
           </div>
 
-          {/* ★ Quick 모달 제거 후 깔끔하게 통일된 단일 [제품등록] 버튼 */}
+          {/* ★ 글로벌 B2B 표준 영문 표기 [+ Register Product] 버튼 */}
           <Link
             href="/products/new"
             className="px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs md:text-sm rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer self-start md:self-auto flex-shrink-0"
           >
             <PlusCircle className="w-5 h-5" />
-            <span>+ 제품등록</span>
+            <span>+ Register Product</span>
           </Link>
         </div>
 
@@ -158,7 +160,7 @@ export default function SellerProductsDashboardPage() {
                   className="px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition inline-flex items-center gap-2 cursor-pointer"
                 >
                   <PlusCircle className="w-4 h-4" />
-                  <span>첫 제품 등록하기</span>
+                  <span>+ Register First Product</span>
                 </Link>
               </div>
             </div>

@@ -17,8 +17,9 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Seller specific inputs
-  const [companyName, setCompanyName] = useState('');
+  // Seller specific inputs (한글/영문 회사명 분리 수집)
+  const [companyNameKo, setCompanyNameKo] = useState('');
+  const [companyNameEn, setCompanyNameEn] = useState('');
   const [sellerPhone, setSellerPhone] = useState('');
   const [category, setCategory] = useState('Industrial Machinery');
 
@@ -52,7 +53,9 @@ export default function AuthPage() {
           options: {
             data: {
               role: userRole,
-              company_name: userRole === 'seller' ? companyName : '',
+              company_name: companyNameEn || companyNameKo || 'Hankook Precision Co., Ltd.',
+              company_name_ko: companyNameKo,
+              company_name_en: companyNameEn,
               buyer_name: userRole === 'buyer' ? buyerName : '',
             },
           },
@@ -66,8 +69,10 @@ export default function AuthPage() {
             if (userRole === 'seller') {
               await supabase.from('companies').insert([
                 {
-                  company_name: companyName || 'Korean Manufacturer',
-                  description: `Official Global B2B Showroom of ${companyName}.`,
+                  company_name: companyNameEn || companyNameKo || 'Hankook Precision Co., Ltd.',
+                  company_name_ko: companyNameKo,
+                  company_name_en: companyNameEn,
+                  description: `Official Global B2B Showroom of ${companyNameEn || companyNameKo}.`,
                   business_type: 'Direct Manufacturer',
                   location: 'South Korea',
                 },
@@ -102,13 +107,11 @@ export default function AuthPage() {
 
         if (error) throw error;
 
-        // 세션 정보 확정 대기
         await supabase.auth.getSession();
 
         const roleInMeta = data.user?.user_metadata?.role || userRole;
         setSuccessMessage('Successfully signed in! Redirecting to dashboard...');
 
-        // 세션 파기 없는 Next.js 내장 안전 이동
         setTimeout(() => {
           if (roleInMeta === 'seller') {
             router.push('/products');
@@ -186,7 +189,7 @@ export default function AuthPage() {
 
         {/* Right Form Card Section */}
         <div className="lg:col-span-6 bg-white p-8 md:p-10 rounded-3xl shadow-sm border border-slate-200 space-y-6">
-          {/* Role Toggle Tabs (Seller vs Buyer) */}
+          {/* Role Toggle Tabs */}
           <div className="bg-slate-100 p-1.5 rounded-2xl grid grid-cols-2 gap-1">
             <button
               type="button"
@@ -240,16 +243,30 @@ export default function AuthPage() {
               <>
                 {userRole === 'seller' ? (
                   <>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Company / Factory Name</label>
-                      <input
-                        type="text"
-                        required
-                        value={companyName}
-                        onChange={(e) => setCompanyName(e.target.value)}
-                        placeholder="e.g. Hankook Precision Co., Ltd."
-                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">회사 상호명 (한글)</label>
+                        <input
+                          type="text"
+                          required
+                          value={companyNameKo}
+                          onChange={(e) => setCompanyNameKo(e.target.value)}
+                          placeholder="예: (주)한국정밀공업"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Company Name (English)</label>
+                        <input
+                          type="text"
+                          required
+                          value={companyNameEn}
+                          onChange={(e) => setCompanyNameEn(e.target.value)}
+                          placeholder="e.g. Hankook Precision Co., Ltd."
+                          className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
+                        />
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
