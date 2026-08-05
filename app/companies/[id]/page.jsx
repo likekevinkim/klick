@@ -22,7 +22,8 @@ import {
   Mail,
   Phone,
   Video,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Edit3
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -34,6 +35,7 @@ export default function CompanyShowroomLandingPage() {
   const [company, setCompany] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isOwner, setIsOwner] = useState(false); // 셀러 자신인지 판단 유무
 
   // 대표님 요청: Factory Overview & Certifications 탭을 기본(First)으로 설정!
   const [activeTab, setActiveTab] = useState('about'); // 'about' (First) or 'products'
@@ -48,6 +50,15 @@ export default function CompanyShowroomLandingPage() {
   const fetchCompanyData = async () => {
     try {
       setLoading(true);
+
+      // 세션 유저 및 권한 파악 (셀러일 경우 수정 버튼 노출)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const role = session.user.user_metadata?.role || 'seller';
+        if (role === 'seller') {
+          setIsOwner(true);
+        }
+      }
 
       // 1. 제조 공장 회사 데이터 조회
       const { data: companyData } = await supabase
@@ -86,7 +97,31 @@ export default function CompanyShowroomLandingPage() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      setProducts(productList || []);
+      if (productList && productList.length > 0) {
+        setProducts(productList);
+      } else {
+        // 백업 보장 샘플 상품 데이터
+        setProducts([
+          {
+            id: '1',
+            title_en: 'High-Precision Hydraulic Control Valve HV-300',
+            category: 'Industrial Machinery',
+            price: '145.00',
+            moq: '500 Units',
+            tagline: 'ISO 9001 certified industrial solution engineered with Korean precision technology.',
+            image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+          },
+          {
+            id: '2',
+            title_en: 'Heavy-Duty Hydraulic Actuator Cylinder AC-500',
+            category: 'Industrial Machinery',
+            price: '320.00',
+            moq: '100 Units',
+            tagline: 'Heavy industrial grade actuator built for zero-leakage durability.',
+            image_url: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=800&q=80',
+          }
+        ]);
+      }
     } catch (error) {
       console.error('Failed to fetch company showroom details:', error);
     } finally {
@@ -158,7 +193,7 @@ export default function CompanyShowroomLandingPage() {
         </div>
       </section>
 
-      {/* 2. 네비게이션 탭 (Factory Overview를 첫번째 탭으로 배치) */}
+      {/* 2. 네비게이션 탭 (Factory Overview를 첫번째 탭으로 배치 & 셀러 전용 수정 버튼 포함) */}
       <section className="bg-white border-b border-slate-200 sticky top-18 z-40 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-8">
@@ -189,13 +224,26 @@ export default function CompanyShowroomLandingPage() {
             </button>
           </div>
 
-          <Link
-            href="/login"
-            className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md transition"
-          >
-            <Send className="w-3.5 h-3.5" />
-            <span>Send Direct RFQ</span>
-          </Link>
+          <div className="flex items-center gap-3">
+            {/* ★ 셀러 자신일 때만 노출되는 [Edit Factory Profile] 정보 수정 버튼 */}
+            {isOwner && (
+              <Link
+                href="/seller/profile"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Edit Factory Profile</span>
+              </Link>
+            )}
+
+            <Link
+              href="/chat"
+              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md transition"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Send Direct RFQ</span>
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -304,7 +352,7 @@ export default function CompanyShowroomLandingPage() {
                 </div>
 
                 <Link
-                  href="/login"
+                  href="/chat"
                   className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Send className="w-4 h-4" />

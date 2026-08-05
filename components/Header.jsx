@@ -4,7 +4,20 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Globe, PlusCircle, LayoutDashboard, UserCheck, ChevronDown, LogOut, User, Building2, MessageSquare, FileText, Home } from 'lucide-react';
+import { 
+  Globe, 
+  PlusCircle, 
+  LayoutDashboard, 
+  UserCheck, 
+  ChevronDown, 
+  LogOut, 
+  User, 
+  Building2, 
+  MessageSquare, 
+  FileText, 
+  Home,
+  Edit3
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function Header() {
@@ -24,7 +37,7 @@ export default function Header() {
     { code: 'ar', label: 'AR', name: 'العربية (AR)' },
   ];
 
-  // 구글 번역 쿠키 설정 및 셀렉터 변경 트리거 (강화 버전)
+  // 구글 번역 쿠키 설정 및 셀렉터 변경 트리거
   const setGoogleTranslateCookie = (langCode) => {
     if (!langCode) return;
     const domain = window.location.hostname;
@@ -226,13 +239,24 @@ export default function Header() {
                         <span>Live Chat Hub</span>
                       </Link>
 
+                      {/* ★ 공개 팩토리 쇼룸 보기 (/companies/1) */}
                       <Link
-                        href="/seller/profile"
+                        href="/companies/1"
                         onClick={() => setIsUserMenuOpen(false)}
                         className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
                       >
                         <Building2 className="w-4 h-4 text-blue-500" />
                         <span>Factory Profile & Showroom</span>
+                      </Link>
+
+                      {/* ★ 셀러 공장 프로필 정보 수정 (/seller/profile) */}
+                      <Link
+                        href="/seller/profile"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
+                      >
+                        <Edit3 className="w-4 h-4 text-emerald-600" />
+                        <span>Edit Factory Profile</span>
                       </Link>
 
                       <Link
