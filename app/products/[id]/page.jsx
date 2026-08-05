@@ -19,7 +19,15 @@ import {
   X, 
   Loader2, 
   FileText,
-  ShoppingBag
+  ShoppingBag,
+  Star,
+  Clock,
+  Truck,
+  Award,
+  Layers,
+  ExternalLink,
+  ChevronRight,
+  Info
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -34,7 +42,10 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 수정 모달 상태
+  // 대표 이미지 슬라이더/갤러리 선택 상태
+  const [selectedImage, setSelectedImage] = useState('');
+
+  // 셀러 수정 모달 상태
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editCategory, setEditCategory] = useState('');
@@ -55,7 +66,7 @@ export default function ProductDetailPage() {
     try {
       setLoading(true);
 
-      // 1. 세션 유저 파악
+      // 1. 세션 유저 확인
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user || null;
       setCurrentUser(user);
@@ -72,32 +83,61 @@ export default function ProductDetailPage() {
         if (data) foundProduct = data;
       }
 
-      // 3. DB에 없거나 샘플 ID인 경우 백업 데이터 할당
+      // 3. DB에 없거나 샘플 ID인 경우 백업 B2B 알리바바형 표준 데이터 할당
       if (!foundProduct) {
         foundProduct = {
           id: productId || '1',
-          user_id: 'sample_owner_id', // 기본 샘플 소유자 ID
-          company_name: 'Hankook Precision Co., Ltd.',
-          title_en: 'High-Precision Hydraulic Control Valve HV-300',
+          user_id: 'sample_owner_id',
+          company_name: 'Hankook Precision Co., Ltd. (한국정밀공업)',
+          company_id: '1',
+          title_en: 'High-Precision Hydraulic Control Valve HV-300 for Heavy Machinery',
           category: 'Industrial Machinery',
           price: '145.00',
-          moq: '500 Units',
-          tagline: 'ISO 9001 certified heavy-duty industrial valve engineered with Korean precision technology.',
-          description_en: 'Official Export Specification:\n- Item Name: High-Precision Hydraulic Control Valve HV-300\n- Working Pressure: Max 350 Bar\n- Flow Rate: 120 L/min\n- Material: Heavy Alloy Steel Casing & Anti-corrosion coating\n- Certification: ISO 9001, CE Certified\n- Origin: Republic of Korea\n\nOptimized for heavy industrial automation, excavators, and severe hydraulic control systems with zero leakage guarantee.',
+          moq: '100 Units',
+          rating: 4.9,
+          reviews_count: 28,
+          lead_time: '15 - 20 Days (FOB Incheon Port)',
+          tagline: 'ISO 9001 & CE certified heavy-duty hydraulic valve engineered with Korean precision technology.',
+          // 수량별 구간 단가 (Tiered Pricing)
+          tiered_pricing: [
+            { range: '100 - 499 Units', price: '$145.00 / Unit' },
+            { range: '500 - 1,999 Units', price: '$132.00 / Unit' },
+            { range: '2,000+ Units', price: '$118.00 / Unit' }
+          ],
+          // 상세 제품 속성 스펙 (Attribute Table)
+          attributes: [
+            { name: 'Model No.', value: 'HV-300-KR' },
+            { name: 'Working Pressure', value: 'Max 350 Bar (5,076 PSI)' },
+            { name: 'Flow Rate', value: '120 L/min' },
+            { name: 'Body Material', value: 'Ductile Iron GGG40 / Heavy Alloy' },
+            { name: 'Operating Temp', value: '-20°C to +80°C' },
+            { name: 'Certification', value: 'ISO 9001:2015, CE Certified' },
+            { name: 'Country of Origin', value: 'South Korea (Made in Korea)' },
+            { name: 'OEM / ODM', value: 'Available (Custom Logo & Packaging)' }
+          ],
+          description_en: `Official Export Specification:
+- High-Performance Hydraulic Control Valve HV-300 designed for heavy industrial automation, excavators, and construction machinery.
+- Manufactured in Incheon, South Korea under strict ISO 9001 quality standards with zero-leakage spool technology.
+- Severe weather resistant anti-corrosion coating applied as standard.
+- Full inspection test report provided with every bulk export shipment.`,
           image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+          gallery_images: [
+            'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+            'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=800&q=80',
+            'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=800&q=80'
+          ],
           created_at: new Date().toISOString(),
         };
       }
 
       setProduct(foundProduct);
+      setSelectedImage(foundProduct.image_url);
       populateEditForm(foundProduct);
 
-      // 4. 셀러 본인 판별: 로그인된 셀러의 user.id와 상품의 user_id (또는 role) 비교 검증
+      // 4. 셀러 본인 판별
       if (user) {
         const userRole = user.user_metadata?.role || 'seller';
         const isUserProductOwner = foundProduct.user_id ? foundProduct.user_id === user.id : true;
-        
-        // 셀러 계정이고 이 상품의 생성이 확인된 경우에만 수정/삭제 권한 부여
         if (userRole === 'seller' && isUserProductOwner) {
           setIsOwner(true);
         } else {
@@ -117,7 +157,7 @@ export default function ProductDetailPage() {
     setEditTitle(item.title_en || '');
     setEditCategory(item.category || 'Industrial Machinery');
     setEditPrice(item.price || '145.00');
-    setEditMoq(item.moq || '500 Units');
+    setEditMoq(item.moq || '100 Units');
     setEditTagline(item.tagline || '');
     setEditDescription(item.description_en || '');
     setEditImageUrl(item.image_url || '');
@@ -127,13 +167,13 @@ export default function ProductDetailPage() {
   const handleRegenerateAi = () => {
     setIsAiGenerating(true);
     setTimeout(() => {
-      setEditTagline(`Global Export Grade ${editCategory} engineered for maximum durability.`);
-      setEditDescription(`Official Verified Export Spec:\n- Product: ${editTitle}\n- Standard: Industry grade ISO certification\n\n${editDescription}`);
+      setEditTagline(`Global Export Grade ${editCategory} engineered with Korean precision technology.`);
+      setEditDescription(`Official Verified Export Spec:\n- Product: ${editTitle}\n- Quality Standard: ISO 9001 Certified\n\n${editDescription}`);
       setIsAiGenerating(false);
     }, 1000);
   };
 
-  // 수정 정보 저장 처리 (본인 셀러만 실행 가능)
+  // 수정 정보 저장 처리 (셀러 본인만 실행)
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
     if (!isOwner) {
@@ -170,6 +210,7 @@ export default function ProductDetailPage() {
       }
 
       setProduct(updatedData);
+      setSelectedImage(editImageUrl || updatedData.image_url);
       alert('Product details successfully updated!');
       setIsEditModalOpen(false);
     } catch (error) {
@@ -181,7 +222,7 @@ export default function ProductDetailPage() {
     }
   };
 
-  // 상품 삭제 (본인 셀러만 가능)
+  // 상품 삭제 (셀러 본인만 가능)
   const handleDeleteProduct = async () => {
     if (!isOwner) {
       alert('Unauthorized: Only the product seller can delete this item.');
@@ -204,34 +245,59 @@ export default function ProductDetailPage() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 antialiased">
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 antialiased">
       <Header />
 
-      <main className="max-w-6xl mx-auto px-6 mt-8 space-y-8">
-        {/* 상단 네비게이션 (View Mode 임시 스위처 완전 삭제) */}
-        <div className="flex items-center justify-between">
-          <Link
-            href="/products"
-            className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-blue-600 bg-white px-4 py-2.5 rounded-xl border border-slate-200 transition shadow-sm"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Products Catalog</span>
-          </Link>
+      <main className="max-w-7xl mx-auto px-6 mt-8 space-y-10">
+        
+        {/* 1. 상단 브레드크럼 네비게이션 & 셀러 제어 버튼 */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-xs text-slate-500 font-bold">
+            <Link href="/" className="hover:text-blue-600">Home</Link>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+            <Link href="/products" className="hover:text-blue-600">Products Catalog</Link>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+            <span className="text-slate-800 truncate max-w-[200px] md:max-w-none">{product?.category}</span>
+          </div>
+
+          {/* 셀러 본인일 때만 노출되는 수정 / 삭제 제어 버튼 */}
+          {isOwner && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Edit Product Specs</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeleteProduct}
+                className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-extrabold text-xs rounded-xl border border-rose-200 transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {loading ? (
           <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
             <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
-            <p className="text-xs text-slate-400">Loading verified product details...</p>
+            <p className="text-xs text-slate-400">Loading verified B2B product specifications...</p>
           </div>
         ) : (
+          /* 2. 알리바바 벤치마킹 메인 상단 3단 레이아웃 (사진 갤러리 - B2B 핵심스펙/단가구간 - 공급업체 가드) */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
-            {/* 좌측: 상품 대표 이미지 및 셀러 회사 태그 */}
+            {/* [좌측 1열]: 고화질 사진 갤러리 및 썸네일 바 */}
             <div className="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-              <div className="w-full h-80 md:h-96 bg-slate-100 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center relative">
-                {product.image_url ? (
-                  <img src={product.image_url} alt={product.title_en} className="w-full h-full object-cover" />
+              <div className="w-full h-80 md:h-96 bg-slate-100 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center relative group">
+                {selectedImage ? (
+                  <img src={selectedImage} alt={product.title_en} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
                 ) : (
                   <Package className="w-16 h-16 text-slate-300" />
                 )}
@@ -241,104 +307,218 @@ export default function ProductDetailPage() {
                 </span>
               </div>
 
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-bold">Manufacturer / Seller:</span>
-                  <span className="font-extrabold text-slate-900 flex items-center gap-1">
-                    <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                    {product.company_name}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-bold">Origin:</span>
-                  <span className="font-bold text-slate-800">South Korea (Made in Korea)</span>
-                </div>
+              {/* 썸네일 리스트 */}
+              <div className="flex items-center gap-3 overflow-x-auto pb-1">
+                {(product.gallery_images || [product.image_url]).map((img, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setSelectedImage(img)}
+                    className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition flex-shrink-0 cursor-pointer ${
+                      selectedImage === img ? 'border-blue-600 ring-2 ring-blue-100' : 'border-slate-200 opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* 우측: 상품 스펙, 가격 및 권한별 버튼 */}
-            <div className="lg:col-span-7 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-              <div className="space-y-2">
-                <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-                  <Globe className="w-3.5 h-3.5" /> {product.category}
-                </span>
+            {/* [중앙 2열]: 품명, 평점, 수량별 단가 구간(Tiered Pricing), 납기일(Lead Time) */}
+            <div className="lg:col-span-4 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                    <Globe className="w-3.5 h-3.5" /> {product.category}
+                  </span>
 
-                <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug">
+                  {/* 평점 및 리뷰 수 */}
+                  <div className="flex items-center gap-1 text-xs font-extrabold text-amber-500 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                    <Star className="w-3.5 h-3.5 fill-amber-400" />
+                    <span>{product.rating || 4.9}</span>
+                    <span className="text-slate-400 font-medium">({product.reviews_count || 28} Reviews)</span>
+                  </div>
+                </div>
+
+                <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight leading-snug">
                   {product.title_en}
                 </h1>
 
-                <p className="text-xs md:text-sm text-slate-600 leading-relaxed font-medium">
+                <p className="text-xs text-slate-600 leading-relaxed font-medium">
                   {product.tagline}
                 </p>
               </div>
 
-              {/* 가격 및 MOQ 박스 */}
-              <div className="p-6 bg-slate-900 text-white rounded-2xl border border-slate-800 grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-slate-400 text-[10px] uppercase font-bold block">Wholesale FOB Unit Price</span>
-                  <span className="text-xl md:text-2xl font-extrabold text-emerald-400">${product.price} USD</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 text-[10px] uppercase font-bold block">Minimum Order Quantity (MOQ)</span>
-                  <span className="text-base md:text-lg font-bold text-slate-100">{product.moq}</span>
+              {/* ★ B2B 알리바바의 핵심: 수량별 단가 구간 (Tiered Pricing Table) */}
+              <div className="p-5 bg-slate-900 text-white rounded-2xl border border-slate-800 space-y-3">
+                <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">
+                  Wholesale Tiered FOB Pricing
+                </span>
+
+                <div className="grid grid-cols-3 gap-2 text-center pt-1 border-t border-slate-800">
+                  {(product.tiered_pricing || [
+                    { range: '100 - 499 Units', price: `$${product.price}` },
+                    { range: '500 - 1,999 Units', price: '$132.00' },
+                    { range: '2,000+ Units', price: '$118.00' }
+                  ]).map((tier, idx) => (
+                    <div key={idx} className="p-2 bg-slate-800/60 rounded-xl border border-slate-700/60 space-y-0.5">
+                      <span className="text-slate-400 text-[10px] block font-bold">{tier.range}</span>
+                      <span className="text-emerald-400 font-extrabold text-xs md:text-sm">{tier.price}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* 상세 설명 */}
-              <div className="space-y-3 pt-2">
-                <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-blue-600" />
-                  Product Specifications & Technical Details
-                </h3>
+              {/* 리드타임 & MOQ 안내 */}
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
+                  <span className="text-slate-400 text-[10px] font-bold block flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-blue-600" /> Lead Time
+                  </span>
+                  <span className="font-extrabold text-slate-800">{product.lead_time || '15 - 20 Days'}</span>
+                </div>
 
-                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-700 whitespace-pre-line leading-relaxed font-mono">
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
+                  <span className="text-slate-400 text-[10px] font-bold block flex items-center gap-1">
+                    <Package className="w-3.5 h-3.5 text-blue-600" /> Minimum Order (MOQ)
+                  </span>
+                  <span className="font-extrabold text-slate-800">{product.moq}</span>
+                </div>
+              </div>
+
+              {/* 바이어 모드일 때만 노출되는 거래 RFQ / 샘플 요청 버튼 */}
+              {!isOwner && (
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <Link
+                    href="/chat"
+                    className="py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Send Direct Inquiry (RFQ)</span>
+                  </Link>
+
+                  <Link
+                    href="/chat"
+                    className="py-4 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <ShoppingBag className="w-4 h-4 text-emerald-400" />
+                    <span>Request Sample Order</span>
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* [우측 3열]: 검증된 한국 공급업체(Factory) 프로필 카너 */}
+            <div className="lg:col-span-3 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5 h-fit sticky top-28">
+              <div className="border-b border-slate-100 pb-3 space-y-1">
+                <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-100">
+                  Verified Supplier
+                </span>
+                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5 pt-1">
+                  <Building2 className="w-4 h-4 text-blue-600" />
+                  {product.company_name}
+                </h3>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div className="flex items-center justify-between text-slate-600">
+                  <span className="text-slate-400 font-bold">Business Type:</span>
+                  <span className="font-extrabold text-slate-800">Direct Manufacturer</span>
+                </div>
+
+                <div className="flex items-center justify-between text-slate-600">
+                  <span className="text-slate-400 font-bold">Location:</span>
+                  <span className="font-bold text-slate-800">South Korea 🇰🇷</span>
+                </div>
+
+                <div className="flex items-center justify-between text-slate-600">
+                  <span className="text-slate-400 font-bold">Certifications:</span>
+                  <span className="font-extrabold text-blue-600">ISO 9001, CE</span>
+                </div>
+              </div>
+
+              <Link
+                href={`/companies/${product.company_id || 1}`}
+                className="w-full py-3 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-700 font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>Visit Official Factory Showroom</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* 3. 알리바바 벤치마킹: 상세 제품 속성 테이블 & 기획 상세설명 */}
+        {product && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-8 space-y-8">
+              
+              {/* [카드 1] B2B 제품 규격 속성 스펙 테이블 (Product Specification Table) */}
+              <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                <div className="border-b border-slate-100 pb-4">
+                  <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-blue-600" />
+                    Product Attribute Specifications Table
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Verified technical properties and export compliance details.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  {(product.attributes || [
+                    { name: 'Model No.', value: 'HV-300-KR' },
+                    { name: 'Working Pressure', value: 'Max 350 Bar (5,076 PSI)' },
+                    { name: 'Flow Rate', value: '120 L/min' },
+                    { name: 'Body Material', value: 'Ductile Iron GGG40 / Heavy Alloy' },
+                    { name: 'Operating Temp', value: '-20°C to +80°C' },
+                    { name: 'Certification', value: 'ISO 9001:2015, CE Certified' },
+                    { name: 'Country of Origin', value: 'South Korea (Made in Korea)' },
+                    { name: 'OEM / ODM', value: 'Available (Custom Logo & Packaging)' }
+                  ]).map((attr, idx) => (
+                    <div key={idx} className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                      <span className="text-slate-500 font-bold">{attr.name}</span>
+                      <span className="font-extrabold text-slate-800">{attr.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* [카드 2] 상세 카피라이팅 & 기술 사양설명 */}
+              <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                <div className="border-b border-slate-100 pb-4">
+                  <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    Detailed Description & Features
+                  </h2>
+                </div>
+
+                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-xs md:text-sm text-slate-700 whitespace-pre-line leading-relaxed font-mono">
                   {product.description_en}
                 </div>
               </div>
+            </div>
 
-              {/* ★ 핵심 분기: 상품 소유자인 셀러에게만 수정/삭제 버튼 노출, 타인/바이어에게는 RFQ/샘플 요청만 노출 */}
-              <div className="pt-4 border-t border-slate-100">
-                {isOwner ? (
-                  /* 실제 상품을 올린 셀러 본인일 때만 노출 */
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setIsEditModalOpen(true)}
-                      className="py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                      <span>Edit Product Details</span>
-                    </button>
+            {/* [우측 4열] 안심 거래 플랫폼 가이드 */}
+            <div className="lg:col-span-4 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-5 h-fit">
+              <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                KLICK Safe Trade Guarantee
+              </h3>
 
-                    <button
-                      type="button"
-                      onClick={handleDeleteProduct}
-                      className="py-3.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-extrabold text-xs rounded-xl border border-rose-200 transition flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span>Delete Product</span>
-                    </button>
-                  </div>
-                ) : (
-                  /* 바이어 또는 타 유저일 때는 거래 문의 버튼만 노출 */
-                  <div className="grid grid-cols-2 gap-3">
-                    <Link
-                      href="/chat"
-                      className="py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      <span>Send Direct Inquiry (RFQ)</span>
-                    </Link>
+              <div className="space-y-3 text-xs text-slate-600">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                  <span>Direct contact with verified South Korean factory team.</span>
+                </div>
 
-                    <Link
-                      href="/chat"
-                      className="py-4 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2"
-                    >
-                      <ShoppingBag className="w-4 h-4 text-emerald-400" />
-                      <span>Request Sample Order</span>
-                    </Link>
-                  </div>
-                )}
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                  <span>Real-time multilingual AI chat translation.</span>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                  <span>Instant Proforma Invoice (PI) issuance & escrow payment support.</span>
+                </div>
               </div>
             </div>
           </div>
@@ -396,7 +576,7 @@ export default function ProductDetailPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Price ($ USD)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Base Price ($ USD)</label>
                   <input
                     type="text"
                     required
