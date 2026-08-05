@@ -9,7 +9,6 @@ import {
   Building2, 
   Sparkles, 
   Package, 
-  DollarSign, 
   MessageSquare, 
   ArrowLeft, 
   Edit3, 
@@ -20,8 +19,6 @@ import {
   X, 
   Loader2, 
   FileText,
-  Truck,
-  Layers,
   ShoppingBag
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -32,7 +29,8 @@ export default function ProductDetailPage() {
   const productId = params?.id;
 
   const [mounted, setMounted] = useState(false);
-  const [userRole, setUserRole] = useState('buyer'); // 'seller' 또는 'buyer'
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isOwner, setIsOwner] = useState(false); // 실제 이 상품을 올린 셀러 본인인지 여부
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -57,17 +55,15 @@ export default function ProductDetailPage() {
     try {
       setLoading(true);
 
-      // 세션 유저 역할 파악
+      // 1. 세션 유저 파악
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const role = session.user.user_metadata?.role || 'buyer';
-        setUserRole(role);
-      }
+      const user = session?.user || null;
+      setCurrentUser(user);
 
-      // Supabase DB에서 해당 ID 상품 조회
+      // 2. Supabase DB에서 해당 ID 상품 조회
       let foundProduct = null;
       if (productId && productId !== '1') {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('products')
           .select('*')
           .eq('id', productId)
@@ -76,10 +72,11 @@ export default function ProductDetailPage() {
         if (data) foundProduct = data;
       }
 
-      // DB에 없거나 기본 Sample ID인 경우 절대 사라지지 않는 기본 백업 데이터 할당
+      // 3. DB에 없거나 샘플 ID인 경우 백업 데이터 할당
       if (!foundProduct) {
         foundProduct = {
           id: productId || '1',
+          user_id: 'sample_owner_id', // 기본 샘플 소유자 ID
           company_name: 'Hankook Precision Co., Ltd.',
           title_en: 'High-Precision Hydraulic Control Valve HV-300',
           category: 'Industrial Machinery',
@@ -94,6 +91,21 @@ export default function ProductDetailPage() {
 
       setProduct(foundProduct);
       populateEditForm(foundProduct);
+
+      // 4. 셀러 본인 판별: 로그인된 셀러의 user.id와 상품의 user_id (또는 role) 비교 검증
+      if (user) {
+        const userRole = user.user_metadata?.role || 'seller';
+        const isUserProductOwner = foundProduct.user_id ? foundProduct.user_id === user.id : true;
+        
+        // 셀러 계정이고 이 상품의 생성이 확인된 경우에만 수정/삭제 권한 부여
+        if (userRole === 'seller' && isUserProductOwner) {
+          setIsOwner(true);
+        } else {
+          setIsOwner(false);
+        }
+      } else {
+        setIsOwner(false);
+      }
     } catch (error) {
       console.error('Failed to load product detail:', error);
     } finally {
@@ -121,11 +133,15 @@ export default function ProductDetailPage() {
     }, 1000);
   };
 
-  // 수정 정보 저장 처리
+  // 수정 정보 저장 처리 (본인 셀러만 실행 가능)
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
-    setSaving(true);
+    if (!isOwner) {
+      alert('Unauthorized: Only the product seller can edit this specification.');
+      return;
+    }
 
+    setSaving(true);
     const updatedData = {
       ...product,
       title_en: editTitle,
@@ -165,9 +181,14 @@ export default function ProductDetailPage() {
     }
   };
 
-  // 상품 삭제
+  // 상품 삭제 (본인 셀러만 가능)
   const handleDeleteProduct = async () => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
+    if (!isOwner) {
+      alert('Unauthorized: Only the product seller can delete this item.');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to delete this product from your global catalog?')) return;
     try {
       if (product.id && product.id !== '1') {
         await supabase.from('products').delete().eq('id', product.id);
@@ -187,7 +208,7 @@ export default function ProductDetailPage() {
       <Header />
 
       <main className="max-w-6xl mx-auto px-6 mt-8 space-y-8">
-        {/* 상단 네비게이션 및 역할 스위처 안내 */}
+        {/* 상단 네비게이션 (View Mode 임시 스위처 완전 삭제) */}
         <div className="flex items-center justify-between">
           <Link
             href="/products"
@@ -196,19 +217,6 @@ export default function ProductDetailPage() {
             <ArrowLeft className="w-4 h-4" />
             <span>Back to Products Catalog</span>
           </Link>
-
-          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 text-xs shadow-sm">
-            <span className="text-slate-400 font-semibold">View Mode:</span>
-            <button
-              type="button"
-              onClick={() => setUserRole(userRole === 'seller' ? 'buyer' : 'seller')}
-              className={`px-2.5 py-1 rounded-lg font-extrabold cursor-pointer transition ${
-                userRole === 'seller' ? 'bg-blue-600 text-white' : 'bg-emerald-600 text-white'
-              }`}
-            >
-              {userRole === 'seller' ? 'Korean Seller View' : 'Global Buyer View'} (Click to Toggle)
-            </button>
-          </div>
         </div>
 
         {loading ? (
@@ -219,7 +227,7 @@ export default function ProductDetailPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
-            {/* 좌측: 상품 대표 이미지 및 핵심 태그 */}
+            {/* 좌측: 상품 대표 이미지 및 셀러 회사 태그 */}
             <div className="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <div className="w-full h-80 md:h-96 bg-slate-100 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center relative">
                 {product.image_url ? (
@@ -248,7 +256,7 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* 우측: 상품 주요 스펙, 가격, 수정 및 RFQ 액션 버튼 */}
+            {/* 우측: 상품 스펙, 가격 및 권한별 버튼 */}
             <div className="lg:col-span-7 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
               <div className="space-y-2">
                 <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
@@ -264,7 +272,7 @@ export default function ProductDetailPage() {
                 </p>
               </div>
 
-              {/* 가격 및 MOQ 안내 박스 */}
+              {/* 가격 및 MOQ 박스 */}
               <div className="p-6 bg-slate-900 text-white rounded-2xl border border-slate-800 grid grid-cols-2 gap-4">
                 <div>
                   <span className="text-slate-400 text-[10px] uppercase font-bold block">Wholesale FOB Unit Price</span>
@@ -276,11 +284,11 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              {/* 상품 상세 설명 스펙 */}
+              {/* 상세 설명 */}
               <div className="space-y-3 pt-2">
                 <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                   <FileText className="w-4 h-4 text-blue-600" />
-                  Product Specifications & Description
+                  Product Specifications & Technical Details
                 </h3>
 
                 <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-700 whitespace-pre-line leading-relaxed font-mono">
@@ -288,10 +296,10 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              {/* ★ 역할(Role)에 따른 버튼 액션 분기 */}
+              {/* ★ 핵심 분기: 상품 소유자인 셀러에게만 수정/삭제 버튼 노출, 타인/바이어에게는 RFQ/샘플 요청만 노출 */}
               <div className="pt-4 border-t border-slate-100">
-                {userRole === 'seller' ? (
-                  /* 셀러 전용 관리 버튼 (수정 & 삭제) */
+                {isOwner ? (
+                  /* 실제 상품을 올린 셀러 본인일 때만 노출 */
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
@@ -312,7 +320,7 @@ export default function ProductDetailPage() {
                     </button>
                   </div>
                 ) : (
-                  /* 글로벌 바이어 전용 거래 버튼 (RFQ 보내기 & 샘플 요청) */
+                  /* 바이어 또는 타 유저일 때는 거래 문의 버튼만 노출 */
                   <div className="grid grid-cols-2 gap-3">
                     <Link
                       href="/chat"
@@ -337,8 +345,8 @@ export default function ProductDetailPage() {
         )}
       </main>
 
-      {/* ★ 셀러 전용 상품 세부 사항 수정 모달 팝업 */}
-      {isEditModalOpen && (
+      {/* 셀러 본인 전용 상품 세부 사항 수정 모달 팝업 */}
+      {isEditModalOpen && isOwner && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-2xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-fadeIn">
             <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
