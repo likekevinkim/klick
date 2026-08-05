@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   Globe, 
-  PlusCircle, 
   LayoutDashboard, 
   UserCheck, 
   ChevronDown, 
@@ -15,8 +14,7 @@ import {
   Building2, 
   MessageSquare, 
   FileText, 
-  Home,
-  Edit3
+  Home
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -155,7 +153,7 @@ export default function Header() {
 
   const userRole = user?.user_metadata?.role || 'seller';
   const displayName = userRole === 'seller'
-    ? (user?.user_metadata?.company_name || user?.email?.split('@')[0])
+    ? (user?.user_metadata?.company_name_en || user?.user_metadata?.company_name || user?.email?.split('@')[0])
     : (user?.user_metadata?.buyer_name || user?.email?.split('@')[0]);
 
   return (
@@ -199,7 +197,7 @@ export default function Header() {
             <span>RFQ Board</span>
           </Link>
 
-          {/* 3. 로그인 상태 분기 UI (드롭다운 내로 기능 통합) */}
+          {/* 3. 로그인 상태 분기 UI */}
           {user ? (
             <div className="relative">
               <button
@@ -207,12 +205,13 @@ export default function Header() {
                 className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer"
               >
                 <User className="w-4 h-4 text-blue-400" />
-                <span className="max-w-[120px] truncate">
+                <span className="max-w-[140px] truncate">
                   {userRole === 'seller' ? `[Seller] ${displayName}` : `[Buyer] ${displayName}`}
                 </span>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
 
+              {/* 군더더기 메뉴를 완전히 지우고 핵심 센터 링크만 정돈된 드롭다운 */}
               {isUserMenuOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-fadeIn">
                   <div className="px-4 py-2 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -221,6 +220,7 @@ export default function Header() {
 
                   {userRole === 'seller' ? (
                     <>
+                      {/* 1. 상품 대시보드 */}
                       <Link
                         href="/products"
                         onClick={() => setIsUserMenuOpen(false)}
@@ -230,16 +230,7 @@ export default function Header() {
                         <span>Product Dashboard</span>
                       </Link>
 
-                      <Link
-                        href="/chat"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
-                      >
-                        <MessageSquare className="w-4 h-4 text-blue-500" />
-                        <span>Live Chat Hub</span>
-                      </Link>
-
-                      {/* ★ 공개 팩토리 쇼룸 보기 (/companies/1) */}
+                      {/* 2. 공장 프로필 & 쇼룸 */}
                       <Link
                         href="/companies/1"
                         onClick={() => setIsUserMenuOpen(false)}
@@ -249,23 +240,14 @@ export default function Header() {
                         <span>Factory Profile & Showroom</span>
                       </Link>
 
-                      {/* ★ 셀러 공장 프로필 정보 수정 (/seller/profile) */}
+                      {/* 3. 라이브 채팅 허브 */}
                       <Link
-                        href="/seller/profile"
+                        href="/chat"
                         onClick={() => setIsUserMenuOpen(false)}
                         className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
                       >
-                        <Edit3 className="w-4 h-4 text-emerald-600" />
-                        <span>Edit Factory Profile</span>
-                      </Link>
-
-                      <Link
-                        href="/products/new"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
-                      >
-                        <PlusCircle className="w-4 h-4 text-blue-500" />
-                        <span>Register New Product</span>
+                        <MessageSquare className="w-4 h-4 text-purple-500" />
+                        <span>Live Chat Hub</span>
                       </Link>
                     </>
                   ) : (
@@ -276,7 +258,7 @@ export default function Header() {
                         className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
                       >
                         <Building2 className="w-4 h-4 text-blue-500" />
-                        <span>Buyer Company Profile Hub</span>
+                        <span>Buyer Profile Hub</span>
                       </Link>
 
                       <Link
@@ -284,7 +266,7 @@ export default function Header() {
                         onClick={() => setIsUserMenuOpen(false)}
                         className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
                       >
-                        <MessageSquare className="w-4 h-4 text-blue-500" />
+                        <MessageSquare className="w-4 h-4 text-purple-500" />
                         <span>Live Chat Hub</span>
                       </Link>
                     </>
