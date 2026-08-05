@@ -19,7 +19,8 @@ import {
   Loader2, 
   X,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Maximize2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -29,15 +30,15 @@ export default function SellerProductsDashboardPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 상품 등록 모달 팝업 상태
+  // 1. 대시보드 Quick 모달 팝업 상태
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // AI 상품 등록 폼 상태
+  // Quick 모달 전용 입력 폼 상태
   const [companyName, setCompanyName] = useState('Hankook Precision Co., Ltd.');
   const [rawTitle, setRawTitle] = useState('');
   const [category, setCategory] = useState('Industrial Machinery');
   const [price, setPrice] = useState('145.00');
-  const [moq, setMoq] = useState('500 Units');
+  const [moq, setMoq] = useState('100 Units');
   const [rawDescription, setRawDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
@@ -74,7 +75,7 @@ export default function SellerProductsDashboardPage() {
       if (data && data.length > 0) {
         setProducts(data);
       } else {
-        // 기본 보장 샘플 데이터 (화면이 비는 것을 100% 방지)
+        // 백업 보장 샘플 데이터
         setProducts([
           {
             id: '1',
@@ -82,7 +83,7 @@ export default function SellerProductsDashboardPage() {
             title_en: 'High-Precision Hydraulic Control Valve HV-300',
             category: 'Industrial Machinery',
             price: '145.00',
-            moq: '500 Units',
+            moq: '100 Units',
             tagline: 'ISO 9001 certified industrial solution engineered with Korean precision technology.',
             description_en: 'Official Export Specification:\n- Working Pressure: Max 350 Bar\n- Flow Rate: 120 L/min\n- Material: Heavy Alloy Steel Casing',
             image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
@@ -107,6 +108,7 @@ export default function SellerProductsDashboardPage() {
     }
   };
 
+  // AI 영문 카피라이팅 자동 생성 핸들러
   const handleGenerateAiCopywriting = async () => {
     if (!rawTitle) {
       alert('Please enter a basic product title first.');
@@ -128,7 +130,8 @@ export default function SellerProductsDashboardPage() {
     }
   };
 
-  const handleSaveProduct = async (e) => {
+  // Quick 모달 등록 저장 처리
+  const handleSaveProductFromModal = async (e) => {
     e.preventDefault();
     setSaving(true);
 
@@ -143,8 +146,22 @@ export default function SellerProductsDashboardPage() {
         tagline: aiGeneratedTagline || 'High-quality Korean manufactured industrial product.',
         description_en: aiGeneratedDescription || rawDescription,
         image_url: imageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+        gallery_images: [imageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'],
+        lead_time: '15 - 20 Days (FOB Incheon Port)',
+        tiered_pricing: [
+          { range: `${moq} - 499 Units`, price: `$${price} / Unit` },
+          { range: '500+ Units', price: `$${(parseFloat(price) * 0.9).toFixed(2)} / Unit` }
+        ],
+        attributes: [
+          { name: 'Category', value: category },
+          { name: 'Origin Country', value: 'South Korea' }
+        ],
         created_at: new Date().toISOString(),
       };
+
+      if (user) {
+        newProduct.user_id = user.id;
+      }
 
       const { data, error } = await supabase
         .from('products')
@@ -159,7 +176,7 @@ export default function SellerProductsDashboardPage() {
         setProducts([newProduct, ...products]);
       }
 
-      alert('New product successfully registered and published to Global Marketplace!');
+      alert('New product successfully published to Global Marketplace!');
       setIsAddModalOpen(false);
       resetForm();
     } catch (error) {
@@ -212,17 +229,30 @@ export default function SellerProductsDashboardPage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs md:text-sm rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer self-start md:self-auto"
-          >
-            <PlusCircle className="w-5 h-5" />
-            <span>+ Register New Product</span>
-          </button>
+          {/* ★ 빠른 모달 열기 및 알리바바 전용 상세 등록 페이지로의 이동 버튼 2종 세트 */}
+          <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
+            {/* 1. 모달 팝업으로 빠른 등록 */}
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-5 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs md:text-sm rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Quick Modal Register</span>
+            </button>
+
+            {/* 2. 전용 알리바바 B2B 독립 등록 페이지로 이동 */}
+            <Link
+              href="/products/new"
+              className="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-extrabold text-xs md:text-sm rounded-xl transition flex items-center gap-2 cursor-pointer"
+            >
+              <Maximize2 className="w-4 h-4 text-emerald-400" />
+              <span>Alibaba Full Setup Page ➡️</span>
+            </Link>
+          </div>
         </div>
 
-        {/* 등록된 상품 리스트 영역 */}
+        {/* 2. 등록된 상품 리스트 영역 */}
         <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
           <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
             <div>
@@ -238,6 +268,35 @@ export default function SellerProductsDashboardPage() {
             <div className="text-center py-16">
               <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
               <p className="text-xs text-slate-400">Loading catalog items...</p>
+            </div>
+          ) : products.length === 0 ? (
+            <div className="text-center py-16 bg-slate-50 rounded-3xl border border-dashed border-slate-200 space-y-4">
+              <Package className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
+              <div className="space-y-1">
+                <h3 className="text-sm font-extrabold text-slate-800">No Products Registered Yet</h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Start registering your manufactured products to attract verified global buyers and receive direct RFQs.
+                </p>
+              </div>
+
+              <div className="flex justify-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition inline-flex items-center gap-2 cursor-pointer"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Quick Modal Register</span>
+                </button>
+
+                <Link
+                  href="/products/new"
+                  className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-md transition inline-flex items-center gap-2 cursor-pointer"
+                >
+                  <Maximize2 className="w-4 h-4 text-emerald-400" />
+                  <span>Full Setup Page</span>
+                </Link>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -271,11 +330,11 @@ export default function SellerProductsDashboardPage() {
 
                     <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs">
                       <div>
-                        <span className="text-[10px] text-slate-400 block">FOB Unit Price</span>
+                        <span className="text-[10px] text-slate-400 block font-bold">FOB Unit Price</span>
                         <span className="font-extrabold text-emerald-600">${item.price} USD</span>
                       </div>
                       <div className="text-right">
-                        <span className="text-[10px] text-slate-400 block">MOQ</span>
+                        <span className="text-[10px] text-slate-400 block font-bold">MOQ</span>
                         <span className="font-bold text-slate-700">{item.moq}</span>
                       </div>
                     </div>
@@ -306,7 +365,7 @@ export default function SellerProductsDashboardPage() {
         </div>
       </main>
 
-      {/* 신규 상품 등록 모달 */}
+      {/* 3. ★ 기존 모달(Modal) 팝업 보존 */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-2xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-fadeIn">
@@ -314,7 +373,7 @@ export default function SellerProductsDashboardPage() {
               <div>
                 <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-blue-600" />
-                  AI Product Copywriting & Registration
+                  Quick AI Product Copywriting & Registration
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">Enter Korean specifications; AI converts them into buyer-tailored English Copywriting.</p>
               </div>
@@ -328,7 +387,7 @@ export default function SellerProductsDashboardPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct} className="space-y-4">
+            <form onSubmit={handleSaveProductFromModal} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Product Basic Name (Korean or English)</label>
                 <div className="flex gap-2">
@@ -388,7 +447,7 @@ export default function SellerProductsDashboardPage() {
                     required
                     value={moq}
                     onChange={(e) => setMoq(e.target.value)}
-                    placeholder="500 Units"
+                    placeholder="100 Units"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
