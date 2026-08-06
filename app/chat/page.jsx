@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
 import B2bPaymentModal from '@/components/B2bPaymentModal';
+import Link from 'next/link';
 import { 
   Send, 
   Building2, 
@@ -18,9 +19,13 @@ import {
   ChevronDown,
   ChevronUp,
   CreditCard,
-  ArrowRight,
   Download,
-  Loader2
+  Loader2,
+  Paperclip,
+  Image as ImageIcon,
+  X,
+  FileCheck,
+  ShieldCheck
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -35,6 +40,10 @@ export default function RealtimeChatPage() {
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
   const [newMessage, setNewMessage] = useState('');
 
+  // 첨부파일 관련 상태
+  const [uploading, setUploading] = useState(false);
+  const [attachedFile, setAttachedFile] = useState(null);
+
   // RFQ 견적서 작성 팝업 모달 상태
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [quotePrice, setQuotePrice] = useState('145.00');
@@ -48,6 +57,9 @@ export default function RealtimeChatPage() {
   // PDF 다운로드 로딩 상태
   const [pdfDownloadingId, setPdfDownloadingId] = useState(null);
 
+  // DOM 참조
+  const fileInputRef = useRef(null);
+  const imageInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -57,7 +69,7 @@ export default function RealtimeChatPage() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [roomMessagesMap, activeRoomId]);
+  }, [roomMessagesMap, activeRoomId, attachedFile]);
 
   const initChatSession = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -100,17 +112,34 @@ export default function RealtimeChatPage() {
           message: 'Hello! We are interested in ordering 500 units of HV-300. Can you send us a formal FOB quote?',
           translated_message: '안녕하세요! HV-300 모델 500개 주문에 관심이 있습니다. 공식 FOB 견적서를 보내주실 수 있나요?',
           is_quote: false,
+          file: null,
           created_at: '10:20 AM',
         },
         {
           id: 102,
           room_id: 1,
           sender_role: 'seller',
-          message: 'Hello Mr. Smith! Thank you for your inquiry. Here is our official quotation for 500 units.',
-          translated_message: '안녕하세요 스미스님! 문의해주셔서 감사합니다. 500개 기준 공식 견적서를 전달드립니다.',
+          message: 'Hello Mr. Smith! Thank you for your inquiry. Here is our official catalog and specification.',
+          translated_message: '안녕하세요 스미스님! 문의해주셔서 감사합니다. 공식 카탈로그와 스펙 문서를 전달드립니다.',
+          is_quote: false,
+          file: {
+            name: 'Hankook_Precision_Catalog_2026.pdf',
+            size: '3.4 MB',
+            type: 'pdf',
+            url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+          },
+          created_at: '10:22 AM',
+        },
+        {
+          id: 103,
+          room_id: 1,
+          sender_role: 'seller',
+          message: 'Here is our official quotation for 500 units.',
+          translated_message: '500개 기준 공식 견적서를 전달드립니다.',
           is_quote: true,
           quote_price: '145.00 USD / Unit',
           quote_moq: '500 Units',
+          file: null,
           created_at: '10:24 AM',
         }
       ],
@@ -122,6 +151,7 @@ export default function RealtimeChatPage() {
           message: 'Is OEM private labeling available for this serum? We need custom packaging.',
           translated_message: '이 세럼 제품에 대해 OEM 자사 브랜드 라벨링이 가능한가요? 맞춤형 패키징이 필요합니다.',
           is_quote: false,
+          file: null,
           created_at: 'Yesterday',
         }
       ]
@@ -172,18 +202,72 @@ export default function RealtimeChatPage() {
     }
   };
 
+  // 문서 파일 선택 처리
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileType = file.type.includes('pdf')
+      ? 'pdf'
+      : file.type.includes('sheet') || file.type.includes('excel')
+      ? 'excel'
+      : 'document';
+
+    setAttachedFile({
+      name: file.name,
+      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+      type: fileType,
+      url: URL.createObjectURL(file),
+      fileObject: file,
+    });
+  };
+
+  // 이미지 파일 선택 처리
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setAttachedFile({
+      name: file.name,
+      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+      type: 'image',
+      url: URL.createObjectURL(file),
+      fileObject: file,
+    });
+  };
+
+  const handleRemoveAttachment = () => {
+    setAttachedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  };
+
+  // 메시지 및 첨부파일 발송 핸들러
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !activeRoomId) return;
+    if (!newMessage.trim() && !attachedFile) return;
 
-    const currentText = newMessage;
-    setNewMessage('');
+    setUploading(true);
 
+    const currentText = newMessage.trim();
     let autoTranslation = '';
-    if (/[ㄱ-ㅎ|가-힣]/.test(currentText)) {
-      autoTranslation = `[AI Trans] ${currentText}`;
-    } else {
-      autoTranslation = `[AI 번역] ${currentText}`;
+
+    if (currentText) {
+      if (/[ㄱ-ㅎ|가-힣]/.test(currentText)) {
+        autoTranslation = `[AI Trans] ${currentText}`;
+      } else {
+        autoTranslation = `[AI 번역] ${currentText}`;
+      }
+    }
+
+    let finalFilePayload = null;
+    if (attachedFile) {
+      finalFilePayload = {
+        name: attachedFile.name,
+        size: attachedFile.size,
+        type: attachedFile.type,
+        url: attachedFile.url,
+      };
     }
 
     const newMsgObj = {
@@ -194,6 +278,7 @@ export default function RealtimeChatPage() {
       message: currentText,
       translated_message: autoTranslation,
       is_quote: false,
+      file: finalFilePayload,
       created_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
@@ -204,9 +289,15 @@ export default function RealtimeChatPage() {
 
     setRooms((prevRooms) =>
       prevRooms.map((r) =>
-        r.id === activeRoomId ? { ...r, last_message: currentText, updated_at: 'Just now' } : r
+        r.id === activeRoomId ? { ...r, last_message: currentText || attachedFile.name, updated_at: 'Just now' } : r
       )
     );
+
+    setNewMessage('');
+    setAttachedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (imageInputRef.current) imageInputRef.current.value = '';
+    setUploading(false);
 
     try {
       if (user) {
@@ -217,6 +308,7 @@ export default function RealtimeChatPage() {
     }
   };
 
+  // RFQ 견적서 전송
   const handleSendQuote = async () => {
     if (!activeRoomId) return;
 
@@ -230,6 +322,7 @@ export default function RealtimeChatPage() {
       is_quote: true,
       quote_price: `${quotePrice} USD / Unit`,
       quote_moq: quoteMoq,
+      file: null,
       created_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
@@ -249,7 +342,7 @@ export default function RealtimeChatPage() {
     }
   };
 
-  // ★ Proforma Invoice (PI) PDF 자동 다운로드 처리 함수
+  // Proforma Invoice (PI) PDF 다운로드
   const handleDownloadPiPdf = async (msg, room) => {
     setPdfDownloadingId(msg.id);
 
@@ -268,7 +361,6 @@ export default function RealtimeChatPage() {
 
       const htmlContent = await response.text();
 
-      // 브라우저 인쇄 / PDF 저장 창 즉시 호출
       const printWindow = window.open('', '_blank');
       if (printWindow) {
         printWindow.document.write(htmlContent);
@@ -387,7 +479,7 @@ export default function RealtimeChatPage() {
                       )}
                     </div>
 
-                    <div className="p-6 space-y-4 max-h-[480px] overflow-y-auto bg-white">
+                    <div className="p-6 space-y-4 max-h-[520px] overflow-y-auto bg-white">
                       {messages.map((msg) => {
                         const isMyMsg = msg.sender_role === userRole;
                         return (
@@ -425,7 +517,6 @@ export default function RealtimeChatPage() {
                                   {msg.message}
                                 </p>
 
-                                {/* ★ 1. 공식 Proforma Invoice (PI) PDF 다운로드 버튼 */}
                                 <div className="pt-2 border-t border-slate-800 grid grid-cols-2 gap-2">
                                   <button
                                     type="button"
@@ -441,7 +532,6 @@ export default function RealtimeChatPage() {
                                     <span>Download PI (PDF)</span>
                                   </button>
 
-                                  {/* 2. 결제 진입 버튼 */}
                                   <button
                                     type="button"
                                     onClick={() => handleOpenPaymentModal(msg, room)}
@@ -460,7 +550,58 @@ export default function RealtimeChatPage() {
                                     : 'bg-slate-100 text-slate-900 rounded-bl-none border border-slate-200'
                                 }`}
                               >
-                                <p className="font-semibold text-sm">{msg.message}</p>
+                                {msg.message && <p className="font-semibold text-sm">{msg.message}</p>}
+
+                                {/* 파일/사진 첨부카드 렌더링 */}
+                                {msg.file && (
+                                  <div className="pt-1">
+                                    {msg.file.type === 'image' ? (
+                                      <div className="space-y-1.5">
+                                        <div className="rounded-xl overflow-hidden border border-black/10 bg-black/5 max-h-56">
+                                          <img
+                                            src={msg.file.url}
+                                            alt={msg.file.name}
+                                            className="w-full h-full object-cover cursor-pointer hover:scale-105 transition"
+                                            onClick={() => window.open(msg.file.url, '_blank')}
+                                          />
+                                        </div>
+                                        <div className="flex items-center justify-between text-[10px] opacity-90">
+                                          <span className="font-bold truncate">{msg.file.name} ({msg.file.size})</span>
+                                          <a href={msg.file.url} download target="_blank" rel="noreferrer" className="p-1 hover:bg-black/10 rounded">
+                                            <Download className="w-3 h-3" />
+                                          </a>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <a
+                                        href={msg.file.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className={`flex items-center justify-between p-3 rounded-xl border transition ${
+                                          isMyMsg
+                                            ? 'bg-blue-700/80 hover:bg-blue-700 border-blue-500 text-white'
+                                            : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2.5">
+                                          <div className={`p-2 rounded-lg ${isMyMsg ? 'bg-blue-800 text-blue-200' : 'bg-blue-50 text-blue-600'}`}>
+                                            <FileCheck className="w-4 h-4" />
+                                          </div>
+                                          <div>
+                                            <span className="font-extrabold text-xs block truncate max-w-[180px]">
+                                              {msg.file.name}
+                                            </span>
+                                            <span className={`text-[10px] ${isMyMsg ? 'text-blue-200' : 'text-slate-400'}`}>
+                                              {msg.file.size} • Verified B2B Document
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        <Download className="w-3.5 h-3.5 opacity-80" />
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
 
                                 {msg.translated_message && (
                                   <div
@@ -480,21 +621,87 @@ export default function RealtimeChatPage() {
                       <div ref={messagesEndRef} />
                     </div>
 
+                    {/* 첨부 파일 사전 미리보기 바 */}
+                    {attachedFile && (
+                      <div className="px-6 py-2 bg-blue-50 border-t border-blue-100 flex items-center justify-between text-xs animate-fadeIn">
+                        <div className="flex items-center gap-2 text-blue-900 font-bold">
+                          {attachedFile.type === 'image' ? (
+                            <ImageIcon className="w-4 h-4 text-emerald-600" />
+                          ) : (
+                            <FileText className="w-4 h-4 text-blue-600" />
+                          )}
+                          <span>Ready to attach:</span>
+                          <span className="font-extrabold text-blue-600 truncate max-w-[200px]">
+                            {attachedFile.name} ({attachedFile.size})
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleRemoveAttachment}
+                          className="p-1 bg-white hover:bg-rose-50 hover:text-rose-600 text-slate-500 rounded-lg border border-slate-200 transition cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* 하단 입력 폼 및 파일/사진 첨부 아이콘 */}
                     <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-200 flex items-center gap-2 bg-slate-50">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileSelect}
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                        className="hidden"
+                      />
+                      <input
+                        type="file"
+                        ref={imageInputRef}
+                        onChange={handleImageSelect}
+                        accept="image/*"
+                        className="hidden"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-2.5 bg-white hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-xl transition cursor-pointer border border-slate-200"
+                        title="Attach Document / Quotation"
+                      >
+                        <Paperclip className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => imageInputRef.current?.click()}
+                        className="p-2.5 bg-white hover:bg-emerald-50 hover:text-emerald-600 text-slate-600 rounded-xl transition cursor-pointer border border-slate-200"
+                        title="Attach Photos / Catalog"
+                      >
+                        <ImageIcon className="w-4 h-4" />
+                      </button>
+
                       <input
                         type="text"
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="Type a message in your language (AI translates automatically)..."
-                        className="flex-1 px-4 py-3.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
+                        className="flex-1 px-4 py-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
                       />
 
                       <button
                         type="submit"
-                        className="px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
+                        disabled={uploading || (!newMessage.trim() && !attachedFile)}
+                        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
                       >
-                        <span>Send</span>
-                        <Send className="w-4 h-4" />
+                        {uploading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <span>Send</span>
+                            <Send className="w-3.5 h-3.5" />
+                          </>
+                        )}
                       </button>
                     </form>
                   </div>
