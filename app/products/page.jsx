@@ -22,7 +22,7 @@ export default function SellerProductsDashboardPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // 두 번째 그림의 정식 풀네임 회사 정보와 100% 일치하도록 기본값 설정
+  // 두 번째 스크린샷의 정식 풀네임 회사 정보와 100% 일치하도록 기본값 설정
   const [companyInfo, setCompanyInfo] = useState({
     name: 'Hankook Precision Co., Ltd. (한국정밀공업)',
     tagline: 'Leading Manufacturer of High-Precision Hydraulic Valves & Industrial Automation Parts',
@@ -53,7 +53,7 @@ export default function SellerProductsDashboardPage() {
         }
       }
 
-      // 1. 쇼룸(companies) 테이블에서 최신 공식 회사 정보(태그라인, 비즈니스 타입 포함) 조회
+      // 1. DB (companies 테이블)에서 최신 공식 회사 정보(태그라인, 비즈니스 타입 포함) 조회
       const { data: companyData } = await supabase
         .from('companies')
         .select('*')
@@ -63,11 +63,10 @@ export default function SellerProductsDashboardPage() {
       if (companyData) {
         let dbCompanyName = companyData.company_name;
 
-        // DB에 영문/국문명이 각각 저장된 경우 두 번째 그림 형태인 풀네임으로 결합
+        // DB에 영문/국문명이 각각 저장된 경우 풀네임으로 결합
         if (companyData.company_name_en && companyData.company_name_ko) {
           dbCompanyName = `${companyData.company_name_en} (${companyData.company_name_ko})`;
         } else if (!dbCompanyName || dbCompanyName.length <= 2) {
-          // "한국"처럼 너무 짧거나 잘못 전달된 경우 안전하게 정식 풀네임 적용
           dbCompanyName = formattedName;
         }
 
@@ -80,7 +79,7 @@ export default function SellerProductsDashboardPage() {
         setCompanyInfo(prev => ({ ...prev, name: formattedName }));
       }
 
-      // 2. Supabase에서 등록된 상품 목록 조회
+      // 2. DB (products 테이블)에서 등록된 실제 상품 목록 조회
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -122,7 +121,7 @@ export default function SellerProductsDashboardPage() {
     }
   };
 
-  // 상품 삭제 핸들러
+  // DB 상품 삭제 처리 핸들러
   const handleDeleteProduct = async (id) => {
     if (!confirm('Are you sure you want to delete this product from the global catalog?')) return;
 
@@ -130,7 +129,7 @@ export default function SellerProductsDashboardPage() {
       await supabase.from('products').delete().eq('id', id);
       setProducts(products.filter((p) => p.id !== id));
     } catch (error) {
-      console.error('Failed to delete product:', error);
+      console.error('Failed to delete product from DB:', error);
       setProducts(products.filter((p) => p.id !== id));
     }
   };
@@ -143,7 +142,7 @@ export default function SellerProductsDashboardPage() {
 
       <main className="max-w-6xl mx-auto px-6 mt-10 space-y-8">
         
-        {/* 상단 배너 디자인 - 두 번째 스크린샷의 정식 표기와 100% 완벽 동기화 */}
+        {/* DB에서 동기화된 상단 배너 */}
         <div className="bg-slate-900 text-white rounded-3xl p-8 md:p-10 shadow-xl border border-slate-800 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -159,7 +158,7 @@ export default function SellerProductsDashboardPage() {
                 </span>
               </div>
 
-              {/* 정식 회사명 타이틀 (두 번째 그림과 100% 동일) */}
+              {/* DB에서 읽어온 정식 회사명 타이틀 */}
               <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-snug">
                 {companyInfo.name}
               </h1>
@@ -170,7 +169,7 @@ export default function SellerProductsDashboardPage() {
               </p>
             </div>
 
-            {/* 제품 등록 버튼 (중복 '+' 완전 제거) */}
+            {/* 제품 등록 버튼 */}
             <Link
               href="/products/new"
               className="px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-sm rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer self-start md:self-auto flex-shrink-0"
@@ -181,7 +180,7 @@ export default function SellerProductsDashboardPage() {
           </div>
         </div>
 
-        {/* 등록된 상품 리스트 영역 */}
+        {/* DB에서 조회된 등록 상품 리스트 영역 */}
         <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
           <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
             <div>
@@ -196,7 +195,7 @@ export default function SellerProductsDashboardPage() {
           {loading ? (
             <div className="text-center py-16">
               <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
-              <p className="text-xs text-slate-400">Loading catalog items...</p>
+              <p className="text-xs text-slate-400">Loading catalog items from database...</p>
             </div>
           ) : products.length === 0 ? (
             /* 등록된 제품이 없을 때 안내 */
@@ -220,7 +219,7 @@ export default function SellerProductsDashboardPage() {
               </div>
             </div>
           ) : (
-            /* 등록된 상품 카드 그리드 */
+            /* 등록된 DB 상품 카드 그리드 */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map((item, idx) => (
                 <div
