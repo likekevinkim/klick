@@ -211,7 +211,7 @@ export default function Header() {
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
 
-              {/* 군더더기 메뉴를 완전히 지우고 핵심 센터 링크만 정돈된 드롭다운 */}
+              {/* 드롭다운 메뉴 영역 */}
               {isUserMenuOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-fadeIn">
                   <div className="px-4 py-2 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -220,17 +220,7 @@ export default function Header() {
 
                   {userRole === 'seller' ? (
                     <>
-                      {/* 1. 상품 대시보드 */}
-                      <Link
-                        href="/products"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
-                      >
-                        <LayoutDashboard className="w-4 h-4 text-emerald-500" />
-                        <span>Product Dashboard</span>
-                      </Link>
-
-                      {/* 2. 공장 프로필 & 쇼룸 */}
+                      {/* 1. Factory Profile & Showroom (요청에 따라 1번 위치로 이동) */}
                       <Link
                         href="/companies/1"
                         onClick={() => setIsUserMenuOpen(false)}
@@ -240,7 +230,17 @@ export default function Header() {
                         <span>Factory Profile & Showroom</span>
                       </Link>
 
-                      {/* 3. 라이브 채팅 허브 */}
+                      {/* 2. Product Dashboard (2번 위치) */}
+                      <Link
+                        href="/products"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
+                      >
+                        <LayoutDashboard className="w-4 h-4 text-emerald-500" />
+                        <span>Product Dashboard</span>
+                      </Link>
+
+                      {/* 3. Live Chat Hub (3번 위치) */}
                       <Link
                         href="/chat"
                         onClick={() => setIsUserMenuOpen(false)}
