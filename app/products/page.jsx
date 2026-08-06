@@ -11,7 +11,8 @@ import {
   Trash2, 
   ExternalLink, 
   Loader2, 
-  Layers
+  Layers,
+  ShieldCheck
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -20,7 +21,13 @@ export default function SellerProductsDashboardPage() {
   const [user, setUser] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [companyName, setCompanyName] = useState('Hankook Precision Co., Ltd.');
+  
+  // 쇼룸 화면과 데이터 디자인을 통일하기 위한 상단 상태 구조
+  const [companyInfo, setCompanyInfo] = useState({
+    name: 'Hankook Precision Co., Ltd. (한국정밀공업)',
+    tagline: 'Leading Manufacturer of High-Precision Hydraulic Valves & Industrial Automation Parts',
+    businessType: 'Direct Manufacturer'
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -32,25 +39,31 @@ export default function SellerProductsDashboardPage() {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
       
+      let tempCompanyName = companyInfo.name;
+
       if (session?.user) {
         setUser(session.user);
         const meta = session.user.user_metadata || {};
-        if (meta.company_name_en) {
-          setCompanyName(meta.company_name_en);
-        } else if (meta.company_name) {
-          setCompanyName(meta.company_name);
+        if (meta.company_name_en || meta.company_name) {
+          tempCompanyName = meta.company_name_en || meta.company_name;
         }
       }
 
-      // 1. 쇼룸(companies) 테이블에서 최신 공식 회사명 조회하여 완벽 동기화
+      // 1. 쇼룸(companies) 테이블에서 최신 공식 회사 정보(태그라인, 비즈니스 타입 포함) 조회
       const { data: companyData } = await supabase
         .from('companies')
         .select('*')
         .limit(1)
         .single();
 
-      if (companyData && companyData.company_name) {
-        setCompanyName(companyData.company_name);
+      if (companyData) {
+        setCompanyInfo({
+          name: companyData.company_name || tempCompanyName,
+          tagline: companyData.tagline || companyData.description || 'Leading Manufacturer of High-Precision Industrial Parts',
+          businessType: companyData.business_type || 'Direct Manufacturer'
+        });
+      } else {
+        setCompanyInfo(prev => ({ ...prev, name: tempCompanyName }));
       }
 
       // 2. Supabase에서 등록된 상품 목록 조회
@@ -66,7 +79,7 @@ export default function SellerProductsDashboardPage() {
         setProducts([
           {
             id: '1',
-            company_name: companyName,
+            company_name: tempCompanyName,
             title_en: 'High-Precision Hydraulic Control Valve HV-300',
             category: 'Industrial Machinery',
             price: '145.00',
@@ -77,7 +90,7 @@ export default function SellerProductsDashboardPage() {
           },
           {
             id: '2',
-            company_name: companyName,
+            company_name: tempCompanyName,
             title_en: 'Organic K-Beauty Repair Serum 50ml',
             category: 'K-Beauty & Cosmetics',
             price: '12.50',
@@ -115,27 +128,44 @@ export default function SellerProductsDashboardPage() {
       <Header />
 
       <main className="max-w-6xl mx-auto px-6 mt-10 space-y-8">
-        {/* 상단 대시보드 브랜딩 헤더 (쇼룸과 동기화된 정식 회사명 출력) */}
-        <div className="bg-slate-900 text-white rounded-3xl p-8 md:p-10 shadow-md border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
-              <Building2 className="w-3.5 h-3.5" /> Manufacturer Export Showroom Center
-            </span>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              {companyName}
-            </h1>
-            <p className="text-slate-400 text-xs md:text-sm">
-              Manage your registered Korean products exposed to global buyers worldwide.
-            </p>
-          </div>
+        
+        {/* ★ 완벽 반영: 스크린샷 2와 동일한 스타일의 쇼룸 통합 상단 배너 디자인 */}
+        <div className="bg-slate-900 text-white rounded-3xl p-8 md:p-10 shadow-xl border border-slate-800 relative overflow-hidden">
+          {/* 배너 우상단 미세 글로우 필터 */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
-          <Link
-            href="/products/new"
-            className="px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs md:text-sm rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer self-start md:self-auto flex-shrink-0"
-          >
-            <PlusCircle className="w-5 h-5" />
-            <span>+ Register Product</span>
-          </Link>
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-4 max-w-3xl">
+              {/* 검증 뱃지 및 사업 형태 뱃지 */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Verified Korean Factory
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-bold border border-blue-500/20">
+                  <Building2 className="w-3.5 h-3.5" /> {companyInfo.businessType}
+                </span>
+              </div>
+
+              {/* 메인 정식 회사명 */}
+              <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-snug">
+                {companyInfo.name}
+              </h1>
+
+              {/* 회사 한 줄 소개문(Tagline) */}
+              <p className="text-slate-300 text-sm md:text-base leading-relaxed font-medium">
+                {companyInfo.tagline}
+              </p>
+            </div>
+
+            {/* ★ 완벽 반영: 중복 '+' 아이콘 오류가 수정된 상품 등록 버튼 */}
+            <Link
+              href="/products/new"
+              className="px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-sm rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer self-start md:self-auto flex-shrink-0"
+            >
+              <PlusCircle className="w-5 h-5" />
+              <span>Register Product</span>
+            </Link>
+          </div>
         </div>
 
         {/* 등록된 상품 리스트 영역 */}
@@ -156,6 +186,7 @@ export default function SellerProductsDashboardPage() {
               <p className="text-xs text-slate-400">Loading catalog items...</p>
             </div>
           ) : products.length === 0 ? (
+            /* 등록된 제품이 없을 때 안내 */
             <div className="text-center py-16 bg-slate-50 rounded-3xl border border-dashed border-slate-200 space-y-4">
               <Package className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
               <div className="space-y-1">
@@ -171,11 +202,12 @@ export default function SellerProductsDashboardPage() {
                   className="px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition inline-flex items-center gap-2 cursor-pointer"
                 >
                   <PlusCircle className="w-4 h-4" />
-                  <span>+ Register First Product</span>
+                  <span>Register First Product</span>
                 </Link>
               </div>
             </div>
           ) : (
+            /* 등록된 상품 카드 그리드 */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map((item, idx) => (
                 <div
