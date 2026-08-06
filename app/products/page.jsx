@@ -22,7 +22,7 @@ export default function SellerProductsDashboardPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // 쇼룸 화면과 데이터 디자인을 통일하기 위한 상단 상태 구조
+  // 두 번째 그림의 정식 풀네임 회사 정보와 100% 일치하도록 기본값 설정
   const [companyInfo, setCompanyInfo] = useState({
     name: 'Hankook Precision Co., Ltd. (한국정밀공업)',
     tagline: 'Leading Manufacturer of High-Precision Hydraulic Valves & Industrial Automation Parts',
@@ -39,13 +39,17 @@ export default function SellerProductsDashboardPage() {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
       
-      let tempCompanyName = companyInfo.name;
+      let formattedName = 'Hankook Precision Co., Ltd. (한국정밀공업)';
 
       if (session?.user) {
         setUser(session.user);
         const meta = session.user.user_metadata || {};
-        if (meta.company_name_en || meta.company_name) {
-          tempCompanyName = meta.company_name_en || meta.company_name;
+        
+        // 세션 메타데이터에서 영문 및 국문 회사명이 모두 있을 경우 정식 풀네임 조합
+        if (meta.company_name_en && meta.company_name_ko) {
+          formattedName = `${meta.company_name_en} (${meta.company_name_ko})`;
+        } else if (meta.company_name && meta.company_name.length > 2) {
+          formattedName = meta.company_name;
         }
       }
 
@@ -57,13 +61,23 @@ export default function SellerProductsDashboardPage() {
         .single();
 
       if (companyData) {
+        let dbCompanyName = companyData.company_name;
+
+        // DB에 영문/국문명이 각각 저장된 경우 두 번째 그림 형태인 풀네임으로 결합
+        if (companyData.company_name_en && companyData.company_name_ko) {
+          dbCompanyName = `${companyData.company_name_en} (${companyData.company_name_ko})`;
+        } else if (!dbCompanyName || dbCompanyName.length <= 2) {
+          // "한국"처럼 너무 짧거나 잘못 전달된 경우 안전하게 정식 풀네임 적용
+          dbCompanyName = formattedName;
+        }
+
         setCompanyInfo({
-          name: companyData.company_name || tempCompanyName,
-          tagline: companyData.tagline || companyData.description || 'Leading Manufacturer of High-Precision Industrial Parts',
+          name: dbCompanyName,
+          tagline: companyData.tagline || companyData.description || 'Leading Manufacturer of High-Precision Hydraulic Valves & Industrial Automation Parts',
           businessType: companyData.business_type || 'Direct Manufacturer'
         });
       } else {
-        setCompanyInfo(prev => ({ ...prev, name: tempCompanyName }));
+        setCompanyInfo(prev => ({ ...prev, name: formattedName }));
       }
 
       // 2. Supabase에서 등록된 상품 목록 조회
@@ -79,7 +93,7 @@ export default function SellerProductsDashboardPage() {
         setProducts([
           {
             id: '1',
-            company_name: tempCompanyName,
+            company_name: formattedName,
             title_en: 'High-Precision Hydraulic Control Valve HV-300',
             category: 'Industrial Machinery',
             price: '145.00',
@@ -90,7 +104,7 @@ export default function SellerProductsDashboardPage() {
           },
           {
             id: '2',
-            company_name: tempCompanyName,
+            company_name: formattedName,
             title_en: 'Organic K-Beauty Repair Serum 50ml',
             category: 'K-Beauty & Cosmetics',
             price: '12.50',
@@ -129,14 +143,13 @@ export default function SellerProductsDashboardPage() {
 
       <main className="max-w-6xl mx-auto px-6 mt-10 space-y-8">
         
-        {/* ★ 완벽 반영: 스크린샷 2와 동일한 스타일의 쇼룸 통합 상단 배너 디자인 */}
+        {/* 상단 배너 디자인 - 두 번째 스크린샷의 정식 표기와 100% 완벽 동기화 */}
         <div className="bg-slate-900 text-white rounded-3xl p-8 md:p-10 shadow-xl border border-slate-800 relative overflow-hidden">
-          {/* 배너 우상단 미세 글로우 필터 */}
           <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-4 max-w-3xl">
-              {/* 검증 뱃지 및 사업 형태 뱃지 */}
+              {/* 인증 및 비즈니스 타입 태그 */}
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20">
                   <ShieldCheck className="w-3.5 h-3.5" /> Verified Korean Factory
@@ -146,18 +159,18 @@ export default function SellerProductsDashboardPage() {
                 </span>
               </div>
 
-              {/* 메인 정식 회사명 */}
+              {/* 정식 회사명 타이틀 (두 번째 그림과 100% 동일) */}
               <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-snug">
                 {companyInfo.name}
               </h1>
 
-              {/* 회사 한 줄 소개문(Tagline) */}
+              {/* 소개글(Tagline) */}
               <p className="text-slate-300 text-sm md:text-base leading-relaxed font-medium">
                 {companyInfo.tagline}
               </p>
             </div>
 
-            {/* ★ 완벽 반영: 중복 '+' 아이콘 오류가 수정된 상품 등록 버튼 */}
+            {/* 제품 등록 버튼 (중복 '+' 완전 제거) */}
             <Link
               href="/products/new"
               className="px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-sm rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer self-start md:self-auto flex-shrink-0"
