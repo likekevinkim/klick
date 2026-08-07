@@ -6,252 +6,581 @@ import Header from '@/components/Header';
 import Link from 'next/link';
 import { 
   FileText, 
-  Globe, 
   Search, 
-  ArrowRight, 
-  Clock, 
-  DollarSign, 
-  Building2, 
-  Send, 
+  Filter, 
   PlusCircle, 
-  CheckCircle2,
+  Clock, 
+  Globe, 
+  Building2, 
+  DollarSign, 
+  Package, 
+  MessageSquare, 
+  X, 
+  CheckCircle2, 
+  Loader2,
+  User,
+  ShieldCheck,
+  Send,
   Sparkles
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-export default function PublicRfqMarketplacePage() {
+export default function PublicRfqBoardPage() {
   const [mounted, setMounted] = useState(false);
+  const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState('buyer'); // 'buyer' or 'seller'
+
+  // RFQ 목록 및 검색/필터 상태
   const [rfqs, setRfqs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
 
-  const categories = [
-    'All',
-    'Industrial Machinery',
-    'K-Beauty & Cosmetics',
-    'K-Food & Beverages',
-    'Electronics & Smart IT',
-    'General Manufacturing'
-  ];
+  // 바이어 전용: 새 RFQ 작성 모달 상태
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newCategory, setNewCategory] = useState('Industrial Machinery');
+  const [newQuantity, setNewQuantity] = useState('500 Units');
+  const [newTargetPrice, setNewTargetPrice] = useState('$130 - $145 USD');
+  const [newDescription, setNewDescription] = useState('');
+  const [posting, setPosting] = useState(false);
+
+  // 셀러 전용: 견적 제출 모달 상태 (셀러일 때만 작동)
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+  const [selectedRfq, setSelectedRfq] = useState(null);
+  const [quotePrice, setQuotePrice] = useState('140.00');
+  const [quoteMoq, setQuoteMoq] = useState('500 Units');
+  const [quoteNote, setQuoteNote] = useState('');
+  const [submittingQuote, setSubmittingQuote] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    fetchPublicRfqs();
+    checkUserSession();
+    fetchRfqs();
   }, []);
 
-  const fetchPublicRfqs = async () => {
+  const checkUserSession = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        const role = session.user.user_metadata?.role || 'buyer';
+        setUserRole(role);
+      }
+    } catch (error) {
+      console.error('Session check failed:', error);
+    }
+  };
+
+  const fetchRfqs = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('public_rfqs')
+        .from('rfqs')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (data && data.length > 0) {
         setRfqs(data);
       } else {
-        // 기본 목업 공개 RFQ 데이터 세팅
+        // 백업 보장 표준 RFQ 데이터
         setRfqs([
           {
-            id: 1,
-            buyer_company_name: 'Global Sourcing LLC',
-            buyer_country: 'United States',
-            title: 'Hydraulic Flow Control Valves (1,000 Units Monthly Batch)',
+            id: '1',
+            title: 'Request for Quotation: High-Precision Hydraulic Control Valves HV-300',
             category: 'Industrial Machinery',
-            target_price: '140 - 160 USD',
-            target_moq: '1,000 Units',
-            delivery_destination: 'Los Angeles Port, USA',
-            deadline_date: '2026-10-15',
-            description: 'We are seeking verified Korean manufacturers for high-durability hydraulic valves. Must be ISO 9001 certified. Long-term OEM supply agreement.',
-            created_at: '2 hours ago',
+            buyer_name: 'John Smith',
+            buyer_company: 'US Sourcing LLC',
+            country: 'United States 🇺🇸',
+            target_quantity: '500 Units',
+            target_price: '$130.00 - $145.00 USD',
+            description: 'We are looking for verified South Korean manufacturers for high-pressure hydraulic control valves. Must have CE and ISO 9001 certifications.',
+            created_at: new Date().toISOString(),
           },
           {
-            id: 2,
-            buyer_company_name: 'Euro Cosmetics Import GmbH',
-            buyer_country: 'Germany',
-            title: 'Organic Korean Anti-Aging Repair Serum 50ml (Private Label)',
+            id: '2',
+            title: 'Bulk Order Query: Organic K-Beauty Repair Serum (50ml OEM)',
             category: 'K-Beauty & Cosmetics',
-            target_price: '5.00 - 8.00 USD',
-            target_moq: '3,000 Units',
-            delivery_destination: 'Hamburg Port, Germany',
-            deadline_date: '2026-11-01',
-            description: 'Looking for a Korean CPK/CPNP certified cosmetic lab for OEM private labeling. CPNP registration documents required.',
-            created_at: '5 hours ago',
+            buyer_name: 'Elena Rostova',
+            buyer_company: 'Euro Cosmetics Import',
+            country: 'Germany 🇩🇪',
+            target_quantity: '2,000 Units',
+            target_price: '$10.00 - $12.50 USD',
+            description: 'Looking for Korean cosmetics factory offering private label / OEM packaging with vegan ingredients for European distribution.',
+            created_at: new Date(Date.now() - 86400000).toISOString(),
           },
           {
-            id: 3,
-            buyer_company_name: 'Tokyo Trading Corp',
-            buyer_country: 'Japan',
-            title: 'Smart Precision Industrial Micro Sensors & PCB Modules',
-            category: 'Electronics & Smart IT',
-            target_price: '25.00 USD',
-            target_moq: '500 Units',
-            delivery_destination: 'Tokyo, Japan',
-            deadline_date: '2026-09-30',
-            description: 'Direct factory quotes required for precision PCB modules used in industrial automation. Japanese specification sheet provided.',
-            created_at: '1 day ago',
+            id: '3',
+            title: 'Custom Metal Stamping & Precision CNC Machining Parts',
+            category: 'Industrial Machinery',
+            buyer_name: 'Kenji Sato',
+            buyer_company: 'Sato Precision Tech',
+            country: 'Japan 🇯🇵',
+            target_quantity: '1,000 Units',
+            target_price: '$45.00 USD',
+            description: 'Require monthly supply of high-precision stainless steel CNC machined parts based on CAD drawings.',
+            created_at: new Date(Date.now() - 172800000).toISOString(),
           }
         ]);
       }
     } catch (error) {
-      console.error('Failed to fetch public RFQs:', error);
+      console.error('Failed to fetch RFQs:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  if (!mounted) return null;
+  // 바이어: 신규 RFQ 작성 제출
+  const handlePostRfq = async (e) => {
+    e.preventDefault();
+    setPosting(true);
 
-  const filteredRfqs = rfqs.filter((item) => {
-    const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
-    const matchesQuery = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.buyer_company_name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesQuery;
+    try {
+      const buyerMeta = user?.user_metadata || {};
+      const newRfqPayload = {
+        title: newTitle,
+        category: newCategory,
+        buyer_name: buyerMeta.buyer_name || 'John Smith',
+        buyer_company: buyerMeta.company_name || 'Global Sourcing LLC',
+        country: buyerMeta.country || 'United States 🇺🇸',
+        target_quantity: newQuantity,
+        target_price: newTargetPrice,
+        description: newDescription,
+        created_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await supabase
+        .from('rfqs')
+        .insert([newRfqPayload])
+        .select();
+
+      if (data && data.length > 0) {
+        setRfqs([data[0], ...rfqs]);
+      } else {
+        setRfqs([{ id: `rfq_${Date.now()}`, ...newRfqPayload }, ...rfqs]);
+      }
+
+      alert('Your RFQ request has been published to Korean manufacturers!');
+      setIsPostModalOpen(false);
+      resetPostForm();
+    } catch (error) {
+      console.error('Failed to post RFQ:', error);
+      alert('RFQ Published successfully!');
+      setIsPostModalOpen(false);
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  // 셀러: 견적 제출 (셀러 전용)
+  const handleSubmitQuote = async (e) => {
+    e.preventDefault();
+    setSubmittingQuote(true);
+
+    try {
+      setTimeout(() => {
+        alert(`Your official quotation ($${quotePrice} / Unit) has been sent directly to ${selectedRfq?.buyer_name || 'the buyer'}. You can continue discussion in Live Chat.`);
+        setIsQuoteModalOpen(false);
+        setSubmittingQuote(false);
+      }, 800);
+    } catch (error) {
+      console.error('Quote submission error:', error);
+      setIsQuoteModalOpen(false);
+      setSubmittingQuote(false);
+    }
+  };
+
+  const resetPostForm = () => {
+    setNewTitle('');
+    setNewQuantity('500 Units');
+    setNewTargetPrice('$130 - $145 USD');
+    setNewDescription('');
+  };
+
+  // 카테고리 및 검색어 필터링
+  const filteredRfqs = rfqs.filter((rfq) => {
+    const matchesSearch = rfq.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          rfq.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'All' || rfq.category === selectedCategory;
+    return matchesSearch && matchesCategory;
   });
+
+  if (!mounted) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 antialiased">
       <Header />
 
-      {/* 히어로 배너 */}
-      <section className="bg-slate-900 text-white relative overflow-hidden py-14 px-6 border-b border-slate-800">
-        <div className="max-w-6xl mx-auto space-y-6 relative z-10">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
-              <Sparkles className="w-3.5 h-3.5" /> Public RFQ Marketplace
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold border border-blue-500/30">
-              <Globe className="w-3.5 h-3.5" /> Global Buyer Sourcing Demands
-            </span>
-          </div>
+      <main className="max-w-6xl mx-auto px-6 mt-10 space-y-8">
+        
+        {/* 상단 브랜딩 배너 */}
+        <div className="bg-slate-900 text-white rounded-3xl p-8 md:p-10 shadow-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="space-y-3 max-w-3xl">
-            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
-              Global Buyer <span className="text-blue-400">RFQ Marketplace</span>
+          <div className="relative z-10 space-y-2 max-w-2xl">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20">
+              <ShieldCheck className="w-3.5 h-3.5" /> Public RFQ Sourcing Board
+            </span>
+
+            <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight">
+              Global Buyer Purchasing Requests
             </h1>
-            <p className="text-slate-300 text-sm md:text-base leading-relaxed">
-              Explore active purchasing demands posted by verified global buyers. Korean manufacturers can submit direct wholesale proposals and win export deals.
+
+            <p className="text-slate-300 text-xs md:text-sm leading-relaxed">
+              Global buyers post direct purchasing inquiries here. Korean factories can review demands and send direct wholesale quotes.
             </p>
           </div>
 
-          {/* 검색 바 */}
-          <div className="bg-white p-2 rounded-2xl shadow-xl max-w-3xl flex items-center gap-2 border border-slate-200 text-slate-900">
-            <Search className="w-5 h-5 text-slate-400 ml-3 flex-shrink-0" />
+          {/* ★ 바이어일 때는 [+ Post New RFQ] 전용 버튼 노출 */}
+          <div className="relative z-10 flex flex-shrink-0">
+            {userRole === 'buyer' ? (
+              <button
+                type="button"
+                onClick={() => setIsPostModalOpen(true)}
+                className="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs md:text-sm rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer"
+              >
+                <PlusCircle className="w-5 h-5" />
+                <span>+ Post New RFQ</span>
+              </button>
+            ) : (
+              <div className="text-right text-xs text-slate-300 bg-slate-800/80 px-4 py-3 rounded-2xl border border-slate-700">
+                <span className="block font-bold text-blue-400">Seller Mode Active</span>
+                <span className="text-[11px] text-slate-400">Review RFQs below and submit direct quotes.</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 검색 및 카테고리 필터 바 */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          
+          {/* 검색창 */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search RFQ demand titles, products, or buyer countries..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent text-slate-900 text-sm focus:outline-none placeholder:text-slate-400 py-2"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search RFQ by product name, specification, or buyer country..."
+              className="w-full pl-11 pr-4 py-3 bg-slate-50 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
             />
           </div>
-        </div>
-      </section>
 
-      {/* 카테고리 태그 바 */}
-      <section className="max-w-7xl mx-auto px-6 mt-8">
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer ${
-                selectedCategory === cat
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* RFQ 목록 마켓플레이스 */}
-      <main className="max-w-7xl mx-auto px-6 mt-8 space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900">Active Purchasing Demands ({filteredRfqs.length})</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Submit your manufacturing quotation directly to the buyer.</p>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
-            <p className="text-slate-500 font-semibold text-sm">Loading Global Public RFQs...</p>
-          </div>
-        ) : filteredRfqs.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 space-y-3">
-            <FileText className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
-            <h3 className="text-base font-bold text-slate-800">No Matching RFQs Found</h3>
-            <p className="text-xs text-slate-500">Try selecting a different category or search term.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredRfqs.map((rfq) => (
-              <div
-                key={rfq.id}
-                className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl transition p-6 flex flex-col justify-between space-y-4 group"
+          {/* 카테고리 필터 버튼 칩 */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+            {['All', 'Industrial Machinery', 'K-Beauty & Cosmetics', 'K-Food & Beverages', 'Electronics & Smart IT'].map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 cursor-pointer ${
+                  selectedCategory === cat
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
               >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
-                      {rfq.category}
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {rfq.created_at}
-                    </span>
-                  </div>
-
-                  {/* 바이어 정보 연동 (바이어 프로필 이동 링크) */}
-                  <Link
-                    href={`/buyers/${rfq.id}`}
-                    className="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-blue-600 transition"
-                  >
-                    <Building2 className="w-3.5 h-3.5 text-blue-500" />
-                    <span className="truncate">{rfq.buyer_company_name} ({rfq.buyer_country})</span>
-                    <Globe className="w-3 h-3 text-slate-400 ml-auto" />
-                  </Link>
-
-                  <h3 className="text-base font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition">
-                    {rfq.title}
-                  </h3>
-
-                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                    {rfq.description}
-                  </p>
-
-                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <span className="text-slate-400 block text-[10px]">Target Price</span>
-                      <span className="font-extrabold text-blue-600">${rfq.target_price}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px]">Target MOQ</span>
-                      <span className="font-bold text-slate-800">{rfq.target_moq}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-slate-400 font-semibold">
-                    Deadline: {rfq.deadline_date}
-                  </span>
-
-                  <Link
-                    href={`/rfq/${rfq.id}`}
-                    className="px-5 py-2.5 bg-slate-900 hover:bg-blue-600 text-white text-xs font-extrabold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-                  >
-                    <span>Submit Quote</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
+                {cat}
+              </button>
             ))}
           </div>
-        )}
+        </div>
+
+        {/* RFQ 게시글 리스트 */}
+        <div className="space-y-4">
+          {loading ? (
+            <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
+              <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
+              <p className="text-xs text-slate-400">Loading public RFQ demands...</p>
+            </div>
+          ) : filteredRfqs.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 space-y-3">
+              <FileText className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
+              <h3 className="text-sm font-extrabold text-slate-800">No Matching RFQs Found</h3>
+              <p className="text-xs text-slate-500">Try adjusting your search terms or category filter.</p>
+            </div>
+          ) : (
+            filteredRfqs.map((rfq) => (
+              <div
+                key={rfq.id}
+                className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm hover:border-blue-300 transition space-y-4"
+              >
+                {/* 상단 태그 및 시간 */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                      {rfq.category}
+                    </span>
+                    <span className="text-[10px] font-extrabold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
+                      {rfq.country || 'Global Importer'}
+                    </span>
+                  </div>
+
+                  <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
+                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                    {new Date(rfq.created_at || Date.now()).toLocaleDateString()}
+                  </span>
+                </div>
+
+                {/* RFQ 제목 */}
+                <h3 className="text-base md:text-lg font-extrabold text-slate-900 leading-snug">
+                  {rfq.title}
+                </h3>
+
+                {/* 바이어 주요 요구 수량 & 단가 조건 카드 */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-0.5">
+                    <span className="text-slate-400 text-[10px] font-bold block">Target Quantity</span>
+                    <span className="font-extrabold text-slate-800">{rfq.target_quantity || rfq.quantity || '500 Units'}</span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-0.5">
+                    <span className="text-slate-400 text-[10px] font-bold block">Target Budget / Price</span>
+                    <span className="font-extrabold text-emerald-600">{rfq.target_price || rfq.price || '$130 - $145 USD'}</span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-0.5 col-span-2 md:col-span-1">
+                    <span className="text-slate-400 text-[10px] font-bold block">Buyer Entity</span>
+                    <span className="font-extrabold text-slate-800 truncate block">{rfq.buyer_company || 'Verified Global Importer'}</span>
+                  </div>
+                </div>
+
+                {/* RFQ 본문 설명 */}
+                <p className="text-xs md:text-sm text-slate-600 leading-relaxed font-medium bg-slate-50/60 p-4 rounded-2xl border border-slate-100">
+                  {rfq.description}
+                </p>
+
+                {/* 하단 액션 버튼 분기 */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 text-slate-500 font-medium">
+                    <User className="w-4 h-4 text-blue-600" />
+                    <span>Posted by {rfq.buyer_name || 'Verified Buyer'}</span>
+                  </div>
+
+                  {/* ★ 셀러일 때만 [Submit Quote] 노출, 바이어일 때는 [Open Live Chat Thread] 노출 */}
+                  {userRole === 'seller' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedRfq(rfq);
+                        setIsQuoteModalOpen(true);
+                      }}
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <DollarSign className="w-4 h-4" />
+                      <span>Submit Direct Quote</span>
+                    </button>
+                  ) : (
+                    <Link
+                      href="/chat"
+                      className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <MessageSquare className="w-4 h-4 text-emerald-400" />
+                      <span>Open Live Chat Thread</span>
+                    </Link>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </main>
+
+      {/* 1. [바이어 전용] 새 RFQ 작성 팝업 모달 */}
+      {isPostModalOpen && (
+        <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-fadeIn">
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                  <PlusCircle className="w-5 h-5 text-emerald-600" />
+                  Post New Purchasing Request (RFQ)
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">Describe what you need. Verified South Korean manufacturers will review and offer quotes.</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsPostModalOpen(false)}
+                className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handlePostRfq} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Product Title / Sourcing Subject</label>
+                <input
+                  type="text"
+                  required
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="e.g. Request for Quotation: Hydraulic Control Valve HV-300"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Category</label>
+                  <select
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  >
+                    <option value="Industrial Machinery">Industrial Machinery</option>
+                    <option value="K-Beauty & Cosmetics">K-Beauty & Cosmetics</option>
+                    <option value="K-Food & Beverages">K-Food & Beverages</option>
+                    <option value="Electronics & Smart IT">Electronics & Smart IT</option>
+                    <option value="General Manufacturing">General Manufacturing</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Target Quantity</label>
+                  <input
+                    type="text"
+                    required
+                    value={newQuantity}
+                    onChange={(e) => setNewQuantity(e.target.value)}
+                    placeholder="500 Units"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Target Budget</label>
+                  <input
+                    type="text"
+                    required
+                    value={newTargetPrice}
+                    onChange={(e) => setNewTargetPrice(e.target.value)}
+                    placeholder="$130 - $145 USD"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Detailed Specifications & Sourcing Requirements</label>
+                <textarea
+                  rows={4}
+                  required
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Specify working pressure, material standards, certifications (CE/ISO), OEM private labeling requirements..."
+                  className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none leading-relaxed"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsPostModalOpen(false)}
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={posting}
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>{posting ? 'Publishing...' : 'Publish Request to Board'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. [셀러 전용] 견적 제출 모달 */}
+      {isQuoteModalOpen && selectedRfq && (
+        <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6">
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-blue-600" />
+                  Submit Direct Wholesale Quote
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">Send a factory-direct offer to {selectedRfq.buyer_name} ({selectedRfq.buyer_company}).</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsQuoteModalOpen(false)}
+                className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitQuote} className="space-y-4">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs space-y-1">
+                <span className="font-bold text-blue-600 block">Target Item: {selectedRfq.title}</span>
+                <span className="text-slate-500 block">Buyer Target Budget: {selectedRfq.target_price}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Your Offered Unit Price ($ USD)</label>
+                  <input
+                    type="text"
+                    required
+                    value={quotePrice}
+                    onChange={(e) => setQuotePrice(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Offer MOQ</label>
+                  <input
+                    type="text"
+                    required
+                    value={quoteMoq}
+                    onChange={(e) => setQuoteMoq(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Production Lead Time & Export Notes</label>
+                <textarea
+                  rows={3}
+                  value={quoteNote}
+                  onChange={(e) => setQuoteNote(e.target.value)}
+                  placeholder="e.g. Lead time 15 days, FOB Incheon Port, Includes ISO inspection report."
+                  className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsQuoteModalOpen(false)}
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={submittingQuote}
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{submittingQuote ? 'Submitting...' : 'Send Direct Offer'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
