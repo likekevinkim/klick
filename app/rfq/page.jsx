@@ -240,7 +240,7 @@ export default function PublicRfqBoardPage() {
                 className="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs md:text-sm rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer"
               >
                 <PlusCircle className="w-5 h-5" />
-                <span>+ Post New RFQ</span>
+                <span>Post New RFQ</span>
               </button>
             ) : (
               <div className="text-right text-xs text-slate-300 bg-slate-800/80 px-4 py-3 rounded-2xl border border-slate-700">
