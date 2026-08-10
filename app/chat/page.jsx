@@ -25,7 +25,8 @@ import {
   Image as ImageIcon,
   X,
   FileCheck,
-  ShieldCheck
+  ShieldCheck,
+  Printer
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -50,12 +51,18 @@ export default function RealtimeChatPage() {
   const [quoteMoq, setQuoteMoq] = useState('500 Units');
   const [quoteNote, setQuoteNote] = useState('Includes FOB shipping to Incheon Port. Lead time 14 days.');
 
+  // 무역 서류(PI/CI/PL) 다운로드 모달 상태
+  const [isDocModalOpen, setIsQuoteDocModalOpen] = useState(false);
+  const [selectedMsgForDoc, setSelectedMsgForDoc] = useState(null);
+  const [selectedRoomForDoc, setSelectedRoomForDoc] = useState(null);
+  const [selectedDocType, setSelectedDocType] = useState('PI'); // 'PI', 'CI', 'PL'
+
   // 결제 모달 상태
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentQuoteData, setPaymentQuoteData] = useState(null);
 
   // PDF 다운로드 로딩 상태
-  const [pdfDownloadingId, setPdfDownloadingId] = useState(null);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
 
   // DOM 참조
   const fileInputRef = useRef(null);
@@ -342,39 +349,48 @@ export default function RealtimeChatPage() {
     }
   };
 
-  // Proforma Invoice (PI) PDF 다운로드
-  const handleDownloadPiPdf = async (msg, room) => {
-    setPdfDownloadingId(msg.id);
+  // 무역 서류(PI, CI, PL) 팝업 열기
+  const handleOpenDocModal = (msg, room) => {
+    setSelectedMsgForDoc(msg);
+    setSelectedRoomForDoc(room);
+    setIsQuoteDocModalOpen(true);
+  };
+
+  // 선택한 무역 서류 3종 (PI / CI / PL) 생성 및 인쇄/다운로드
+  const handleGenerateTradeDoc = async () => {
+    if (!selectedMsgForDoc || !selectedRoomForDoc) return;
+
+    setPdfDownloading(true);
 
     try {
-      const response = await fetch('/api/pdf/pi', {
+      const response = await fetch('/api/pdf/trade-documents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          itemTitle: room.product_title,
-          sellerCompany: room.seller_name,
-          buyerCompany: room.buyer_name,
-          quantity: msg.quote_moq || '500 Units',
-          unitPrice: msg.quote_price ? msg.quote_price.split(' ')[0] : '145.00',
+          docType: selectedDocType, // 'PI', 'CI', 'PL'
+          itemTitle: selectedRoomForDoc.product_title,
+          sellerCompany: selectedRoomForDoc.seller_name,
+          buyerCompany: selectedRoomForDoc.buyer_name,
+          quantity: selectedMsgForDoc.quote_moq ? parseInt(selectedMsgForDoc.quote_moq) : 500,
+          unitPrice: selectedMsgForDoc.quote_price ? parseFloat(selectedMsgForDoc.quote_price.split(' ')[0]) : 145.00,
         }),
       });
 
       const htmlContent = await response.text();
 
+      // 새 창에서 국제 표준 무역 서류 즉시 호출
       const printWindow = window.open('', '_blank');
       if (printWindow) {
         printWindow.document.write(htmlContent);
         printWindow.document.close();
         printWindow.focus();
-        setTimeout(() => {
-          printWindow.print();
-        }, 500);
       }
+      setIsQuoteDocModalOpen(false);
     } catch (error) {
-      console.error('Failed to download PI PDF:', error);
-      alert('Failed to generate Proforma Invoice PDF.');
+      console.error('Failed to generate trade document:', error);
+      alert('Failed to generate official trade document.');
     } finally {
-      setPdfDownloadingId(null);
+      setPdfDownloading(false);
     }
   };
 
@@ -400,10 +416,10 @@ export default function RealtimeChatPage() {
               <Sparkles className="w-3.5 h-3.5" /> KLICK Direct Accordion Chat
             </span>
             <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">
-              Real-time AI Multilingual Chat & RFQ Hub
+              Real-time AI Multilingual Chat & Trade Document Hub
             </h1>
             <p className="text-xs text-slate-400">
-              Click any buyer or inquiry subject to directly expand the conversation thread below.
+              Negotiate with global buyers and generate official trade documents (PI, Commercial Invoice, Packing List).
             </p>
           </div>
 
@@ -517,19 +533,15 @@ export default function RealtimeChatPage() {
                                   {msg.message}
                                 </p>
 
+                                {/* 무역 서류 3종 (PI, CI, PL) 모달 및 결제 진입 버튼 */}
                                 <div className="pt-2 border-t border-slate-800 grid grid-cols-2 gap-2">
                                   <button
                                     type="button"
-                                    onClick={() => handleDownloadPiPdf(msg, room)}
-                                    disabled={pdfDownloadingId === msg.id}
-                                    className="py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-xs rounded-xl border border-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                    onClick={() => handleOpenDocModal(msg, room)}
+                                    className="py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-xs rounded-xl border border-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer"
                                   >
-                                    {pdfDownloadingId === msg.id ? (
-                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    ) : (
-                                      <Download className="w-3.5 h-3.5 text-blue-400" />
-                                    )}
-                                    <span>Download PI (PDF)</span>
+                                    <Printer className="w-3.5 h-3.5 text-blue-400" />
+                                    <span>Trade Docs (PI/CI/PL)</span>
                                   </button>
 
                                   <button
@@ -712,7 +724,7 @@ export default function RealtimeChatPage() {
         </div>
       </main>
 
-      {/* 셀러 RFQ 견적서 발송 모달 */}
+      {/* 1. 셀러 RFQ 견적서 발송 모달 */}
       {isQuoteModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6">
@@ -781,7 +793,110 @@ export default function RealtimeChatPage() {
         </div>
       )}
 
-      {/* B2B 3가지 통합 결제 팝업 모달 */}
+      {/* 2. 무역 서류 3종 (PI, CI, PL) 선택 인쇄/다운로드 모달 */}
+      {isDocModalOpen && selectedMsgForDoc && selectedRoomForDoc && (
+        <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full border border-slate-200 shadow-2xl space-y-6 animate-fadeIn">
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                  <Printer className="w-5 h-5 text-blue-600" />
+                  Generate Trade Document
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">Select the official B2B trade document type to issue.</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsQuoteDocModalOpen(false)}
+                className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-slate-700">Select Document Type:</label>
+              
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedDocType('PI')}
+                  className={`w-full p-4 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
+                    selectedDocType === 'PI'
+                      ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-600/20'
+                      : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div>
+                    <span className="font-extrabold text-xs block text-slate-900">Proforma Invoice (PI)</span>
+                    <span className="text-[10px] text-slate-500">Official preliminary quotation before payment</span>
+                  </div>
+                  {selectedDocType === 'PI' && <CheckCheck className="w-4 h-4 text-blue-600" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedDocType('CI')}
+                  className={`w-full p-4 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
+                    selectedDocType === 'CI'
+                      ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-600/20'
+                      : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div>
+                    <span className="font-extrabold text-xs block text-slate-900">Commercial Invoice (CI)</span>
+                    <span className="text-[10px] text-slate-500">Final bill of sale for customs clearance & shipping</span>
+                  </div>
+                  {selectedDocType === 'CI' && <CheckCheck className="w-4 h-4 text-blue-600" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedDocType('PL')}
+                  className={`w-full p-4 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
+                    selectedDocType === 'PL'
+                      ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-600/20'
+                      : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div>
+                    <span className="font-extrabold text-xs block text-slate-900">Packing List (PL)</span>
+                    <span className="text-[10px] text-slate-500">Package dimensions, gross/net weight specification</span>
+                  </div>
+                  {selectedDocType === 'PL' && <CheckCheck className="w-4 h-4 text-blue-600" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                onClick={() => setIsQuoteDocModalOpen(false)}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleGenerateTradeDoc}
+                disabled={pdfDownloading}
+                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {pdfDownloading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Printer className="w-4 h-4" />
+                )}
+                <span>Generate {selectedDocType} Document</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. B2B 3가지 통합 결제 팝업 모달 */}
       <B2bPaymentModal
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
