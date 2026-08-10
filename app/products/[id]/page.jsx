@@ -88,6 +88,8 @@ export default function ProductDetailPage() {
           description_en: `### Official Verified Export Specification Sheet
 - **Product Name**: High-Precision Hydraulic Control Valve HV-300
 - **Category**: Industrial Machinery
+- **Manufacturer**: Hankook Precision Co., Ltd.
+- **Factory Location**: Incheon, South Korea 🇰🇷
 - **Quality Standard**: ISO 9001:2015, CE Certified
 - **Lead Time**: 15 - 20 Days (FOB Incheon Port)
 
@@ -153,7 +155,7 @@ export default function ProductDetailPage() {
       <Header />
 
       <main className="max-w-7xl mx-auto px-6 mt-8 space-y-10">
-        {/* 브레드크럼 & 제어 버튼 */}
+        {/* 브레드크럼 네비게이션 및 제어 버튼 */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-xs text-slate-500 font-bold">
             <Link href="/" className="hover:text-blue-600">Home</Link>
@@ -193,10 +195,10 @@ export default function ProductDetailPage() {
           </div>
         ) : (
           <div className="space-y-10">
-            {/* 1. 비주얼 미디어 & 공장 프로필 영역 */}
+            {/* 1. 알리바바 미디어 갤러리 & 공장 프로필 카너 */}
             <ProductDetailVisual product={product} />
 
-            {/* 2. 구간 단가표 & 기술 스펙 속성 테이블 */}
+            {/* 2. 수량별 구간 단가표 & 기술 스펙 속성 테이블 */}
             <ProductDetailSpecs product={product} isOwner={isOwner} />
           </div>
         )}
