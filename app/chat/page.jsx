@@ -23,7 +23,7 @@ export default function RealtimeChatPage() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState('seller');
 
-  // 대화방 목록 및 선택 상태 (요청반영: 기본적으로 모두 닫혀있도록 activeRoomId = null 지정)
+  // 대화방 목록 및 선택 상태 (기본적으로 모두 닫혀있음: activeRoomId = null)
   const [rooms, setRooms] = useState([]);
   const [activeRoomId, setActiveRoomId] = useState(null);
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
@@ -89,7 +89,7 @@ export default function RealtimeChatPage() {
         updated_at: '10:24 AM',
         courier: 'DHL Express',
         tracking_no: 'DHL-8829-4019-KR',
-        unread_count: 1
+        unread_count: 1 // ★ 1번 대화방 읽지 않은 글 1개
       },
       {
         id: 2,
@@ -100,7 +100,7 @@ export default function RealtimeChatPage() {
         updated_at: 'Yesterday',
         courier: 'FedEx Express',
         tracking_no: 'FDX-9901-2048-KR',
-        unread_count: 1
+        unread_count: 1 // ★ 2번 대화방 읽지 않은 글 1개
       }
     ];
 
@@ -160,6 +160,8 @@ export default function RealtimeChatPage() {
 
     setRooms(mockRooms);
     setRoomMessagesMap(initialMessages);
+
+    // ★ 초기 총 안읽은 수치 헤더 동기화 (1 + 1 = 2개)
     syncTotalUnreadCount(mockRooms);
   };
 
@@ -202,19 +204,22 @@ export default function RealtimeChatPage() {
     }
   };
 
-  // 대화방 토글 클릭 시 읽음 처리 및 뱃지 수 동기화
+  // ★ 사용자가 클릭해서 해당 대화방을 펼치는 순간, 안읽은 수치를 0으로 바꾸고 Header 총 개수 동기화
   const handleToggleRoom = (roomId) => {
     if (activeRoomId === roomId) {
       setActiveRoomId(null);
     } else {
       setActiveRoomId(roomId);
+
       const updatedRooms = rooms.map(r => r.id === roomId ? { ...r, unread_count: 0 } : r);
       setRooms(updatedRooms);
+
+      // 헤더 안읽은 메시지 수 재계산 및 갱신 이벤트 전송
       syncTotalUnreadCount(updatedRooms);
     }
   };
 
-  // 총 안읽은 수치 로컬 스토리지 및 이벤트 브로드캐스트
+  // ★ 전체 안읽은 개수 계산 및 헤더 이벤트 발생
   const syncTotalUnreadCount = (roomList) => {
     const total = roomList.reduce((acc, curr) => acc + (curr.unread_count || 0), 0);
     localStorage.setItem('klick_unread_chat_count', total.toString());
@@ -408,6 +413,7 @@ export default function RealtimeChatPage() {
           </div>
         </div>
 
+        {/* 대화방 카드 목록 (각 카드에 unread_count 뱃지 노출) */}
         <div className="space-y-4">
           {rooms.map((room) => (
             <ChatRoomItem
@@ -426,7 +432,7 @@ export default function RealtimeChatPage() {
           ))}
         </div>
 
-        {/* 대화방 내부 입력 하단 폼 */}
+        {/* 선택된 대화방이 활성화되었을 때만 입력 폼 노출 */}
         {activeRoomId && (
           <div className="bg-white rounded-3xl border border-slate-200 p-4 space-y-2 shadow-sm animate-fadeIn">
             {attachedFile && (

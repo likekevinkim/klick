@@ -1,7 +1,7 @@
 // components/chat/ChatRoomItem.jsx
 'use client';
 
-import { User, Clock, ChevronDown, ChevronUp, MessageSquare, FileText, Truck } from 'lucide-react';
+import { User, Clock, ChevronDown, ChevronUp, MessageSquare, FileText, Truck, Sparkles } from 'lucide-react';
 import ChatMessageBubble from './ChatMessageBubble';
 
 export default function ChatRoomItem({ 
@@ -17,6 +17,7 @@ export default function ChatRoomItem({
   messagesEndRef 
 }) {
   const targetName = userRole === 'seller' ? room.buyer_name : room.seller_name;
+  const unreadCount = room.unread_count || 0;
 
   return (
     <div
@@ -34,9 +35,18 @@ export default function ChatRoomItem({
               <User className="w-4 h-4 text-blue-600" />
               {targetName}
             </span>
+            
             <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
               Inquiry Item
             </span>
+
+            {/* ★ 각 대화방별 안읽은 메세지 개수 시각적 뱃지 (0보다 클 때만 깜빡이는 빨간/주황 뱃지 노출) */}
+            {!isOpen && unreadCount > 0 && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-extrabold shadow-sm animate-pulse">
+                <Sparkles className="w-3 h-3 text-amber-300" />
+                {unreadCount} new
+              </span>
+            )}
           </div>
 
           <h3 className="text-xs md:text-sm font-extrabold text-slate-700">
@@ -49,7 +59,7 @@ export default function ChatRoomItem({
         </div>
 
         <div className="flex items-center gap-3 flex-shrink-0">
-          <span className="text-xs text-slate-400 flex items-center gap-1">
+          <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
             <Clock className="w-3.5 h-3.5" /> {room.updated_at}
           </span>
 
