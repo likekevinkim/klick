@@ -105,7 +105,7 @@ function ChatContent() {
     }
   };
 
-  // ★ 대화방 목록 조회 및 읽은 대화방 제외 '진짜 안 읽은 수치' 정밀 계산
+  // 대화방 목록 조회 및 읽은 대화방 제외 '진짜 안 읽은 수치' 정밀 계산
   const fetchChatRoomsAndInit = async (currentUserObj, currentRole) => {
     try {
       const { data: existingRooms } = await supabase
@@ -219,7 +219,7 @@ function ChatContent() {
     }
   };
 
-  // ★ 대화방을 클릭하여 열었을 때 해당 대화방만 정밀 '읽음(is_read)' 처리 및 수치 차감
+  // 대화방을 클릭하여 열었을 때 해당 대화방만 정밀 '읽음(is_read)' 처리 및 수치 차감
   const handleToggleRoom = (roomId) => {
     if (activeRoomId === roomId) {
       setActiveRoomId(null);
