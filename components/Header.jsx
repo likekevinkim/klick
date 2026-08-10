@@ -26,7 +26,7 @@ export default function Header() {
   const [user, setUser] = useState(null);
   const pathname = usePathname();
 
-  // 실시간 안읽은 채팅 메시지 총 개수 상태
+  // 실시간 안읽은 채팅 메시지 총 개수 상태 (새 메시지 전용 수치)
   const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   const languages = [
@@ -58,7 +58,7 @@ export default function Header() {
     setTimeout(triggerGoogleCombo, 300);
   };
 
-  // ★ Supabase DB `is_read = false` 기준 진짜 안 읽은 상대방 메시지 수 정밀 계산
+  // ★ DB `is_read = false` 인 진짜 '새로운' 상대방 메시지만 정밀 카운트
   const updateUnreadCountFromStorage = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -66,12 +66,12 @@ export default function Header() {
       const currentRole = currentUser?.user_metadata?.role || 'seller';
       const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
 
-      // DB에서 상대방이 나에게 보낸 메시지 중 is_read가 false (또는 NULL) 인 메시지만 직접 COUNT
+      // DB에서 상대방이 나에게 보낸 메시지 중 is_read = false 인 메시지만 직접 COUNT
       const { data: unreadMsgs, error } = await supabase
         .from('chat_messages')
         .select('id, is_read')
         .eq('sender_role', opponentRole)
-        .or('is_read.eq.false,is_read.is.null');
+        .eq('is_read', false);
 
       if (!error && unreadMsgs) {
         const count = Math.min(unreadMsgs.length, 99);
@@ -120,7 +120,7 @@ export default function Header() {
     };
     window.addEventListener('klick_unread_chat_updated', handleUnreadUpdate);
 
-    // Supabase Realtime 기반 새 메시지 INSERT/UPDATE 즉시 감지 및 재계산
+    // Supabase Realtime 기반 메시지 변동(INSERT/UPDATE) 즉시 감지 및 재계산
     const realtimeChannel = supabase
       .channel('public:chat_messages_header_count')
       .on(
@@ -248,7 +248,7 @@ export default function Header() {
             <span className="hidden sm:inline">RFQ Board</span>
           </Link>
 
-          {/* 3. 로그인 상태 분기 UI (진짜 안 읽은 메시지 수 unreadChatCount 실시간 동기화) */}
+          {/* 3. 로그인 상태 분기 UI (진짜 안 읽은 새 메시지 수 unreadChatCount 실시간 동기화) */}
           {user ? (
             <div className="relative">
               <button
@@ -261,7 +261,7 @@ export default function Header() {
               >
                 <div className="relative">
                   <User className="w-4 h-4 text-blue-400" />
-                  {/* 안읽은 메시지 수 뱃지 (0보다 클 때만 노출) */}
+                  {/* 안읽은 새 메시지 수 뱃지 (0보다 클 때만 노출) */}
                   {unreadChatCount > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-md animate-pulse">
                       {unreadChatCount > 99 ? '99+' : unreadChatCount}
@@ -305,7 +305,7 @@ export default function Header() {
                         <span>Product Dashboard</span>
                       </Link>
 
-                      {/* 3. Live Chat Hub (진짜 안 읽은 메시지 수 뱃지 실시간 노출) */}
+                      {/* 3. Live Chat Hub (새로운 메시지 수 뱃지 실시간 노출) */}
                       <Link
                         href="/chat"
                         onClick={() => setIsUserMenuOpen(false)}
