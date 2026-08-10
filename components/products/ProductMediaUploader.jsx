@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Upload, Image as ImageIcon, Video, X, ArrowLeft, ArrowRight, Trash2 } from 'lucide-react';
+import { Upload, Image as ImageIcon, Video, ArrowLeft, ArrowRight, Trash2 } from 'lucide-react';
 
 export default function ProductMediaUploader({ 
   mainImageUrl, 
@@ -12,13 +12,12 @@ export default function ProductMediaUploader({
   videoUrl, 
   setVideoUrl 
 }) {
-  const [mediaInputType, setMediaInputType] = useState('file'); // 'file' or 'url'
+  const [mediaInputType, setMediaInputType] = useState('file');
 
   const mainFileInputRef = useRef(null);
   const galleryFileInputRef = useRef(null);
   const videoFileInputRef = useRef(null);
 
-  // 대표 커버 이미지 파일 선택
   const handleMainFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -26,7 +25,6 @@ export default function ProductMediaUploader({
     }
   };
 
-  // 추가 갤러리 이미지 다중 파일 선택 (누적 추가)
   const handleGalleryFilesChange = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
@@ -35,7 +33,6 @@ export default function ProductMediaUploader({
     }
   };
 
-  // 비디오 파일 선택
   const handleVideoFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -43,12 +40,10 @@ export default function ProductMediaUploader({
     }
   };
 
-  // 갤러리 사진 개별 삭제
   const handleRemoveGalleryImage = (index) => {
     setGalleryImages(prev => prev.filter((_, idx) => idx !== index));
   };
 
-  // 갤러리 사진 순서 변경 (좌로 이동)
   const handleMoveImageLeft = (index) => {
     if (index === 0) return;
     setGalleryImages(prev => {
@@ -60,7 +55,6 @@ export default function ProductMediaUploader({
     });
   };
 
-  // 갤러리 사진 순서 변경 (우로 이동)
   const handleMoveImageRight = (index) => {
     if (index === galleryImages.length - 1) return;
     setGalleryImages(prev => {
@@ -76,7 +70,7 @@ export default function ProductMediaUploader({
     <div className="space-y-4">
       <div className="flex items-center justify-between border-b pb-1">
         <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider">
-          3. Product Photos & Factory Demo Video
+          4. Product Photos & Factory Demo Video
         </span>
 
         <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
@@ -100,7 +94,7 @@ export default function ProductMediaUploader({
       {mediaInputType === 'file' ? (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* 1. 메인 커버 사진 파일 업로드 */}
+            {/* 메인 커버 사진 파일 업로드 */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700">Main Cover Image *</label>
               <input
@@ -129,7 +123,7 @@ export default function ProductMediaUploader({
               </div>
             </div>
 
-            {/* 2. 제품 홍보 동영상 파일 업로드 */}
+            {/* 제품 홍보 동영상 파일 업로드 */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700">Factory Demo Video File</label>
               <input
@@ -151,7 +145,7 @@ export default function ProductMediaUploader({
                 ) : (
                   <>
                     <Video className="w-6 h-6 text-rose-600 mx-auto" />
-                    <span className="text-xs font-extrabold text-slate-700 block">Click to Upload Demo Video</span>
+                    <span className="text-xs font-extrabold text-slate-700 block">Click to Upload Demo Video File</span>
                     <span className="text-[10px] text-slate-400 block">MP4, MOV, WEBM</span>
                   </>
                 )}
@@ -159,7 +153,7 @@ export default function ProductMediaUploader({
             </div>
           </div>
 
-          {/* 3. 추가 갤러리 사진 다중 업로드 & 순서 변경/개별 삭제 제어 영역 */}
+          {/* 추가 갤러리 사진 다중 업로드 & 순서 변경/삭제 영역 */}
           <div className="space-y-2 border-t pt-3 border-slate-100">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-bold text-slate-700">
@@ -196,7 +190,6 @@ export default function ProductMediaUploader({
                   <div key={idx} className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 group h-28">
                     <img src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
                     
-                    {/* 개별 순서 변경 & 삭제 오버레이 툴바 */}
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1.5 p-1">
                       {idx > 0 && (
                         <button

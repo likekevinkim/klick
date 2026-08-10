@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Edit3, X, CheckCircle2, Loader2, Sparkles, Building2, MapPin, Award } from 'lucide-react';
+import { Plus, Edit3, X, CheckCircle2, Building2 } from 'lucide-react';
 import ProductMediaUploader from './ProductMediaUploader';
 import RichSpecEditor from './RichSpecEditor';
 
@@ -17,7 +17,7 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
   const [taglineEn, setTaglineEn] = useState(initialData?.tagline || '');
   const [editorContent, setEditorContent] = useState(initialData?.description_en || '');
 
-  // ★ 상세페이지 우측 사이드바 표시용 제조 공장 정보 및 인증 상태
+  // 공장 프로필 정보 상태
   const [companyName, setCompanyName] = useState(initialData?.company_name || 'Hankook Precision Co., Ltd. (한국정밀공업)');
   const [factoryLocation, setFactoryLocation] = useState(initialData?.factory_location || 'Incheon, South Korea 🇰🇷');
   const [certifications, setCertifications] = useState(initialData?.certifications || 'ISO 9001, CE Certified');
@@ -217,7 +217,7 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
             </div>
           </div>
 
-          {/* ★ 2. 제조 공장 프로필 & 수출 규격 인증 정보 입력 섹션 (신규 추가) */}
+          {/* 2. 제조 공장 프로필 & 수출 규격 인증 정보 */}
           <div className="space-y-4">
             <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider block border-b pb-1 flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-blue-600" />

@@ -57,6 +57,8 @@ export default function ProductDetailPage() {
           user_id: user?.id || 'sample_owner_id',
           company_name: 'Hankook Precision Co., Ltd. (한국정밀공업)',
           company_id: '1',
+          factory_location: 'Incheon, South Korea 🇰🇷',
+          certifications: 'ISO 9001, CE Certified',
           title_en: 'High-Precision Hydraulic Control Valve HV-300 Heavy Duty',
           title_ko: '초고압 산업용 유압 제어 밸브 HV-300',
           category: 'Industrial Machinery',
@@ -200,7 +202,7 @@ export default function ProductDetailPage() {
         )}
       </main>
 
-      {/* 3. 통합 수정 모달 (등록 모달과 100% 동일한 고급 스펙) */}
+      {/* 3. 통합 수정 모달 */}
       {isEditModalOpen && (
         <ProductFormModal
           isOpen={isEditModalOpen}

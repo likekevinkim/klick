@@ -30,7 +30,7 @@ export default function RichSpecEditor({ content, setContent, onGenerateAi, isAi
     <div className="space-y-3">
       <div className="flex items-center justify-between border-b pb-1">
         <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider">
-          4. Detailed Specifications Rich Editor
+          5. Detailed Specifications Rich Editor
         </span>
 
         <button
