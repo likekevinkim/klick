@@ -48,7 +48,7 @@ function ChatContent() {
   useEffect(() => {
     setMounted(true);
     initChatSession();
-  }, [paramProductId, paramCompany, paramSellerId]);
+  }, [paramProductId, paramCompany, paramTitle, paramSellerId]);
 
   const initChatSession = async () => {
     try {
@@ -69,7 +69,7 @@ function ChatContent() {
     }
   };
 
-  // Supabase DB 대화방 생성 및 해당 셀러와의 직통 채팅 실시간 연결
+  // ★ Supabase DB 대화방 생성 및 해당 셀러와의 직통 채팅 실시간 연결
   const fetchChatRoomsAndInit = async (currentUserObj) => {
     try {
       // 1. 기존 DB 대화방 조회
@@ -84,11 +84,12 @@ function ChatContent() {
 
       let currentRoomsList = existingRooms || [];
 
-      // 2. 상세페이지에서 채팅 문의 버튼을 눌러 들어온 경우
+      // 2. 상세페이지에서 채팅 문의 버튼을 눌러 들어온 경우 (URL 파라미터 감지)
       if (paramCompany || paramTitle) {
         const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product';
         const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Hankook Precision Co., Ltd.';
 
+        // 기존 대화방 중 매칭되는 방 찾기
         let matchedRoom = currentRoomsList.find(
           (r) => r.product_title === companyTitle && r.seller_name === companySeller
         );
@@ -131,7 +132,7 @@ function ChatContent() {
           }
         }
 
-        // 해당 대화방을 바로 펼침(활성화)
+        // ★ 매칭되거나 새로 생성된 대화방을 activeRoomId로 지정하여 즉시 펼침(오픈)
         if (matchedRoom) {
           setActiveRoomId(matchedRoom.id);
         }
@@ -235,7 +236,7 @@ function ChatContent() {
       const { error: msgInsertError } = await supabase.from('chat_messages').insert([newMsgObj]);
       if (msgInsertError) {
         console.error('Failed to insert message to Supabase:', msgInsertError);
-        alert('메시지 DB 저장 실패: ' + msgInsertError.message + '\n\nSupabase SQL Editor에서 RLS 해제 스크립트를 실행했는지 확인해주세요.');
+        alert('메시지 DB 저장 실패: ' + msgInsertError.message);
         return;
       }
 
