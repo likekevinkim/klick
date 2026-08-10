@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { 
   Building2, 
   MapPin, 
@@ -31,7 +31,8 @@ import { supabase } from '@/lib/supabase';
 
 export default function CompanyShowroomLandingPage() {
   const params = useParams();
-  const companyId = params.id;
+  const router = useRouter();
+  const companyId = params?.id;
 
   const [mounted, setMounted] = useState(false);
   const [company, setCompany] = useState(null);
@@ -42,11 +43,11 @@ export default function CompanyShowroomLandingPage() {
   // Factory Overview & Certifications 탭을 기본(First)으로 설정
   const [activeTab, setActiveTab] = useState('about'); // 'about' (First) or 'products'
 
-  // 5단계: 공장 실사 동영상 팝업 모달 상태
+  // 공장 실사 동영상 팝업 모달 상태
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [selectedVideoUrl, setSelectedVideoUrl] = useState('');
 
-  // 5단계: 공장 실사 동영상 & 360도 검증 투어 갤러리 데이터
+  // 공장 실사 동영상 & 360도 검증 투어 갤러리 데이터
   const factoryVideos = [
     {
       id: 1,
@@ -63,6 +64,58 @@ export default function CompanyShowroomLandingPage() {
       video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
     }
   ];
+
+  // 샘플 공장 데이터베이스 매핑 사전
+  const mockCompaniesMaster = {
+    '1': {
+      id: '1',
+      company_name: 'Hankook Precision Co., Ltd. (한국정밀공업)',
+      tagline: 'Leading Manufacturer of High-Precision Hydraulic Valves & Industrial Automation Parts',
+      description: 'Established in 1998, Hankook Precision specializes in manufacturing ultra-durable hydraulic control valves, industrial automation components, and customized machinery parts. With state-of-the-art CNC production facilities and strict ISO 9001 quality assurance, we export premium Korean manufacturing goods to over 35 countries worldwide.',
+      business_type: 'Direct Manufacturer',
+      location: 'Incheon, South Korea 🇰🇷',
+      established_year: '1998',
+      employees_count: '50 - 100 Employees',
+      factory_size: '5,000 sq. meters',
+      certifications: ['ISO 9001', 'CE Certified', 'IATF 16949', 'KOTRA Verified'],
+      gallery_images: [
+        'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=800&q=80'
+      ]
+    },
+    '2': {
+      id: '2',
+      company_name: 'Seoul Bio Cosmetics Ltd. (서울바이오화장품)',
+      tagline: 'OEM/ODM Global Manufacturing Leader in Organic Derma Skincare & Anti-Aging Serums',
+      description: 'Seoul Bio Cosmetics is a top-tier CGMP and FDA registered K-Beauty OEM/ODM manufacturer. We operate automated cleanrooms for high-efficiency production of anti-aging serums, botanical toners, and functional cosmetics exported globally.',
+      business_type: 'OEM / ODM Manufacturer',
+      location: 'Seoul, South Korea 🇰🇷',
+      established_year: '2008',
+      employees_count: '100 - 200 Employees',
+      factory_size: '8,200 sq. meters',
+      certifications: ['CGMP', 'FDA Registered', 'ISO 22716', 'USDA Organic'],
+      gallery_images: [
+        'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=800&q=80'
+      ]
+    },
+    '3': {
+      id: '3',
+      company_name: 'Gyeonggi Smart Tech Industries (경기스마트텍)',
+      tagline: 'High-Tech Electronics Factory Producing Smart IoT Sensors & PCB Controllers',
+      description: 'Gyeonggi Smart Tech specializes in surface-mount technology (SMT) and automated assembly of industrial IoT sensors, automotive controllers, and high-performance micro-circuit boards.',
+      business_type: 'High-Tech Direct Manufacturer',
+      location: 'Suwon, Gyeonggi-do, South Korea 🇰🇷',
+      established_year: '2015',
+      employees_count: '30 - 50 Employees',
+      factory_size: '3,500 sq. meters',
+      certifications: ['KC Certified', 'RoHS', 'FCC Compliant', 'ISO 14001'],
+      gallery_images: [
+        'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80'
+      ]
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -85,43 +138,35 @@ export default function CompanyShowroomLandingPage() {
       }
 
       // 1. 제조 공장 회사 데이터 조회
-      const { data: companyData } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('id', companyId)
-        .single();
-
-      if (companyData) {
-        setCompany(companyData);
-      } else {
-        // 기본 템플릿 데이터
-        setCompany({
-          id: companyId,
-          company_name: 'Hankook Precision Co., Ltd. (한국정밀공업)',
-          tagline: 'Leading Manufacturer of High-Precision Hydraulic Valves & Industrial Automation Parts',
-          description: 'Established in 1998, Hankook Precision specializes in manufacturing ultra-durable hydraulic control valves, industrial automation components, and customized machinery parts. With state-of-the-art CNC production facilities and strict ISO 9001 quality assurance, we export premium Korean manufacturing goods to over 35 countries worldwide.',
-          business_type: 'Direct Manufacturer',
-          location: 'Incheon, South Korea',
-          established_year: '1998',
-          employees_count: '50 - 100 Employees',
-          factory_size: '5,000 sq. meters',
-          certifications: ['ISO 9001', 'CE Certified', 'IATF 16949', 'KOTRA Verified'],
-          gallery_images: [
-            'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80',
-            'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-            'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=800&q=80'
-          ]
-        });
+      let companyData = null;
+      if (companyId) {
+        const { data } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('id', companyId)
+          .single();
+        if (data) companyData = data;
       }
 
-      // 2. 해당 공장이 등록한 전체 수출 상품 조회
+      if (!companyData) {
+        // 매핑 사전 또는 기본 템플릿 반환
+        companyData = mockCompaniesMaster[companyId] || mockCompaniesMaster['1'];
+      }
+      setCompany(companyData);
+
+      // 2. 해당 공장이 등록한 전체 수출 상품 조회 (Supabase DB 연동)
       const { data: productList } = await supabase
         .from('products')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (productList && productList.length > 0) {
-        setProducts(productList);
+        // 회사 이름이나 ID로 필터링 (없으면 전체 노출 fallback)
+        const matched = productList.filter(
+          p => (p.company_name || '').toLowerCase().includes((companyData.company_name || '').toLowerCase().slice(0, 5)) ||
+               p.company_id === companyId
+        );
+        setProducts(matched.length > 0 ? matched : productList);
       } else {
         // 백업 보장 샘플 상품 데이터
         setProducts([
@@ -155,6 +200,13 @@ export default function CompanyShowroomLandingPage() {
   const handleOpenVideo = (url) => {
     setSelectedVideoUrl(url);
     setIsVideoModalOpen(true);
+  };
+
+  // 공장과 직통 1:1 대화방 연결
+  const handleStartCompanyChat = () => {
+    const compName = encodeURIComponent(company?.company_name || 'Hankook Precision Co., Ltd.');
+    const title = encodeURIComponent('Factory Partnership & Wholesale Inquiry');
+    router.push(`/chat?company=${compName}&title=${title}`);
   };
 
   if (!mounted) return null;
@@ -227,6 +279,7 @@ export default function CompanyShowroomLandingPage() {
           <div className="flex items-center gap-8">
             {/* 첫번째 탭: Factory Overview & Certifications */}
             <button
+              type="button"
               onClick={() => setActiveTab('about')}
               className={`py-4 text-sm font-extrabold border-b-2 transition flex items-center gap-2 cursor-pointer ${
                 activeTab === 'about'
@@ -240,6 +293,7 @@ export default function CompanyShowroomLandingPage() {
 
             {/* 두번째 탭: Export Product Lineup */}
             <button
+              type="button"
               onClick={() => setActiveTab('products')}
               className={`py-4 text-sm font-extrabold border-b-2 transition flex items-center gap-2 cursor-pointer ${
                 activeTab === 'products'
@@ -256,21 +310,22 @@ export default function CompanyShowroomLandingPage() {
             {/* 셀러 자신일 때만 노출되는 [Edit Factory Profile] 정보 수정 버튼 */}
             {isOwner && (
               <Link
-                href="/seller/profile"
+                href="/products"
                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition"
               >
                 <Edit3 className="w-3.5 h-3.5" />
-                <span>Edit Factory Profile</span>
+                <span>Manage Factory Catalog</span>
               </Link>
             )}
 
-            <Link
-              href="/chat"
-              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md transition"
+            <button
+              type="button"
+              onClick={handleStartCompanyChat}
+              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Send Direct RFQ</span>
-            </Link>
+            </button>
           </div>
         </div>
       </section>
@@ -278,7 +333,7 @@ export default function CompanyShowroomLandingPage() {
       {/* 3. 탭별 메인 컨텐츠 영역 */}
       <main className="max-w-6xl mx-auto px-6 mt-10">
         {activeTab === 'about' ? (
-          /* [첫번째 기본 탭] 공장 상세 개요, 5단계 비디오 투어 갤러리, 사진 갤러리, 품질 인증서 */
+          /* [첫번째 기본 탭] 공장 상세 개요, 동영상 투어 갤러리, 사진 갤러리, 품질 인증서 */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-8 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8">
               <div>
@@ -290,7 +345,7 @@ export default function CompanyShowroomLandingPage() {
                 <p>{company?.description}</p>
               </div>
 
-              {/* 5단계: ★ 검증된 공장 실사 동영상 & 360도 투어 갤러리 */}
+              {/* 검증된 공장 실사 동영상 & 360도 투어 갤러리 */}
               <div className="border-t border-slate-100 pt-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -405,13 +460,14 @@ export default function CompanyShowroomLandingPage() {
                   </div>
                 </div>
 
-                <Link
-                  href="/chat"
+                <button
+                  type="button"
+                  onClick={handleStartCompanyChat}
                   className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
                   <span>Contact Manufacturer</span>
-                </Link>
+                </button>
               </div>
             </div>
           </div>
@@ -430,7 +486,7 @@ export default function CompanyShowroomLandingPage() {
                 <p className="text-slate-500 font-semibold text-sm">Loading Factory Showroom Products...</p>
               </div>
             ) : products.length === 0 ? (
-              <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 space-y-3">
+              <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 space-y-3 p-8">
                 <Package className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
                 <h3 className="text-base font-bold text-slate-800">No Products Displayed Yet</h3>
                 <p className="text-xs text-slate-500">This factory has not registered any public catalog items.</p>
@@ -447,14 +503,17 @@ export default function CompanyShowroomLandingPage() {
                         {item.image_url ? (
                           <img
                             src={item.image_url}
-                            alt={item.title_en}
-                            className="w-full h-full object-contain bg-white group-hover:scale-105 transition duration-300"
+                            alt={item.title_en || item.title_ko || item.product_name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
                           />
                         ) : (
-                          <div className="text-slate-400 text-xs font-medium">No Factory Image</div>
+                          <Package className="w-10 h-10 text-slate-300" />
                         )}
                         <span className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-md">
-                          {item.category}
+                          {item.category || 'Manufacturing'}
                         </span>
                       </div>
 
@@ -465,21 +524,21 @@ export default function CompanyShowroomLandingPage() {
                         </div>
 
                         <h3 className="text-base font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition">
-                          {item.title_en}
+                          {item.title_en || item.title_ko || item.product_name || 'Export Item'}
                         </h3>
 
                         <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                          {item.tagline}
+                          {item.tagline || item.description_en || 'High durability factory export product verified for global buyers.'}
                         </p>
 
                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 grid grid-cols-2 gap-2 text-xs">
                           <div>
                             <span className="text-slate-400 block text-[10px]">FOB Price</span>
-                            <span className="font-extrabold text-blue-600">${item.price} USD</span>
+                            <span className="font-extrabold text-blue-600">${item.price || '0.00'} USD</span>
                           </div>
                           <div>
                             <span className="text-slate-400 block text-[10px]">Min Order</span>
-                            <span className="font-bold text-slate-700">{item.moq}</span>
+                            <span className="font-bold text-slate-700">{item.moq || '1 Unit'}</span>
                           </div>
                         </div>
                       </div>
@@ -502,7 +561,7 @@ export default function CompanyShowroomLandingPage() {
         )}
       </main>
 
-      {/* 5단계: ★ 동영상 재생 모달 팝업 */}
+      {/* 동영상 재생 모달 팝업 */}
       {isVideoModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-slate-900 text-white rounded-3xl p-6 max-w-3xl w-full border border-slate-800 shadow-2xl space-y-4 animate-fadeIn">

@@ -14,7 +14,8 @@ import {
   Building2, 
   MessageSquare, 
   FileText, 
-  Home
+  Home,
+  Factory
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -26,7 +27,7 @@ export default function Header() {
   const [user, setUser] = useState(null);
   const pathname = usePathname();
 
-  // 실시간 안읽은 채팅 메시지 총 개수 상태 (새 메시지 전용 수치)
+  // 실시간 안읽은 채팅 메시지 총 개수 상태 (기본 동기화 수치)
   const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   const languages = [
@@ -58,25 +59,38 @@ export default function Header() {
     setTimeout(triggerGoogleCombo, 300);
   };
 
-  // ★ DB `is_read = false` 인 진짜 '새로운' 상대방 메시지만 정밀 카운트
+  // Supabase DB 기반 상대방 발신 중 '진짜 안 읽은 메시지' 정밀 계산
   const updateUnreadCountFromStorage = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const currentUser = session?.user || null;
       const currentRole = currentUser?.user_metadata?.role || 'seller';
-      const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
 
-      // DB에서 상대방이 나에게 보낸 메시지 중 is_read = false 인 메시지만 직접 COUNT
-      const { data: unreadMsgs, error } = await supabase
-        .from('chat_messages')
-        .select('id, is_read')
-        .eq('sender_role', opponentRole)
-        .eq('is_read', false);
+      // 로컬 스토리지에 읽은 대화방 ID 목록 가져오기
+      const readRoomIds = (localStorage.getItem('klick_read_room_ids') || '').split(',').filter(Boolean);
 
-      if (!error && unreadMsgs) {
-        const count = Math.min(unreadMsgs.length, 99);
-        setUnreadChatCount(count);
-        localStorage.setItem('klick_unread_chat_count', count.toString());
+      const { data: roomData } = await supabase.from('chat_rooms').select('id');
+      if (roomData && roomData.length > 0) {
+        const roomIds = roomData.map((r) => r.id);
+        const { data: msgData } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .in('room_id', roomIds);
+
+        if (msgData) {
+          const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
+
+          // 상대방이 보낸 메시지 중, 아직 읽지 않은 대화방(readRoomIds에 없음)의 메시지만 안읽음으로 인정
+          const unreadMsgs = msgData.filter((m) => {
+            const isOpponent = m.sender_role === opponentRole;
+            const isRoomUnread = !readRoomIds.includes(m.room_id.toString());
+            return isOpponent && isRoomUnread;
+          });
+
+          const count = Math.min(unreadMsgs.length, 99);
+          setUnreadChatCount(count);
+          localStorage.setItem('klick_unread_chat_count', count.toString());
+        }
       } else {
         setUnreadChatCount(0);
         localStorage.setItem('klick_unread_chat_count', '0');
@@ -120,12 +134,12 @@ export default function Header() {
     };
     window.addEventListener('klick_unread_chat_updated', handleUnreadUpdate);
 
-    // Supabase Realtime 기반 메시지 변동(INSERT/UPDATE) 즉시 감지 및 재계산
+    // Supabase Realtime 기반 새 메시지 INSERT 즉시 감지 및 재계산
     const realtimeChannel = supabase
       .channel('public:chat_messages_header_count')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'chat_messages' },
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         () => {
           updateUnreadCountFromStorage();
         }
@@ -239,7 +253,16 @@ export default function Header() {
             <span className="sr-only">Home</span>
           </Link>
 
-          {/* 2. 공개 RFQ 게시판 버튼 */}
+          {/* ★ 2. 카테고리별 공장 디렉토리 바로가기 */}
+          <Link
+            href="/factories"
+            className="p-2 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20 transition cursor-pointer flex items-center gap-1.5"
+          >
+            <Factory className="w-4 h-4 text-blue-400" />
+            <span className="hidden sm:inline">Factories</span>
+          </Link>
+
+          {/* 3. 공개 RFQ 게시판 버튼 */}
           <Link
             href="/rfq"
             className="p-2 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition cursor-pointer flex items-center gap-1.5"
@@ -248,7 +271,7 @@ export default function Header() {
             <span className="hidden sm:inline">RFQ Board</span>
           </Link>
 
-          {/* 3. 로그인 상태 분기 UI (진짜 안 읽은 새 메시지 수 unreadChatCount 실시간 동기화) */}
+          {/* 4. 로그인 상태 분기 UI (진짜 안 읽은 메시지 수 unreadChatCount 실시간 동기화) */}
           {user ? (
             <div className="relative">
               <button
@@ -261,7 +284,7 @@ export default function Header() {
               >
                 <div className="relative">
                   <User className="w-4 h-4 text-blue-400" />
-                  {/* 안읽은 새 메시지 수 뱃지 (0보다 클 때만 노출) */}
+                  {/* 안읽은 메시지 수 뱃지 (0보다 클 때만 노출) */}
                   {unreadChatCount > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-md animate-pulse">
                       {unreadChatCount > 99 ? '99+' : unreadChatCount}
@@ -305,7 +328,7 @@ export default function Header() {
                         <span>Product Dashboard</span>
                       </Link>
 
-                      {/* 3. Live Chat Hub (새로운 메시지 수 뱃지 실시간 노출) */}
+                      {/* 3. Live Chat Hub (진짜 안 읽은 메시지 수 뱃지 실시간 노출) */}
                       <Link
                         href="/chat"
                         onClick={() => setIsUserMenuOpen(false)}
@@ -375,7 +398,7 @@ export default function Header() {
             </Link>
           )}
 
-          {/* 4. 다국어 언어 선택 드롭다운 */}
+          {/* 5. 다국어 언어 선택 드롭다운 */}
           <div className="relative border-l border-slate-800 pl-1.5 sm:pl-2 ml-0.5 sm:ml-1">
             <button
               type="button"
