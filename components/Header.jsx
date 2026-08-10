@@ -253,10 +253,14 @@ export default function Header() {
             <span className="sr-only">Home</span>
           </Link>
 
-          {/* ★ 2. 카테고리별 공장 디렉토리 바로가기 */}
+          {/* ★ 2. 카테고리별 공장 디렉토리 바로가기 버튼 */}
           <Link
             href="/factories"
-            className="p-2 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20 transition cursor-pointer flex items-center gap-1.5"
+            className={`p-2 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+              pathname === '/factories'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20'
+            }`}
           >
             <Factory className="w-4 h-4 text-blue-400" />
             <span className="hidden sm:inline">Factories</span>
@@ -271,7 +275,7 @@ export default function Header() {
             <span className="hidden sm:inline">RFQ Board</span>
           </Link>
 
-          {/* 4. 로그인 상태 분기 UI (진짜 안 읽은 메시지 수 unreadChatCount 실시간 동기화) */}
+          {/* 4. 로그인 상태 분기 UI */}
           {user ? (
             <div className="relative">
               <button
@@ -284,7 +288,7 @@ export default function Header() {
               >
                 <div className="relative">
                   <User className="w-4 h-4 text-blue-400" />
-                  {/* 안읽은 메시지 수 뱃지 (0보다 클 때만 노출) */}
+                  {/* 안읽은 메시지 수 뱃지 */}
                   {unreadChatCount > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-md animate-pulse">
                       {unreadChatCount > 99 ? '99+' : unreadChatCount}
@@ -328,7 +332,7 @@ export default function Header() {
                         <span>Product Dashboard</span>
                       </Link>
 
-                      {/* 3. Live Chat Hub (진짜 안 읽은 메시지 수 뱃지 실시간 노출) */}
+                      {/* 3. Live Chat Hub */}
                       <Link
                         href="/chat"
                         onClick={() => setIsUserMenuOpen(false)}
