@@ -20,7 +20,11 @@ import {
   Image as ImageIcon,
   DollarSign,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Video,
+  Clock,
+  Ruler,
+  X
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -30,15 +34,25 @@ export default function ProductDashboardPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 등록 폼 입력 상태
+  // 기본 등록 폼 상태
   const [titleKo, setTitleKo] = useState('');
   const [category, setCategory] = useState('Industrial Machinery');
-  const [price, setPrice] = useState('145.00');
   const [moq, setMoq] = useState('100 Units');
+  const [leadTime, setLeadTime] = useState('15 - 20 Days (FOB)');
+  const [productSize, setProductSize] = useState('240 x 180 x 120 mm / 4.5kg');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [mainImageUrl, setMainImageUrl] = useState('');
+  const [galleryImagesStr, setGalleryImagesStr] = useState('');
   const [descriptionKo, setDescriptionKo] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
 
-  // AI 자동 영문 카피라이팅 상태
+  // 구간 단가 (Tiered Pricing) 상태
+  const [tieredPricing, setTieredPricing] = useState([
+    { min_qty: '100 - 499 Units', price: '145.00' },
+    { min_qty: '500 - 1,999 Units', price: '132.00' },
+    { min_qty: '2,000+ Units', price: '118.00' }
+  ]);
+
+  // AI 자동 생성 상태
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [titleEn, setTitleEn] = useState('');
   const [taglineEn, setTaglineEn] = useState('');
@@ -73,6 +87,7 @@ export default function ProductDashboardPage() {
             company_name: 'Hankook Precision Co., Ltd.',
             price: '145.00',
             moq: '100 Units',
+            lead_time: '15 - 20 Days',
             tagline: 'ISO 9001 certified heavy-duty industrial valve engineered with Korean precision technology.',
             image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
             created_at: new Date().toISOString(),
@@ -84,8 +99,10 @@ export default function ProductDashboardPage() {
             company_name: 'Hankook Precision Co., Ltd.',
             price: '320.00',
             moq: '50 Units',
+            lead_time: '20 - 25 Days',
             tagline: 'Heavy industrial grade actuator built for zero-leakage durability in extreme conditions.',
             image_url: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=800&q=80',
+            created_at: new Date().toISOString(),
           }
         ]);
       }
@@ -96,19 +113,34 @@ export default function ProductDashboardPage() {
     }
   };
 
-  // AI 한글 -> B2B 글로벌 영문 카피라이팅 변환
+  // 구간 단가 항목 추가/삭제
+  const handleAddPriceTier = () => {
+    setTieredPricing([...tieredPricing, { min_qty: '5,000+ Units', price: '100.00' }]);
+  };
+
+  const handleRemovePriceTier = (index) => {
+    setTieredPricing(tieredPricing.filter((_, idx) => idx !== index));
+  };
+
+  const handlePriceTierChange = (index, field, value) => {
+    const updated = [...tieredPricing];
+    updated[index][field] = value;
+    setTieredPricing(updated);
+  };
+
+  // AI 자동 영문 카피라이팅 & 기술 상세페이지 기획 생성
   const handleGenerateAiCopywriting = () => {
     if (!titleKo) {
-      alert('상품 한글명을 먼저 입력해 주세요.');
+      alert('제품 한글 명칭을 입력해 주세요.');
       return;
     }
 
     setIsAiGenerating(true);
     setTimeout(() => {
-      setTitleEn(`High-Performance Export Grade ${titleKo}`);
-      setTaglineEn(`ISO 9001 & CE certified premium ${category.toLowerCase()} engineered with Korean precision technology.`);
+      setTitleEn(`High-Precision ${titleKo} (Export Premium Standard)`);
+      setTaglineEn(`ISO 9001 & CE certified ${category.toLowerCase()} engineered with Korean advanced technology.`);
       setDescriptionEn(
-        `Official Verified Export Specification:\n- Item: ${titleKo}\n- Category: ${category}\n- Features: Industrial grade durability, severe environment tested, zero-defect quality control.\n\nDescription:\n${descriptionKo || 'Custom manufacturing and private labeling available for global buyers.'}`
+        `Official Verified Export Specification:\n- Product Name: ${titleKo}\n- Category: ${category}\n- Quality Standard: ISO 9001:2015, CE, RoHS Approved\n- Size & Weight: ${productSize}\n- Lead Time: ${leadTime}\n\nFeatures & Benefits:\n1. Engineered with high-durability materials for zero-defect reliability.\n2. Custom OEM logo branding and specialized export packaging available upon request.\n\nDescription:\n${descriptionKo || 'This high-performance Korean manufactured product is optimized for extreme operating conditions and long-term industrial reliability.'}`
       );
       setIsAiGenerating(false);
     }, 1200);
@@ -122,15 +154,24 @@ export default function ProductDashboardPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id || null;
 
+      const galleryArray = galleryImagesStr
+        ? galleryImagesStr.split(',').map(s => s.trim()).filter(Boolean)
+        : [mainImageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'];
+
       const newProductPayload = {
         title_en: titleEn || titleKo,
         title_ko: titleKo,
         category,
-        price,
+        price: tieredPricing[0]?.price || '145.00',
         moq,
+        lead_time: leadTime,
+        product_size: productSize,
+        video_url: videoUrl,
         tagline: taglineEn || `${titleKo} Export Model`,
         description_en: descriptionEn || descriptionKo,
-        image_url: imageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+        image_url: mainImageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+        gallery_images: galleryArray,
+        tiered_pricing: tieredPricing.map(t => ({ range: t.min_qty, price: `$${t.price} / Unit` })),
         company_name: 'Hankook Precision Co., Ltd.',
         user_id: userId,
       };
@@ -147,12 +188,11 @@ export default function ProductDashboardPage() {
         setProducts([localMock, ...products]);
       }
 
-      alert('Product successfully registered and published to global catalog!');
+      alert('Product and specifications successfully published to the global catalog!');
       resetForm();
       setIsAddModalOpen(false);
     } catch (error) {
       console.error('Failed to register product:', error);
-      alert('Product registered locally!');
       setIsAddModalOpen(false);
     }
   };
@@ -163,12 +203,14 @@ export default function ProductDashboardPage() {
     setTaglineEn('');
     setDescriptionKo('');
     setDescriptionEn('');
-    setImageUrl('');
+    setMainImageUrl('');
+    setGalleryImagesStr('');
+    setVideoUrl('');
   };
 
   // 상품 삭제 처리
   const handleDeleteProduct = async (e, id) => {
-    e.stopPropagation(); // 카드 전체 클릭 이벤트 상위 전파 차단
+    e.stopPropagation();
     if (!confirm('Are you sure you want to delete this product from your catalog?')) return;
 
     try {
@@ -199,7 +241,7 @@ export default function ProductDashboardPage() {
               Export Product Dashboard
             </h1>
             <p className="text-xs md:text-sm text-slate-400">
-              Manage live factory catalog items, AI English copywriting, and direct buyer inquiries.
+              Manage live factory catalog items, AI English copywriting, video tours, and tiered FOB pricing.
             </p>
           </div>
 
@@ -213,7 +255,7 @@ export default function ProductDashboardPage() {
           </button>
         </div>
 
-        {/* 2. 등록된 상품 카탈로그 그리드 (요청반영: 카드 내 어디를 눌러도 상세페이지로 이동) */}
+        {/* 등록된 상품 카탈로그 그리드 */}
         <div className="space-y-4">
           <div className="flex items-center justify-between border-b border-slate-200 pb-3">
             <div className="flex items-center gap-2">
@@ -243,7 +285,6 @@ export default function ProductDashboardPage() {
                   className="bg-white rounded-3xl border border-slate-200 hover:border-blue-500 hover:shadow-xl transition duration-200 overflow-hidden flex flex-col justify-between group cursor-pointer p-6 space-y-4"
                 >
                   <div className="space-y-4">
-                    {/* 대표 이미지 */}
                     <div className="w-full h-48 bg-slate-100 rounded-2xl overflow-hidden border border-slate-100 relative flex items-center justify-center">
                       {item.image_url ? (
                         <img
@@ -260,7 +301,6 @@ export default function ProductDashboardPage() {
                       </span>
                     </div>
 
-                    {/* 타이틀 및 카피라이팅 */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-1.5 text-[11px] font-extrabold text-blue-600">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
@@ -276,7 +316,6 @@ export default function ProductDashboardPage() {
                       </p>
                     </div>
 
-                    {/* 가격 및 MOQ 안내 */}
                     <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between text-xs">
                       <div>
                         <span className="text-[10px] text-slate-400 block font-bold">FOB Unit Price</span>
@@ -290,7 +329,6 @@ export default function ProductDashboardPage() {
                     </div>
                   </div>
 
-                  {/* 하단 제어 및 상세 진입 링크 영역 */}
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                     <span className="text-xs font-extrabold text-blue-600 group-hover:underline flex items-center gap-1">
                       <span>View Specifications</span>
@@ -313,17 +351,17 @@ export default function ProductDashboardPage() {
         </div>
       </main>
 
-      {/* 새 상품 등록 팝업 모달 */}
+      {/* ★ 전문 B2B 새 상품 등록 모달 (사진/동영상/구간단가/AI 지원) */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-2xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-fadeIn">
+          <div className="bg-white rounded-3xl p-8 max-w-3xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-fadeIn">
             <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
                   <Plus className="w-5 h-5 text-blue-600" />
-                  Register New Export Product
+                  Register New Export Product Specification
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">Enter product details in Korean and AI will generate English copywriting.</p>
+                <p className="text-xs text-slate-500 mt-0.5">Input your product details and AI will translate & format for global B2B buyers.</p>
               </div>
 
               <button
@@ -331,106 +369,193 @@ export default function ProductDashboardPage() {
                 onClick={() => setIsAddModalOpen(false)}
                 className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition cursor-pointer"
               >
-                <Trash2 className="w-5 h-5" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleAddProduct} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Product Title (Korean)</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="예: 초고압 유압 제어 밸브 HV-300"
-                  value={titleKo}
-                  onChange={(e) => setTitleKo(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
+            <form onSubmit={handleAddProduct} className="space-y-6">
+              
+              {/* 1. 기본 인포메이션 */}
+              <div className="space-y-4">
+                <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider block border-b pb-1">
+                  1. Basic Information
+                </span>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Product Name (Korean) *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="예: 초고압 산업용 유압 제어 밸브 HV-300"
+                    value={titleKo}
+                    onChange={(e) => setTitleKo(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Category *</label>
+                    <select
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    >
+                      <option value="Industrial Machinery">Industrial Machinery</option>
+                      <option value="K-Beauty & Cosmetics">K-Beauty & Cosmetics</option>
+                      <option value="K-Food & Beverages">K-Food & Beverages</option>
+                      <option value="Electronics & Smart IT">Electronics & Smart IT</option>
+                      <option value="General Manufacturing">General Manufacturing</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Minimum Order (MOQ) *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="100 Units"
+                      value={moq}
+                      onChange={(e) => setMoq(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Lead Time *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="15 - 20 Days (FOB)"
+                      value={leadTime}
+                      onChange={(e) => setLeadTime(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Dimensions & Weight</label>
+                  <input
+                    type="text"
+                    placeholder="예: 240 x 180 x 120 mm / 4.5kg"
+                    value={productSize}
+                    onChange={(e) => setProductSize(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  />
+                </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Category</label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
+              {/* 2. 알리바바형 수량별 구간 단가 (Tiered Pricing) */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b pb-1">
+                  <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider">
+                    2. Wholesale Tiered FOB Pricing ($ USD)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleAddPriceTier}
+                    className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1"
                   >
-                    <option value="Industrial Machinery">Industrial Machinery</option>
-                    <option value="K-Beauty & Cosmetics">K-Beauty & Cosmetics</option>
-                    <option value="K-Food & Beverages">K-Food & Beverages</option>
-                    <option value="Electronics & Smart IT">Electronics & Smart IT</option>
-                    <option value="General Manufacturing">General Manufacturing</option>
-                  </select>
+                    <Plus className="w-3 h-3" /> Add Tier Range
+                  </button>
                 </div>
 
+                <div className="space-y-2">
+                  {tieredPricing.map((tier, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="Range (e.g., 100 - 499 Units)"
+                        value={tier.min_qty}
+                        onChange={(e) => handlePriceTierChange(idx, 'min_qty', e.target.value)}
+                        className="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                      />
+                      <div className="flex items-center gap-1 w-32">
+                        <span className="text-xs font-bold text-slate-500">$</span>
+                        <input
+                          type="text"
+                          placeholder="Price"
+                          value={tier.price}
+                          onChange={(e) => handlePriceTierChange(idx, 'price', e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-emerald-600"
+                        />
+                      </div>
+                      {tieredPricing.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePriceTier(idx)}
+                          className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3. 미디어 링크 (대표사진/갤러리사진/동영상) */}
+              <div className="space-y-3">
+                <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider block border-b pb-1">
+                  3. Product Images & Demonstration Video
+                </span>
+
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">FOB Unit Price ($ USD)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Main Cover Image URL *</label>
                   <input
-                    type="text"
+                    type="url"
                     required
-                    placeholder="145.00"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
+                    placeholder="https://images.unsplash.com/..."
+                    value={mainImageUrl}
+                    onChange={(e) => setMainImageUrl(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Minimum Order (MOQ)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Additional Gallery Photos (Comma Separated URLs)</label>
                   <input
                     type="text"
-                    required
-                    placeholder="100 Units"
-                    value={moq}
-                    onChange={(e) => setMoq(e.target.value)}
+                    placeholder="https://img1.jpg, https://img2.jpg"
+                    value={galleryImagesStr}
+                    onChange={(e) => setGalleryImagesStr(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Factory Short Demo Video URL (MP4 or Embed)</label>
+                  <input
+                    type="url"
+                    placeholder="https://www.w3schools.com/html/mov_bbb.mp4"
+                    value={videoUrl}
+                    onChange={(e) => setVideoUrl(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Product Image URL</label>
-                <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/..."
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Product Description (Korean)</label>
-                <textarea
-                  rows={3}
-                  placeholder="제품 주요 사양 및 국산 기술 특장점을 한글로 입력하세요."
-                  value={descriptionKo}
-                  onChange={(e) => setDescriptionKo(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-              </div>
-
-              {/* AI 자동 변환 실행 섹션 */}
-              <div className="p-4 bg-blue-50/60 rounded-2xl border border-blue-100 space-y-3">
+              {/* 4. AI 지원 자동 기획 & 카피라이팅 엔진 */}
+              <div className="p-5 bg-blue-50/70 rounded-2xl border border-blue-100 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-extrabold text-blue-900 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-blue-600" /> AI English Copywriting Engine
+                    <Sparkles className="w-4 h-4 text-blue-600" /> AI Export Copywriter Engine
                   </span>
 
                   <button
                     type="button"
                     onClick={handleGenerateAiCopywriting}
                     disabled={isAiGenerating}
-                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
-                    {isAiGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                    <span>Generate English Specs</span>
+                    {isAiGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    <span>AI Generate English Spec Sheet</span>
                   </button>
                 </div>
 
                 {titleEn && (
-                  <div className="space-y-2 text-xs text-slate-700 pt-2 border-t border-blue-100">
+                  <div className="space-y-2 text-xs text-slate-700 pt-2 border-t border-blue-100 animate-fadeIn">
                     <div>
                       <span className="font-bold text-blue-900 block text-[10px]">AI Generated Title:</span>
                       <span className="font-extrabold text-slate-900">{titleEn}</span>
@@ -441,6 +566,17 @@ export default function ProductDashboardPage() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Product Description (Korean / Specs)</label>
+                <textarea
+                  rows={4}
+                  placeholder="제품 한글 사양이나 특장점을 자유롭게 입력하세요. AI가 글로벌 영어 규격으로 다듬어 드립니다."
+                  value={descriptionKo}
+                  onChange={(e) => setDescriptionKo(e.target.value)}
+                  className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-3">
@@ -457,7 +593,7 @@ export default function ProductDashboardPage() {
                   className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Publish Product</span>
+                  <span>Publish Specification</span>
                 </button>
               </div>
             </form>

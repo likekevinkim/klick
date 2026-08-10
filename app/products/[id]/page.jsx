@@ -10,7 +10,6 @@ import {
   Sparkles, 
   Package, 
   MessageSquare, 
-  ArrowLeft, 
   Edit3, 
   Trash2, 
   CheckCircle2, 
@@ -27,7 +26,8 @@ import {
   Layers,
   ExternalLink,
   ChevronRight,
-  Info
+  Video,
+  Play
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -38,12 +38,13 @@ export default function ProductDetailPage() {
 
   const [mounted, setMounted] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [isOwner, setIsOwner] = useState(true); // 셀러가 자유롭게 수정 가능하도록 기본권한 부여
+  const [isOwner, setIsOwner] = useState(true);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 대표 이미지 선택 상태
+  // 대표 미디어 선택 상태
   const [selectedImage, setSelectedImage] = useState('');
+  const [isVideoActive, setIsVideoActive] = useState(false);
 
   // 셀러 수정 모달 상태
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -54,6 +55,7 @@ export default function ProductDetailPage() {
   const [editTagline, setEditTagline] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editImageUrl, setEditImageUrl] = useState('');
+  const [editVideoUrl, setEditVideoUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [isAiGenerating, setIsAiGenerating] = useState(false);
 
@@ -68,12 +70,10 @@ export default function ProductDetailPage() {
     try {
       setLoading(true);
 
-      // 1. 세션 유저 확인
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user || null;
       setCurrentUser(user);
 
-      // 2. Supabase DB에서 해당 ID 상품 조회
       let foundProduct = null;
       if (productId && productId !== '1') {
         const { data } = await supabase
@@ -85,14 +85,13 @@ export default function ProductDetailPage() {
         if (data) foundProduct = data;
       }
 
-      // 3. DB에 없거나 샘플 ID인 경우 백업 B2B 알리바바형 표준 데이터 할당
       if (!foundProduct) {
         foundProduct = {
           id: productId || '1',
           user_id: user?.id || 'sample_owner_id',
           company_name: 'Hankook Precision Co., Ltd. (한국정밀공업)',
           company_id: '1',
-          title_en: 'High-Precision Hydraulic Control Valve HV-300 for Heavy Machinery',
+          title_en: 'High-Precision Hydraulic Control Valve HV-300 Heavy Duty',
           category: 'Industrial Machinery',
           price: '145.00',
           moq: '100 Units',
@@ -100,6 +99,7 @@ export default function ProductDetailPage() {
           reviews_count: 28,
           lead_time: '15 - 20 Days (FOB Incheon Port)',
           tagline: 'ISO 9001 & CE certified heavy-duty hydraulic valve engineered with Korean precision technology.',
+          video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
           tiered_pricing: [
             { range: '100 - 499 Units', price: '$145.00 / Unit' },
             { range: '500 - 1,999 Units', price: '$132.00 / Unit' },
@@ -133,7 +133,7 @@ export default function ProductDetailPage() {
       setProduct(foundProduct);
       setSelectedImage(foundProduct.image_url);
       populateEditForm(foundProduct);
-      setIsOwner(true); // 항상 수정 버튼 활성화 보장
+      setIsOwner(true);
     } catch (error) {
       console.error('Failed to load product detail:', error);
     } finally {
@@ -150,9 +150,9 @@ export default function ProductDetailPage() {
     setEditTagline(item.tagline || '');
     setEditDescription(item.description_en || '');
     setEditImageUrl(item.image_url || '');
+    setEditVideoUrl(item.video_url || '');
   };
 
-  // AI 영문 카피라이팅 재생성
   const handleRegenerateAi = () => {
     setIsAiGenerating(true);
     setTimeout(() => {
@@ -162,7 +162,6 @@ export default function ProductDetailPage() {
     }, 1000);
   };
 
-  // 수정 정보 저장 처리 (수정 즉시 화면 반영)
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -178,6 +177,7 @@ export default function ProductDetailPage() {
       tagline: editTagline,
       description_en: editDescription,
       image_url: editImageUrl,
+      video_url: editVideoUrl,
       tiered_pricing: [
         { range: `${editMoq || '100'} - 499 Units`, price: `$${editPrice} / Unit` },
         { range: '500 - 1,999 Units', price: `$${(basePriceNum * 0.9).toFixed(2)} / Unit` },
@@ -187,7 +187,7 @@ export default function ProductDetailPage() {
 
     try {
       if (product.id && product.id !== '1') {
-        const { error } = await supabase
+        await supabase
           .from('products')
           .update({
             title_en: editTitle,
@@ -197,12 +197,9 @@ export default function ProductDetailPage() {
             tagline: editTagline,
             description_en: editDescription,
             image_url: editImageUrl,
+            video_url: editVideoUrl,
           })
           .eq('id', product.id);
-
-        if (error) {
-          console.error('Supabase DB Update Error:', error);
-        }
       }
 
       setProduct(updatedData);
@@ -218,7 +215,6 @@ export default function ProductDetailPage() {
     }
   };
 
-  // 상품 삭제
   const handleDeleteProduct = async () => {
     if (!confirm('Are you sure you want to delete this product from your global catalog?')) return;
     try {
@@ -241,7 +237,7 @@ export default function ProductDetailPage() {
 
       <main className="max-w-7xl mx-auto px-6 mt-8 space-y-10">
         
-        {/* 1. 상단 브레드크럼 네비게이션 & 셀러 제어 버튼 */}
+        {/* 브레드크럼 & 편집 버튼 */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-xs text-slate-500 font-bold">
             <Link href="/" className="hover:text-blue-600">Home</Link>
@@ -251,7 +247,6 @@ export default function ProductDetailPage() {
             <span className="text-slate-800 truncate max-w-[200px] md:max-w-none">{product?.category}</span>
           </div>
 
-          {/* 셀러 수정 및 삭제 버튼 */}
           {isOwner && (
             <div className="flex items-center gap-2">
               <button
@@ -284,13 +279,14 @@ export default function ProductDetailPage() {
             <p className="text-xs text-slate-400">Loading verified B2B product specifications...</p>
           </div>
         ) : (
-          /* 2. 메인 상단 3단 레이아웃 (사진 갤러리 - B2B 핵심스펙/단가구간 - 공급업체) */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
-            {/* [좌측 1열]: 고화질 사진 갤러리 및 썸네일 바 */}
+            {/* [좌측 1열]: 고화질 미디어 갤러리 (사진 & 15초 비디오) */}
             <div className="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <div className="w-full h-80 md:h-96 bg-slate-100 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center relative group">
-                {selectedImage ? (
+                {isVideoActive && product?.video_url ? (
+                  <video src={product.video_url} controls autoPlay className="w-full h-full object-contain bg-black" />
+                ) : selectedImage ? (
                   <img src={selectedImage} alt={product.title_en} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
                 ) : (
                   <Package className="w-16 h-16 text-slate-300" />
@@ -301,15 +297,31 @@ export default function ProductDetailPage() {
                 </span>
               </div>
 
-              {/* 썸네일 리스트 */}
+              {/* 썸네일 & 동영상 재생 탭 */}
               <div className="flex items-center gap-3 overflow-x-auto pb-1">
+                {product?.video_url && (
+                  <button
+                    type="button"
+                    onClick={() => setIsVideoActive(true)}
+                    className={`w-16 h-16 rounded-xl border-2 transition flex-shrink-0 cursor-pointer bg-slate-900 flex flex-col items-center justify-center text-white space-y-0.5 ${
+                      isVideoActive ? 'border-rose-500 ring-2 ring-rose-200' : 'border-slate-700 opacity-80'
+                    }`}
+                  >
+                    <Play className="w-5 h-5 text-rose-500 fill-rose-500" />
+                    <span className="text-[9px] font-bold">Video</span>
+                  </button>
+                )}
+
                 {(product.gallery_images || [product.image_url]).map((img, idx) => (
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => setSelectedImage(img)}
+                    onClick={() => {
+                      setIsVideoActive(false);
+                      setSelectedImage(img);
+                    }}
                     className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition flex-shrink-0 cursor-pointer ${
-                      selectedImage === img ? 'border-blue-600 ring-2 ring-blue-100' : 'border-slate-200 opacity-70 hover:opacity-100'
+                      !isVideoActive && selectedImage === img ? 'border-blue-600 ring-2 ring-blue-100' : 'border-slate-200 opacity-70 hover:opacity-100'
                     }`}
                   >
                     <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
@@ -318,7 +330,7 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* [중앙 2열]: 품명, 평점, 수량별 단가 구간(Tiered Pricing), 납기일(Lead Time) */}
+            {/* [중앙 2열]: 품명, 평점, 수량별 단가 구간(Tiered Pricing), 납기일 */}
             <div className="lg:col-span-4 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
@@ -326,7 +338,6 @@ export default function ProductDetailPage() {
                     <Globe className="w-3.5 h-3.5" /> {product.category}
                   </span>
 
-                  {/* 평점 및 리뷰 수 */}
                   <div className="flex items-center gap-1 text-xs font-extrabold text-amber-500 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
                     <Star className="w-3.5 h-3.5 fill-amber-400" />
                     <span>{product.rating || 4.9}</span>
@@ -363,7 +374,6 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              {/* 리드타임 & MOQ 안내 */}
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
                   <span className="text-slate-400 text-[10px] font-bold block flex items-center gap-1">
@@ -380,7 +390,6 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              {/* RFQ / 샘플 요청 버튼 */}
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <Link
                   href="/chat"
@@ -445,7 +454,6 @@ export default function ProductDetailPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-8 space-y-8">
               
-              {/* [카드 1] B2B 제품 규격 속성 스펙 테이블 */}
               <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
                 <div className="border-b border-slate-100 pb-4">
                   <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -474,7 +482,6 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              {/* [카드 2] 상세 카피라이팅 & 기술 사양설명 */}
               <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
                 <div className="border-b border-slate-100 pb-4">
                   <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -489,7 +496,6 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* [우측 4열] 안심 거래 플랫폼 가이드 */}
             <div className="lg:col-span-4 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-5 h-fit">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-emerald-600" />
@@ -596,6 +602,17 @@ export default function ProductDetailPage() {
                   type="url"
                   value={editImageUrl}
                   onChange={(e) => setEditImageUrl(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Demo Video URL (MP4 / YouTube)</label>
+                <input
+                  type="url"
+                  placeholder="https://www.w3schools.com/html/mov_bbb.mp4"
+                  value={editVideoUrl}
+                  onChange={(e) => setEditVideoUrl(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
               </div>
