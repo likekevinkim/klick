@@ -14,16 +14,23 @@ import {
   Loader2,
   Paperclip,
   Image as ImageIcon,
-  X
+  X,
+  Tag
 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 export default function RealtimeChatPage() {
+  const searchParams = useSearchParams();
+  const paramProductId = searchParams.get('productId');
+  const paramCompany = searchParams.get('company');
+  const paramTitle = searchParams.get('title');
+
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState('seller');
 
-  // 대화방 목록 및 선택 상태 (기본적으로 모두 닫혀있음)
+  // 대화방 목록 및 현재 열린 대화방 ID (activeRoomId)
   const [rooms, setRooms] = useState([]);
   const [activeRoomId, setActiveRoomId] = useState(null);
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
@@ -33,22 +40,19 @@ export default function RealtimeChatPage() {
   const [uploading, setUploading] = useState(false);
   const [attachedFile, setAttachedFile] = useState(null);
 
-  // RFQ 견적서 작성 모달 상태
+  // 모달 상태
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [quotePrice, setQuotePrice] = useState('145.00');
   const [quoteMoq, setQuoteMoq] = useState('500 Units');
   const [quoteNote, setQuoteNote] = useState('Includes FOB shipping to Incheon Port. Lead time 14 days.');
 
-  // 무역 서류(PI/CI/PL) 다운로드 모달 상태
   const [isDocModalOpen, setIsQuoteDocModalOpen] = useState(false);
   const [selectedMsgForDoc, setSelectedMsgForDoc] = useState(null);
   const [selectedRoomForDoc, setSelectedRoomForDoc] = useState(null);
 
-  // 선택된 대화방 전용 샘플 배송 모달 상태
   const [isSampleModalOpen, setIsSampleModalOpen] = useState(false);
   const [selectedRoomForSample, setSelectedRoomForSample] = useState(null);
 
-  // 결제 모달 상태
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentQuoteData, setPaymentQuoteData] = useState(null);
 
@@ -60,7 +64,7 @@ export default function RealtimeChatPage() {
   useEffect(() => {
     setMounted(true);
     initChatSession();
-  }, []);
+  }, [paramProductId, paramCompany]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -79,10 +83,9 @@ export default function RealtimeChatPage() {
   };
 
   const initMockMultiRooms = () => {
-    // localStorage에서 기존에 이미 읽은 방 ID 리스트 로드 (예: "1,2")
     const readRoomIds = (localStorage.getItem('klick_read_room_ids') || '').split(',');
 
-    const rawMockRooms = [
+    let mockRooms = [
       {
         id: 1,
         product_title: 'Precision Hydraulic Control Valve HV-300',
@@ -107,7 +110,7 @@ export default function RealtimeChatPage() {
       }
     ];
 
-    const initialMessages = {
+    let initialMessages = {
       1: [
         {
           id: 101,
@@ -161,11 +164,45 @@ export default function RealtimeChatPage() {
       ]
     };
 
-    setRooms(rawMockRooms);
-    setRoomMessagesMap(initialMessages);
+    // ★ [핵심] URL 파라미터를 통한 특정 상품/회사 지정 접속 시 직통 대화방 자동 생성 및 즉시 오픈
+    if (paramCompany || paramTitle) {
+      const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Hydraulic Control Valve HV-300';
+      const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Hankook Precision Co., Ltd.';
+      
+      const newRoomId = Date.now();
+      const directRoom = {
+        id: newRoomId,
+        product_title: companyTitle,
+        buyer_name: 'Global Buyer (Direct Inquiry)',
+        seller_name: companySeller,
+        last_message: `Hello! I am inquiring about [${companyTitle}]. Please send us full specifications.`,
+        updated_at: 'Just Now',
+        courier: 'DHL Express',
+        tracking_no: 'DHL-DIRECT-2026-KR',
+        unread_count: 0
+      };
 
-    // 저장된 실제 읽지 않은 총합으로 헤더 뱃지 업데이트
-    syncTotalUnreadCount(rawMockRooms);
+      const directInitialMsg = {
+        id: Date.now() + 1,
+        room_id: newRoomId,
+        sender_role: 'buyer',
+        message: `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`,
+        translated_message: `안녕하세요! ${companySeller}의 [${companyTitle}] 상품에 대해 문의드립니다. FOB 단가 및 공식 카탈로그를 전달해 주실 수 있나요?`,
+        is_quote: false,
+        file: null,
+        created_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      mockRooms = [directRoom, ...mockRooms];
+      initialMessages[newRoomId] = [directInitialMsg];
+
+      // 직통 대화방을 바로 활성화(열림)
+      setActiveRoomId(newRoomId);
+    }
+
+    setRooms(mockRooms);
+    setRoomMessagesMap(initialMessages);
+    syncTotalUnreadCount(mockRooms);
   };
 
   const fetchChatRooms = async (userId) => {
@@ -182,6 +219,14 @@ export default function RealtimeChatPage() {
           unread_count: readRoomIds.includes(r.id.toString()) ? 0 : (r.unread_count || 0)
         }));
         setRooms(formatted);
+        
+        // 파라미터가 있으면 해당 ID 방 지정
+        if (paramProductId) {
+          const matched = formatted.find(r => r.id.toString() === paramProductId);
+          if (matched) setActiveRoomId(matched.id);
+          else setActiveRoomId(formatted[0].id);
+        }
+
         syncTotalUnreadCount(formatted);
         fetchMessagesForRooms(formatted);
       } else {
@@ -213,28 +258,23 @@ export default function RealtimeChatPage() {
     }
   };
 
-  // ★ 사용자가 클릭해서 해당 대화방을 펼치는 순간, 읽은 방 목록을 localStorage에 저장하고 뱃지 0 처리
   const handleToggleRoom = (roomId) => {
     if (activeRoomId === roomId) {
       setActiveRoomId(null);
     } else {
       setActiveRoomId(roomId);
 
-      // 1. 읽은 대화방 ID 저장
       const readRoomIds = new Set((localStorage.getItem('klick_read_room_ids') || '').split(',').filter(Boolean));
       readRoomIds.add(roomId.toString());
       localStorage.setItem('klick_read_room_ids', Array.from(readRoomIds).join(','));
 
-      // 2. 해당 방 unread_count를 0으로 변경
       const updatedRooms = rooms.map(r => r.id === roomId ? { ...r, unread_count: 0 } : r);
       setRooms(updatedRooms);
 
-      // 3. 헤더 총 안읽은 수치 업데이트
       syncTotalUnreadCount(updatedRooms);
     }
   };
 
-  // 전체 안읽은 개수 계산 및 헤더 이벤트 발생
   const syncTotalUnreadCount = (roomList) => {
     const total = roomList.reduce((acc, curr) => acc + (curr.unread_count || 0), 0);
     localStorage.setItem('klick_unread_chat_count', total.toString());
@@ -277,6 +317,29 @@ export default function RealtimeChatPage() {
     setAttachedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (imageInputRef.current) imageInputRef.current.value = '';
+  };
+
+  const handleSendSampleCoupon = () => {
+    if (!activeRoomId) return;
+
+    const couponMsgObj = {
+      id: Date.now(),
+      room_id: activeRoomId,
+      sender_id: user?.id || null,
+      sender_role: 'seller',
+      message: '[B2B Special Offer] Exclusive Sample Discount Voucher Issued! ($20 Off Air Freight)',
+      translated_message: '[B2B 전용 혜택] 바이어 전용 샘플 항공 배송 $20 할인 쿠폰이 발급되었습니다!',
+      is_quote: false,
+      file: null,
+      created_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setRoomMessagesMap((prevMap) => ({
+      ...prevMap,
+      [activeRoomId]: [...(prevMap[activeRoomId] || []), couponMsgObj],
+    }));
+
+    alert('Sample $20 Discount Voucher sent directly to buyer!');
   };
 
   const handleSendMessage = async (e) => {
@@ -428,7 +491,7 @@ export default function RealtimeChatPage() {
           </div>
         </div>
 
-        {/* 대화방 카드 목록 (기본적으로 모두 닫혀있음) */}
+        {/* 대화방 카드 목록 */}
         <div className="space-y-4">
           {rooms.map((room) => (
             <ChatRoomItem
@@ -447,7 +510,7 @@ export default function RealtimeChatPage() {
           ))}
         </div>
 
-        {/* 선택된 대화방이 활성화되었을 때만 하단 입력 폼 노출 */}
+        {/* 펼쳐진 대화방의 실시간 메시지 입력 폼 */}
         {activeRoomId && (
           <div className="bg-white rounded-3xl border border-slate-200 p-4 space-y-2 shadow-sm animate-fadeIn">
             {attachedFile && (
@@ -508,6 +571,18 @@ export default function RealtimeChatPage() {
                 <ImageIcon className="w-4 h-4" />
               </button>
 
+              {userRole === 'seller' && (
+                <button
+                  type="button"
+                  onClick={handleSendSampleCoupon}
+                  className="p-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl transition cursor-pointer border border-amber-200 font-extrabold text-xs flex items-center gap-1"
+                  title="Issue Sample Discount Coupon"
+                >
+                  <Tag className="w-4 h-4 text-amber-600" />
+                  <span className="hidden sm:inline">$20 Coupon</span>
+                </button>
+              )}
+
               <input
                 type="text"
                 value={newMessage}
@@ -535,7 +610,7 @@ export default function RealtimeChatPage() {
         )}
       </main>
 
-      {/* 1. 셀러 RFQ 견적서 발송 모달 */}
+      {/* 모달 연동 */}
       {isQuoteModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6">
@@ -604,7 +679,6 @@ export default function RealtimeChatPage() {
         </div>
       )}
 
-      {/* 2. 무역 서류 3종 (PI, CI, PL) 선택 인쇄 모달 */}
       <TradeDocModal
         isOpen={isDocModalOpen}
         onClose={() => setIsQuoteDocModalOpen(false)}
@@ -612,7 +686,6 @@ export default function RealtimeChatPage() {
         room={selectedRoomForDoc}
       />
 
-      {/* 3. 각 대화방 전용 샘플 주문 & 글로벌 배송 트래킹 모달 */}
       <SampleTrackingModal
         isOpen={isSampleModalOpen}
         onClose={() => setIsSampleModalOpen(false)}
@@ -621,7 +694,6 @@ export default function RealtimeChatPage() {
         onUpdateTracking={handleUpdateTracking}
       />
 
-      {/* 4. B2B 3가지 통합 결제 팝업 모달 */}
       {isPaymentModalOpen && (
         <B2bPaymentModal
           isOpen={isPaymentModalOpen}

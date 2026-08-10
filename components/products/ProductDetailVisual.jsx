@@ -22,12 +22,16 @@ export default function ProductDetailVisual({ product }) {
   const [selectedImage, setSelectedImage] = useState(product?.image_url || '');
   const [isVideoActive, setIsVideoActive] = useState(false);
 
-  // 1. [Chat with Representative] 버튼 동작: /chat 페이지로 해당 상품 정보를 전달하며 이동
+  // ★ [Chat with Representative] 버튼 클릭 시 해당 상품/회사 정보를 들고 /chat 으로 즉시 이동
   const handleStartChat = () => {
-    router.push(`/chat?productId=${product?.id || '1'}&company=${encodeURIComponent(product?.company_name || 'Hankook Precision')}`);
+    const pId = product?.id || '1';
+    const compName = encodeURIComponent(product?.company_name || 'Hankook Precision Co., Ltd.');
+    const pTitle = encodeURIComponent(product?.title_en || 'High-Precision Product');
+    
+    router.push(`/chat?productId=${pId}&company=${compName}&title=${pTitle}`);
   };
 
-  // 2. [Send Email Inquiry] 버튼 동작: 담당자 이메일 주소로 미리 작성된 영문 견적 문의 템플릿 메일창 오픈
+  // [Send Email Inquiry] 버튼 동작: 미리 작성된 영문 문의 템플릿 실행
   const handleSendEmail = () => {
     const targetEmail = product?.company_email || 'export@hankookprecision.co.kr';
     const subject = encodeURIComponent(`[KLICK B2B Inquiry] Quote Request for ${product?.title_en || 'Product'}`);
@@ -48,7 +52,7 @@ export default function ProductDetailVisual({ product }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-      {/* [좌측 7열]: 고화질 대표 미디어 갤러리 (사진 슬라이더 & 비디오) */}
+      {/* [좌측 7열]: 대표 미디어 갤러리 */}
       <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
         <div className="w-full h-80 md:h-[420px] bg-slate-100 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center relative group">
           {isVideoActive && product?.video_url ? (
@@ -97,7 +101,7 @@ export default function ProductDetailVisual({ product }) {
         </div>
       </div>
 
-      {/* [우측 5열]: 제조 공장 프로필 카드 + 담당자 채팅하기 및 이메일 문의 버튼 (좌측 이미지 영역과 높이 균형 완성) */}
+      {/* [우측 5열]: 공급업체 프로필 및 소통 버튼 */}
       <div className="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5 flex flex-col justify-between">
         <div className="space-y-4">
           <div className="border-b border-slate-100 pb-3 space-y-1">
@@ -140,7 +144,7 @@ export default function ProductDetailVisual({ product }) {
           </div>
         </div>
 
-        {/* 하단 실제 동작하는 담당자 소통 버튼 영역 (영문 기본, 좌측 미디어 박스와 완벽한 높이 대칭) */}
+        {/* 담당자 채팅하기 및 이메일 문의 버튼 */}
         <div className="space-y-2 pt-2 border-t border-slate-100">
           <button
             type="button"
