@@ -3,16 +3,53 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Package, ShieldCheck, Play, Building2, ExternalLink, MapPin, Award, CheckCircle2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { 
+  Package, 
+  ShieldCheck, 
+  Play, 
+  Building2, 
+  ExternalLink, 
+  MapPin, 
+  Award, 
+  CheckCircle2, 
+  MessageSquare, 
+  Mail 
+} from 'lucide-react';
 
 export default function ProductDetailVisual({ product }) {
+  const router = useRouter();
   const [selectedImage, setSelectedImage] = useState(product?.image_url || '');
   const [isVideoActive, setIsVideoActive] = useState(false);
 
+  // 1. [Chat with Representative] 버튼 동작: /chat 페이지로 해당 상품 정보를 전달하며 이동
+  const handleStartChat = () => {
+    router.push(`/chat?productId=${product?.id || '1'}&company=${encodeURIComponent(product?.company_name || 'Hankook Precision')}`);
+  };
+
+  // 2. [Send Email Inquiry] 버튼 동작: 담당자 이메일 주소로 미리 작성된 영문 견적 문의 템플릿 메일창 오픈
+  const handleSendEmail = () => {
+    const targetEmail = product?.company_email || 'export@hankookprecision.co.kr';
+    const subject = encodeURIComponent(`[KLICK B2B Inquiry] Quote Request for ${product?.title_en || 'Product'}`);
+    const body = encodeURIComponent(
+      `Dear Sales Manager at ${product?.company_name || 'Hankook Precision Co., Ltd.'},\n\n` +
+      `I found your product "${product?.title_en}" on the KLICK B2B Trade Platform.\n` +
+      `We are interested in sourcing this item and would like to request official pricing, MOQ terms, and delivery lead time.\n\n` +
+      `Product Item: ${product?.title_en}\n` +
+      `Category: ${product?.category || 'Industrial'}\n` +
+      `Target Order Quantity: ${product?.moq || '100 Units'}\n\n` +
+      `Please provide us with your official Proforma Invoice (PI) or quotation catalog.\n\n` +
+      `Best regards,\n` +
+      `Global B2B Buyer`
+    );
+
+    window.location.href = `mailto:${targetEmail}?subject=${subject}&body=${body}`;
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
       {/* [좌측 7열]: 고화질 대표 미디어 갤러리 (사진 슬라이더 & 비디오) */}
-      <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+      <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
         <div className="w-full h-80 md:h-[420px] bg-slate-100 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center relative group">
           {isVideoActive && product?.video_url ? (
             <video src={product.video_url} controls autoPlay className="w-full h-full object-contain bg-black" />
@@ -60,54 +97,77 @@ export default function ProductDetailVisual({ product }) {
         </div>
       </div>
 
-      {/* [우측 5열]: 알리바바 규격 검증 제조 공장(Verified Supplier) 프로필 카드 */}
-      <div className="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5 h-fit sticky top-28">
-        <div className="border-b border-slate-100 pb-3 space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-100 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Verified Supplier
-            </span>
-            <span className="text-[10px] text-slate-400 font-bold">South Korea 🇰🇷</span>
+      {/* [우측 5열]: 제조 공장 프로필 카드 + 담당자 채팅하기 및 이메일 문의 버튼 (좌측 이미지 영역과 높이 균형 완성) */}
+      <div className="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5 flex flex-col justify-between">
+        <div className="space-y-4">
+          <div className="border-b border-slate-100 pb-3 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-100 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Verified Supplier
+              </span>
+              <span className="text-[10px] text-slate-400 font-bold">South Korea 🇰🇷</span>
+            </div>
+
+            <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-1.5 pt-1.5">
+              <Building2 className="w-4.5 h-4.5 text-blue-600 flex-shrink-0" />
+              {product?.company_name || 'Hankook Precision Co., Ltd.'}
+            </h3>
           </div>
 
-          <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-1.5 pt-1.5">
-            <Building2 className="w-4.5 h-4.5 text-blue-600 flex-shrink-0" />
-            {product?.company_name || 'Hankook Precision Co., Ltd.'}
-          </h3>
+          <div className="space-y-2.5 text-xs">
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
+              <span className="text-slate-400 font-bold">Business Type:</span>
+              <span className="font-extrabold text-slate-800">Direct Manufacturer</span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
+              <span className="text-slate-400 font-bold flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 text-blue-600" /> Factory Location:
+              </span>
+              <span className="font-extrabold text-slate-800">
+                {product?.factory_location || 'Incheon, South Korea 🇰🇷'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
+              <span className="text-slate-400 font-bold flex items-center gap-1">
+                <Award className="w-3.5 h-3.5 text-amber-500" /> Certifications:
+              </span>
+              <span className="font-extrabold text-blue-600">
+                {product?.certifications || 'ISO 9001, CE Certified'}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-3 text-xs">
-          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
-            <span className="text-slate-400 font-bold">Business Type:</span>
-            <span className="font-extrabold text-slate-800">Direct Manufacturer</span>
-          </div>
+        {/* 하단 실제 동작하는 담당자 소통 버튼 영역 (영문 기본, 좌측 미디어 박스와 완벽한 높이 대칭) */}
+        <div className="space-y-2 pt-2 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={handleStartChat}
+            className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>Chat with Representative</span>
+          </button>
 
-          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
-            <span className="text-slate-400 font-bold flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-blue-600" /> Factory Location:
-            </span>
-            <span className="font-extrabold text-slate-800">
-              {product?.factory_location || 'Incheon, South Korea 🇰🇷'}
-            </span>
-          </div>
+          <button
+            type="button"
+            onClick={handleSendEmail}
+            className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Mail className="w-4 h-4 text-emerald-400" />
+            <span>Send Email Inquiry</span>
+          </button>
 
-          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
-            <span className="text-slate-400 font-bold flex items-center gap-1">
-              <Award className="w-3.5 h-3.5 text-amber-500" /> Certifications:
-            </span>
-            <span className="font-extrabold text-blue-600">
-              {product?.certifications || 'ISO 9001, CE Certified'}
-            </span>
-          </div>
+          <Link
+            href={`/companies/${product?.company_id || 1}`}
+            className="w-full py-2.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>Visit Official Factory Showroom</span>
+            <ExternalLink className="w-3 h-3" />
+          </Link>
         </div>
-
-        <Link
-          href={`/companies/${product?.company_id || 1}`}
-          className="w-full py-3.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-700 font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
-        >
-          <span>Visit Official Factory Showroom</span>
-          <ExternalLink className="w-3.5 h-3.5" />
-        </Link>
       </div>
     </div>
   );
