@@ -3,243 +3,432 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
+  Globe, 
+  LayoutDashboard, 
+  UserCheck, 
+  ChevronDown, 
+  LogOut, 
+  User, 
   Building2, 
   MessageSquare, 
-  Package, 
-  Globe, 
-  User, 
-  LogOut, 
-  LogIn, 
-  ChevronDown,
-  Sparkles
+  FileText, 
+  Home
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function Header() {
   const router = useRouter();
+  const [currentLang, setCurrentLang] = useState('EN');
+  const [isLangOpen, setIsLangOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [user, setUser] = useState(null);
   const pathname = usePathname();
 
-  const [user, setUser] = useState(null);
-  const [userRole, setUserRole] = useState('seller');
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  // 실시간 안읽은 채팅 메시지 총 개수 상태 (기본 동기화 수치)
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
 
-  useEffect(() => {
-    initHeaderSession();
+  const languages = [
+    { code: 'en', label: 'EN', name: 'English (US)' },
+    { code: 'ko', label: 'KO', name: '한국어 (KR)' },
+    { code: 'zh-CN', label: 'ZH', name: '中文 (简体)' },
+    { code: 'ja', label: 'JA', name: '日本語 (JP)' },
+    { code: 'es', label: 'ES', name: 'Español (ES)' },
+    { code: 'ar', label: 'AR', name: 'العربية (AR)' },
+  ];
 
-    // ★ Supabase Realtime 기반 실시간 새 메시지 감지 리스너
-    const channel = supabase
-      .channel('public:chat_messages_header')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-        (payload) => {
-          // 새 메시지가 들어오면 안읽은 메시지 수 재계산 및 뱃지 업데이트
-          handleNewRealtimeMessage(payload.new);
-        }
-      )
-      .subscribe();
+  // 구글 번역 쿠키 설정 및 셀렉터 변경 트리거
+  const setGoogleTranslateCookie = (langCode) => {
+    if (!langCode) return;
+    const domain = window.location.hostname;
+    
+    // 1. 쿠키 이중 경로 저장
+    document.cookie = `googtrans=/en/${langCode}; path=/;`;
+    document.cookie = `googtrans=/en/${langCode}; path=/; domain=${domain};`;
 
-    // 로컬 커스텀 이벤트 연동 (채팅방 진입 시 즉시 0으로 차감)
-    const handleUnreadUpdate = () => {
-      const savedCount = localStorage.getItem('klick_unread_chat_count');
-      if (savedCount !== null) {
-        setUnreadCount(parseInt(savedCount, 10));
-      } else {
-        setUnreadCount(0);
+    // 2. 구글 번역 드롭다운 셀렉터 이벤트 강제 발생
+    const triggerGoogleCombo = () => {
+      const googleCombo = document.querySelector('.goog-te-combo');
+      if (googleCombo) {
+        googleCombo.value = langCode;
+        googleCombo.dispatchEvent(new Event('change', { bubbles: true }));
       }
     };
 
-    window.addEventListener('klick_unread_chat_updated', handleUnreadUpdate);
-
-    return () => {
-      supabase.removeChannel(channel);
-      window.removeEventListener('klick_unread_chat_updated', handleUnreadUpdate);
-    };
-  }, [pathname]);
-
-  const initHeaderSession = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const currentUser = session?.user || null;
-    setUser(currentUser);
-
-    if (currentUser) {
-      const role = currentUser.user_metadata?.role || 'seller';
-      setUserRole(role);
-    }
-
-    // 안읽은 메시지 수 초기 계산
-    calculateUnreadCount(currentUser);
+    triggerGoogleCombo();
+    // DOM 렌더링 지연 대비 0.3초 후 2차 트리거
+    setTimeout(triggerGoogleCombo, 300);
   };
 
-  // DB 및 로컬 상태 기반 안읽은 메시지 수 계산
-  const calculateUnreadCount = async (currentUser) => {
-    try {
-      const savedCount = localStorage.getItem('klick_unread_chat_count');
-      
-      // 현재 채팅방(/chat)에 진입해 있는 상태라면 안읽은 개수 0 처리
-      if (pathname === '/chat') {
-        setUnreadCount(0);
-        localStorage.setItem('klick_unread_chat_count', '0');
-        return;
-      }
+  // ★ Supabase DB 및 localStorage 기반 안읽은 메시지 수 계산
+  const updateUnreadCountFromStorage = async () => {
+    // 채팅 페이지(/chat)에 접속해 있다면 뱃지 수치를 0으로 초기화
+    if (window.location.pathname === '/chat') {
+      setUnreadChatCount(0);
+      localStorage.setItem('klick_unread_chat_count', '0');
+      return;
+    }
 
-      if (savedCount !== null) {
-        setUnreadCount(parseInt(savedCount, 10));
-      } else {
-        // DB에서 최근 대화방 내역 기반 안읽은 개수 계산
-        const { data: roomData } = await supabase
-          .from('chat_rooms')
-          .select('id');
-
+    const savedCount = localStorage.getItem('klick_unread_chat_count');
+    if (savedCount !== null) {
+      setUnreadChatCount(parseInt(savedCount, 10));
+    } else {
+      try {
+        const { data: roomData } = await supabase.from('chat_rooms').select('id');
         if (roomData && roomData.length > 0) {
-          const roomIds = roomData.map(r => r.id);
+          const roomIds = roomData.map((r) => r.id);
           const { data: msgData } = await supabase
             .from('chat_messages')
             .select('*')
             .in('room_id', roomIds);
 
           if (msgData) {
-            // 내가 보낸 메시지가 아닌 상대방이 보낸 메시지 수 카운트
-            const targetRole = userRole === 'seller' ? 'buyer' : 'seller';
-            const unreadMsgs = msgData.filter(m => m.sender_role === targetRole);
-            const count = Math.min(unreadMsgs.length, 99); // 최대 99+
-            
-            setUnreadCount(count);
+            const count = Math.min(msgData.length, 99);
+            setUnreadChatCount(count);
             localStorage.setItem('klick_unread_chat_count', count.toString());
           }
+        } else {
+          setUnreadChatCount(0);
         }
+      } catch (err) {
+        console.error('Failed to calculate unread count:', err);
       }
-    } catch (err) {
-      console.error('Failed to calculate unread count:', err);
     }
   };
 
-  // 실시간으로 새 메시지가 INSERT 되었을 때 호출되는 스위치
-  const handleNewRealtimeMessage = (newMsg) => {
-    // 채팅 페이지에 접속 중일 때는 뱃지 증가시키지 않음
-    if (window.location.pathname === '/chat') return;
+  useEffect(() => {
+    // 1. Supabase 세션 초기 조회 및 이중 재검증
+    const fetchUserSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+      } else {
+        setTimeout(async () => {
+          const { data: { session: retrySession } } = await supabase.auth.getSession();
+          setUser(retrySession?.user || null);
+        }, 300);
+      }
+    };
+    fetchUserSession();
 
-    // 상대방이 보낸 메시지일 때 알림 뱃지 +1 증가
-    setUnreadCount((prev) => {
-      const nextCount = prev + 1;
-      localStorage.setItem('klick_unread_chat_count', nextCount.toString());
-      return nextCount;
+    // 2. Supabase 세션 상태 변화 실시간 감지
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
     });
+
+    // 3. 저장된 언어 불러오기 (기본값: EN)
+    const savedCode = localStorage.getItem('klick_lang_code') || 'en';
+    const savedLabel = localStorage.getItem('klick_lang_label') || 'EN';
+    setCurrentLang(savedLabel);
+
+    // 4. ★ 안읽은 메시지 수 초기화 및 실시간 리스너 등록
+    updateUnreadCountFromStorage();
+
+    const handleUnreadUpdate = () => {
+      updateUnreadCountFromStorage();
+    };
+    window.addEventListener('klick_unread_chat_updated', handleUnreadUpdate);
+
+    // ★ Supabase Realtime 기반 새 메시지 INSERT 즉시 감지 및 뱃지 +1 증가
+    const realtimeChannel = supabase
+      .channel('public:chat_messages_header_count')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        () => {
+          if (window.location.pathname !== '/chat') {
+            setUnreadChatCount((prev) => {
+              const nextCount = prev + 1;
+              localStorage.setItem('klick_unread_chat_count', nextCount.toString());
+              return nextCount;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    // 5. 구글 번역 스크립트 동적 주입 및 리스너 등록
+    if (!document.getElementById('google-translate-script')) {
+      const addScript = document.createElement('script');
+      addScript.id = 'google-translate-script';
+      addScript.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+      addScript.async = true;
+      document.body.appendChild(addScript);
+
+      window.googleTranslateElementInit = () => {
+        new window.google.translate.TranslateElement(
+          {
+            pageLanguage: 'en',
+            includedLanguages: 'en,ko,zh-CN,ja,es,ar',
+            autoDisplay: false,
+          },
+          'google_translate_element'
+        );
+
+        if (savedCode && savedCode !== 'en') {
+          setTimeout(() => {
+            setGoogleTranslateCookie(savedCode);
+          }, 200);
+        }
+      };
+    } else {
+      if (savedCode && savedCode !== 'en') {
+        setTimeout(() => {
+          setGoogleTranslateCookie(savedCode);
+        }, 200);
+      }
+    }
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+      supabase.removeChannel(realtimeChannel);
+      window.removeEventListener('klick_unread_chat_updated', handleUnreadUpdate);
+    };
+  }, []);
+
+  // 6. 페이지 이동(pathname 변경) 감지 시 번역 쿠키 유지 및 재스캔
+  useEffect(() => {
+    updateUnreadCountFromStorage();
+
+    const savedCode = localStorage.getItem('klick_lang_code');
+    if (savedCode && savedCode !== 'en') {
+      const timer = setTimeout(() => {
+        setGoogleTranslateCookie(savedCode);
+      }, 300);
+
+      return () => clearTimeout(timer);
+    }
+  }, [pathname]);
+
+  const changeLanguage = (langCode, label) => {
+    setCurrentLang(label);
+    setIsLangOpen(false);
+
+    localStorage.setItem('klick_lang_code', langCode);
+    localStorage.setItem('klick_lang_label', label);
+
+    setGoogleTranslateCookie(langCode);
+    // 번역 엔진 쿠키 적용을 위해 새로고침
+    window.location.reload();
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setIsUserMenuOpen(false);
     localStorage.removeItem('klick_unread_chat_count');
-    alert('성공적으로 로그아웃되었습니다.');
     router.push('/');
   };
 
+  const userRole = user?.user_metadata?.role || 'seller';
+
   return (
-    <header className="bg-[#0F172A] text-white border-b border-slate-800 sticky top-0 z-[99999] backdrop-blur-md bg-opacity-95">
-      <div className="max-w-7xl mx-auto px-6 h-18 flex items-center justify-between gap-4">
-        
-        {/* 1. 플랫폼 로고 */}
-        <Link href="/" className="flex items-center gap-2 group cursor-pointer">
-          <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center font-extrabold text-white text-xl tracking-wider shadow-lg shadow-blue-600/30 group-hover:scale-105 transition">
+    <header className="sticky top-0 z-[99999] bg-slate-900 text-white border-b border-slate-800 shadow-md">
+      {/* 구글 번역 숨김 요소 */}
+      <div id="google_translate_element" className="hidden"></div>
+
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-18 flex items-center justify-between gap-2 sm:gap-4">
+        {/* KLICK 브랜드 로고 */}
+        <Link href="/" className="flex items-center gap-2 cursor-pointer group notranslate flex-shrink-0" translate="no">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-600 rounded-xl flex items-center justify-center font-extrabold text-white text-lg sm:text-xl shadow-lg group-hover:bg-blue-500 transition">
             K
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-black tracking-tight text-white flex items-center gap-1">
-              KLICK <span className="text-[10px] bg-blue-500/20 text-blue-400 font-extrabold px-1.5 py-0.5 rounded border border-blue-500/30">B2B</span>
+            <span className="font-extrabold text-lg sm:text-xl tracking-tight text-white flex items-center gap-1">
+              KLICK <span className="text-[10px] sm:text-xs font-semibold bg-blue-600/30 text-blue-400 px-1.5 sm:px-2 py-0.5 rounded-full border border-blue-500/30">B2B</span>
             </span>
-            <span className="text-[9px] text-slate-400 font-bold tracking-widest uppercase">Global Export Gateway</span>
+            <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium tracking-wider hidden xs:block">
+              Global Trade
+            </span>
           </div>
         </Link>
 
-        {/* 2. 대메뉴 네비게이션 */}
-        <nav className="hidden md:flex items-center gap-1 text-xs font-extrabold">
+        {/* 내비게이션 & 사용자 맞춤 버튼 영역 */}
+        <nav className="flex items-center gap-1.5 sm:gap-3">
+          {/* 1. 홈 바로가기 (아이콘 형태 노출) */}
           <Link
             href="/"
-            className={`px-4 py-2 rounded-xl transition ${
-              pathname === '/' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
+            title="Home"
+            className="p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center justify-center"
           >
-            카탈로그 (Home)
+            <Home className="w-4 h-4 text-blue-400" />
+            <span className="sr-only">Home</span>
           </Link>
 
+          {/* 2. 공개 RFQ 게시판 버튼 */}
           <Link
-            href="/products"
-            className={`px-4 py-2 rounded-xl transition flex items-center gap-1.5 ${
-              pathname.startsWith('/products') ? 'bg-blue-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
+            href="/rfq"
+            className="p-2 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition cursor-pointer flex items-center gap-1.5"
           >
-            <Package className="w-4 h-4" />
-            <span>판매자 대시보드</span>
+            <FileText className="w-4 h-4 text-emerald-400" />
+            <span className="hidden sm:inline">RFQ Board</span>
           </Link>
 
-          {/* ★ 실시간 안읽은 메시지 뱃지가 적용된 원래 'Live Chat Hub' 메뉴 */}
-          <Link
-            href="/chat"
-            className={`px-4 py-2 rounded-xl transition flex items-center gap-1.5 relative ${
-              pathname === '/chat' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span>Live Chat Hub</span>
-
-            {/* 안읽은 메시지가 1개 이상일 때 노출되는 빨간색 알림 뱃지 */}
-            {unreadCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg border-2 border-[#0F172A] animate-pulse">
-                {unreadCount > 99 ? '99+' : `${unreadCount} New`}
-              </span>
-            )}
-          </Link>
-        </nav>
-
-        {/* 3. 로그인 / 사용자 프로필 제어 구역 */}
-        <div className="flex items-center gap-3">
+          {/* 3. 로그인 상태 분기 UI (안읽은 메시지 수 unreadChatCount 실시간 동기화) */}
           {user ? (
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                className="flex items-center gap-2 p-1.5 pr-3 bg-slate-800 hover:bg-slate-700 rounded-2xl border border-slate-700 transition cursor-pointer text-xs font-bold"
+                onClick={() => {
+                  setIsUserMenuOpen(!isUserMenuOpen);
+                  setIsLangOpen(false);
+                }}
+                className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5 relative"
               >
-                <div className="w-7 h-7 rounded-xl bg-blue-600 text-white flex items-center justify-center font-extrabold text-xs">
-                  {user.email ? user.email[0].toUpperCase() : 'S'}
+                <div className="relative">
+                  <User className="w-4 h-4 text-blue-400" />
+                  {/* ★ 안읽은 메시지 수 뱃지 (0보다 클 때만 노출) */}
+                  {unreadChatCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-extrabold rounded-full flex items-center justify-center shadow-md animate-pulse">
+                      {unreadChatCount}
+                    </span>
+                  )}
                 </div>
-                <span className="text-slate-200 hidden sm:inline max-w-[120px] truncate">{user.email}</span>
+
+                <span className="font-extrabold hidden sm:inline">
+                  {userRole === 'seller' ? 'Seller Hub' : 'Buyer Hub'}
+                </span>
+                
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
 
-              {/* 프로필 드롭다운 메뉴 */}
-              {isProfileMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 p-2 space-y-1 z-[999999] animate-fadeIn">
-                  <div className="px-3 py-2 border-b border-slate-100 space-y-0.5">
-                    <span className="text-[10px] text-slate-400 font-extrabold uppercase block">Role</span>
-                    <span className="text-xs font-black text-blue-600 uppercase block">{userRole}</span>
+              {/* 드롭다운 메뉴 영역 */}
+              {isUserMenuOpen && (
+                <div className="absolute right-0 mt-2 w-52 sm:w-56 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-fadeIn">
+                  <div className="px-4 py-2 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    {userRole === 'seller' ? 'Seller Control Hub' : 'Buyer Sourcing Center'}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="w-full text-left px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition flex items-center gap-2 cursor-pointer"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>로그아웃</span>
-                  </button>
+                  {userRole === 'seller' ? (
+                    <>
+                      {/* 1. Factory Profile & Showroom */}
+                      <Link
+                        href="/companies/1"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
+                      >
+                        <Building2 className="w-4 h-4 text-blue-500" />
+                        <span>Factory Profile & Showroom</span>
+                      </Link>
+
+                      {/* 2. Product Dashboard */}
+                      <Link
+                        href="/products"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
+                      >
+                        <LayoutDashboard className="w-4 h-4 text-emerald-500" />
+                        <span>Product Dashboard</span>
+                      </Link>
+
+                      {/* 3. Live Chat Hub (안읽은 메시지 수 뱃지 실시간 노출) */}
+                      <Link
+                        href="/chat"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-purple-500" />
+                          <span>Live Chat Hub</span>
+                        </div>
+                        {unreadChatCount > 0 && (
+                          <span className="px-2 py-0.5 bg-rose-500 text-white text-[10px] font-extrabold rounded-full">
+                            {unreadChatCount} new
+                          </span>
+                        )}
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href="/buyer/profile"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
+                      >
+                        <Building2 className="w-4 h-4 text-blue-500" />
+                        <span>Buyer Profile Hub</span>
+                      </Link>
+
+                      <Link
+                        href="/chat"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-purple-500" />
+                          <span>Live Chat Hub</span>
+                        </div>
+                        {unreadChatCount > 0 && (
+                          <span className="px-2 py-0.5 bg-rose-500 text-white text-[10px] font-extrabold rounded-full">
+                            {unreadChatCount} new
+                          </span>
+                        )}
+                      </Link>
+                    </>
+                  )}
+
+                  <div className="border-t border-slate-100 mt-1 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 transition flex items-center gap-2 cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           ) : (
+            /* 비로그인 상태 UI */
             <Link
-              href="/chat"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
+              href="/login"
+              className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5"
             >
-              <LogIn className="w-4 h-4" />
-              <span>로그인 / 가입</span>
+              <UserCheck className="w-4 h-4 text-blue-400" />
+              <span className="hidden sm:inline">Sign In / Up</span>
             </Link>
           )}
-        </div>
+
+          {/* 4. 다국어 언어 선택 드롭다운 */}
+          <div className="relative border-l border-slate-800 pl-1.5 sm:pl-2 ml-0.5 sm:ml-1">
+            <button
+              type="button"
+              onClick={() => {
+                setIsLangOpen(!isLangOpen);
+                setIsUserMenuOpen(false);
+              }}
+              className="px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1"
+            >
+              <Globe className="w-4 h-4 text-blue-400" />
+              <span className="notranslate" translate="no">{currentLang}</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
+
+            {isLangOpen && (
+              <div className="absolute right-0 mt-2 w-40 sm:w-44 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-fadeIn">
+                <div className="px-3 py-1.5 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Select Language
+                </div>
+                {languages.map((lang) => (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    onClick={() => changeLanguage(lang.code, lang.label)}
+                    className={`w-full text-left px-4 py-2.5 text-xs font-bold transition flex items-center justify-between hover:bg-slate-50 cursor-pointer ${
+                      currentLang === lang.label ? 'text-blue-600 bg-blue-50/60' : 'text-slate-700'
+                    }`}
+                  >
+                    <span className="notranslate" translate="no">{lang.name}</span>
+                    {currentLang === lang.label && <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </nav>
       </div>
     </header>
   );
