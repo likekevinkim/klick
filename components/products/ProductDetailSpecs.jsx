@@ -2,12 +2,12 @@
 'use client';
 
 import Link from 'next/link';
-import { Globe, Star, Clock, Package, MessageSquare, ShoppingBag, Layers, FileText, ShieldCheck, CheckCircle2, Ruler } from 'lucide-react';
+import { Globe, Star, Clock, Package, MessageSquare, ShoppingBag, Layers, FileText, Ruler } from 'lucide-react';
 
 export default function ProductDetailSpecs({ product, isOwner }) {
   return (
     <div className="space-y-8">
-      {/* 1. 수량별 구간 단가표 (Tiered Pricing Table) */}
+      {/* 1. 알리바바 B2B 핵심: 수량별 구간 단가표 (Tiered FOB Pricing) & 발주 요약 */}
       <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
@@ -32,7 +32,7 @@ export default function ProductDetailSpecs({ product, isOwner }) {
           </p>
         </div>
 
-        {/* 수량별 단가 구간 (Tiered Pricing Box) */}
+        {/* 알리바바 B2B 수량별 단가 구간 (Tiered Pricing Box) */}
         <div className="p-5 bg-slate-900 text-white rounded-2xl border border-slate-800 space-y-3">
           <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">
             Wholesale Tiered FOB Price Range
@@ -96,72 +96,49 @@ export default function ProductDetailSpecs({ product, isOwner }) {
         </div>
       </div>
 
-      {/* 2. 스펙 표 & 상세 사양서 */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-8 space-y-8">
-          
-          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-            <div className="border-b border-slate-100 pb-4">
-              <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <Layers className="w-5 h-5 text-blue-600" />
-                Product Attribute Specifications Table
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              {(product?.attributes || [
-                { name: 'Model No.', value: 'HV-300-KR' },
-                { name: 'Working Pressure', value: 'Max 350 Bar (5,076 PSI)' },
-                { name: 'Flow Rate', value: '120 L/min' },
-                { name: 'Body Material', value: 'Ductile Iron GGG40 / Heavy Alloy' },
-                { name: 'Operating Temp', value: '-20°C to +80°C' },
-                { name: 'Certification', value: 'ISO 9001:2015, CE Certified' },
-                { name: 'Country of Origin', value: 'South Korea (Made in Korea)' },
-                { name: 'OEM / ODM', value: 'Available (Custom Logo & Packaging)' }
-              ]).map((attr, idx) => (
-                <div key={idx} className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                  <span className="text-slate-500 font-bold">{attr.name}</span>
-                  <span className="font-extrabold text-slate-800">{attr.value}</span>
-                </div>
-              ))}
-            </div>
+      {/* 2. 가로 폭이 상단 제품 정보와 동일하게 확장된 스펙 표 & 상세 사양서 (lg:col-span-12 전체 너비) */}
+      <div className="space-y-8">
+        
+        {/* [스펙 카드 1]: B2B 속성 스펙 테이블 (전체 너비) */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+          <div className="border-b border-slate-100 pb-4">
+            <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              <Layers className="w-5 h-5 text-blue-600" />
+              Product Attribute Specifications Table
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">Verified technical properties and export compliance details.</p>
           </div>
 
-          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-            <div className="border-b border-slate-100 pb-4">
-              <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-blue-600" />
-                Detailed Specification Sheet & Features
-              </h2>
-            </div>
-
-            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-xs md:text-sm text-slate-800 whitespace-pre-line leading-relaxed font-mono">
-              {product?.description_en}
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            {(product?.attributes || [
+              { name: 'Model No.', value: 'HV-300-KR' },
+              { name: 'Working Pressure', value: 'Max 350 Bar (5,076 PSI)' },
+              { name: 'Flow Rate', value: '120 L/min' },
+              { name: 'Body Material', value: 'Ductile Iron GGG40 / Heavy Alloy' },
+              { name: 'Operating Temp', value: '-20°C to +80°C' },
+              { name: 'Certification', value: 'ISO 9001:2015, CE Certified' },
+              { name: 'Country of Origin', value: 'South Korea (Made in Korea)' },
+              { name: 'OEM / ODM', value: 'Available (Custom Logo & Packaging)' }
+            ]).map((attr, idx) => (
+              <div key={idx} className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                <span className="text-slate-500 font-bold">{attr.name}</span>
+                <span className="font-extrabold text-slate-800">{attr.value}</span>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="lg:col-span-4 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-5 h-fit">
-          <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-emerald-600" />
-            KLICK Safe Trade Guarantee
-          </h3>
+        {/* [스펙 카드 2]: AI 카피라이팅 & 리치 에디터로 제작된 기획 상세 설명 (전체 너비) */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+          <div className="border-b border-slate-100 pb-4">
+            <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-600" />
+              Detailed Specification Sheet & Features
+            </h2>
+          </div>
 
-          <div className="space-y-3 text-xs text-slate-600">
-            <div className="flex items-start gap-2.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-              <span>Direct contact with verified South Korean factory team.</span>
-            </div>
-
-            <div className="flex items-start gap-2.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-              <span>Real-time multilingual AI chat translation.</span>
-            </div>
-
-            <div className="flex items-start gap-2.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-              <span>Instant Proforma Invoice (PI) issuance & escrow payment support.</span>
-            </div>
+          <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-xs md:text-sm text-slate-800 whitespace-pre-line leading-relaxed font-mono">
+            {product?.description_en}
           </div>
         </div>
       </div>
