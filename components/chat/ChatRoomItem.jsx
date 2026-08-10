@@ -40,7 +40,7 @@ export default function ChatRoomItem({
               Inquiry Item
             </span>
 
-            {/* ★ 각 대화방별 안읽은 메세지 개수 시각적 뱃지 (0보다 클 때만 깜빡이는 빨간/주황 뱃지 노출) */}
+            {/* 안읽은 메시지 개수 뱃지 (읽지 않았고 닫혀있을 때만 깜빡이는 뱃지 노출) */}
             {!isOpen && unreadCount > 0 && (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-extrabold shadow-sm animate-pulse">
                 <Sparkles className="w-3 h-3 text-amber-300" />

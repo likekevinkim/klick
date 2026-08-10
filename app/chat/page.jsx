@@ -23,7 +23,7 @@ export default function RealtimeChatPage() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState('seller');
 
-  // 대화방 목록 및 선택 상태 (기본적으로 모두 닫혀있음: activeRoomId = null)
+  // 대화방 목록 및 선택 상태 (기본적으로 모두 닫혀있음)
   const [rooms, setRooms] = useState([]);
   const [activeRoomId, setActiveRoomId] = useState(null);
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
@@ -79,7 +79,10 @@ export default function RealtimeChatPage() {
   };
 
   const initMockMultiRooms = () => {
-    const mockRooms = [
+    // localStorage에서 기존에 이미 읽은 방 ID 리스트 로드 (예: "1,2")
+    const readRoomIds = (localStorage.getItem('klick_read_room_ids') || '').split(',');
+
+    const rawMockRooms = [
       {
         id: 1,
         product_title: 'Precision Hydraulic Control Valve HV-300',
@@ -89,7 +92,7 @@ export default function RealtimeChatPage() {
         updated_at: '10:24 AM',
         courier: 'DHL Express',
         tracking_no: 'DHL-8829-4019-KR',
-        unread_count: 1 // ★ 1번 대화방 읽지 않은 글 1개
+        unread_count: readRoomIds.includes('1') ? 0 : 1
       },
       {
         id: 2,
@@ -100,7 +103,7 @@ export default function RealtimeChatPage() {
         updated_at: 'Yesterday',
         courier: 'FedEx Express',
         tracking_no: 'FDX-9901-2048-KR',
-        unread_count: 1 // ★ 2번 대화방 읽지 않은 글 1개
+        unread_count: readRoomIds.includes('2') ? 0 : 1
       }
     ];
 
@@ -158,11 +161,11 @@ export default function RealtimeChatPage() {
       ]
     };
 
-    setRooms(mockRooms);
+    setRooms(rawMockRooms);
     setRoomMessagesMap(initialMessages);
 
-    // ★ 초기 총 안읽은 수치 헤더 동기화 (1 + 1 = 2개)
-    syncTotalUnreadCount(mockRooms);
+    // 저장된 실제 읽지 않은 총합으로 헤더 뱃지 업데이트
+    syncTotalUnreadCount(rawMockRooms);
   };
 
   const fetchChatRooms = async (userId) => {
@@ -173,8 +176,14 @@ export default function RealtimeChatPage() {
         .order('updated_at', { ascending: false });
 
       if (data && data.length > 0) {
-        setRooms(data);
-        fetchMessagesForRooms(data);
+        const readRoomIds = (localStorage.getItem('klick_read_room_ids') || '').split(',');
+        const formatted = data.map(r => ({
+          ...r,
+          unread_count: readRoomIds.includes(r.id.toString()) ? 0 : (r.unread_count || 0)
+        }));
+        setRooms(formatted);
+        syncTotalUnreadCount(formatted);
+        fetchMessagesForRooms(formatted);
       } else {
         initMockMultiRooms();
       }
@@ -204,22 +213,28 @@ export default function RealtimeChatPage() {
     }
   };
 
-  // ★ 사용자가 클릭해서 해당 대화방을 펼치는 순간, 안읽은 수치를 0으로 바꾸고 Header 총 개수 동기화
+  // ★ 사용자가 클릭해서 해당 대화방을 펼치는 순간, 읽은 방 목록을 localStorage에 저장하고 뱃지 0 처리
   const handleToggleRoom = (roomId) => {
     if (activeRoomId === roomId) {
       setActiveRoomId(null);
     } else {
       setActiveRoomId(roomId);
 
+      // 1. 읽은 대화방 ID 저장
+      const readRoomIds = new Set((localStorage.getItem('klick_read_room_ids') || '').split(',').filter(Boolean));
+      readRoomIds.add(roomId.toString());
+      localStorage.setItem('klick_read_room_ids', Array.from(readRoomIds).join(','));
+
+      // 2. 해당 방 unread_count를 0으로 변경
       const updatedRooms = rooms.map(r => r.id === roomId ? { ...r, unread_count: 0 } : r);
       setRooms(updatedRooms);
 
-      // 헤더 안읽은 메시지 수 재계산 및 갱신 이벤트 전송
+      // 3. 헤더 총 안읽은 수치 업데이트
       syncTotalUnreadCount(updatedRooms);
     }
   };
 
-  // ★ 전체 안읽은 개수 계산 및 헤더 이벤트 발생
+  // 전체 안읽은 개수 계산 및 헤더 이벤트 발생
   const syncTotalUnreadCount = (roomList) => {
     const total = roomList.reduce((acc, curr) => acc + (curr.unread_count || 0), 0);
     localStorage.setItem('klick_unread_chat_count', total.toString());
@@ -413,7 +428,7 @@ export default function RealtimeChatPage() {
           </div>
         </div>
 
-        {/* 대화방 카드 목록 (각 카드에 unread_count 뱃지 노출) */}
+        {/* 대화방 카드 목록 (기본적으로 모두 닫혀있음) */}
         <div className="space-y-4">
           {rooms.map((room) => (
             <ChatRoomItem
@@ -432,7 +447,7 @@ export default function RealtimeChatPage() {
           ))}
         </div>
 
-        {/* 선택된 대화방이 활성화되었을 때만 입력 폼 노출 */}
+        {/* 선택된 대화방이 활성화되었을 때만 하단 입력 폼 노출 */}
         {activeRoomId && (
           <div className="bg-white rounded-3xl border border-slate-200 p-4 space-y-2 shadow-sm animate-fadeIn">
             {attachedFile && (
