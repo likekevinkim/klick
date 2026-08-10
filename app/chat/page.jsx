@@ -7,7 +7,7 @@ import B2bPaymentModal from '@/components/B2bPaymentModal';
 import ChatRoomItem from '@/components/chat/ChatRoomItem';
 import TradeDocModal from '@/components/chat/TradeDocModal';
 import SampleTrackingModal from '@/components/chat/SampleTrackingModal';
-import { Sparkles, Loader2, FileText } from 'lucide-react';
+import { Sparkles, Loader2, FileText, MessageSquare } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
@@ -24,6 +24,7 @@ function ChatContent() {
   const [rooms, setRooms] = useState([]);
   const [activeRoomId, setActiveRoomId] = useState(null);
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
+  const [loading, setLoading] = useState(true);
 
   // 모달 상태
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
@@ -49,191 +50,114 @@ function ChatContent() {
   }, [paramProductId, paramCompany]);
 
   const initChatSession = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      setUser(session.user);
-      const role = session.user.user_metadata?.role || 'seller';
-      setUserRole(role);
-      fetchChatRooms(session.user.id);
-    } else {
-      initMockMultiRooms();
-    }
-  };
-
-  const initMockMultiRooms = () => {
-    const readRoomIds = (localStorage.getItem('klick_read_room_ids') || '').split(',');
-
-    let mockRooms = [
-      {
-        id: 1,
-        product_title: 'Precision Hydraulic Control Valve HV-300',
-        buyer_name: 'John Smith (US Sourcing LLC)',
-        seller_name: 'Hankook Precision Co., Ltd.',
-        last_message: 'Can you send us a formal FOB quote for 500 units?',
-        updated_at: '10:24 AM',
-        courier: 'DHL Express',
-        tracking_no: 'DHL-8829-4019-KR',
-        unread_count: readRoomIds.includes('1') ? 0 : 1
-      },
-      {
-        id: 2,
-        product_title: 'Organic K-Beauty Repair Serum 50ml',
-        buyer_name: 'Elena Rostova (Euro Cosmetics Import)',
-        seller_name: 'Hankook Precision Co., Ltd.',
-        last_message: 'Is OEM private labeling available for this serum?',
-        updated_at: 'Yesterday',
-        courier: 'FedEx Express',
-        tracking_no: 'FDX-9901-2048-KR',
-        unread_count: readRoomIds.includes('2') ? 0 : 1
-      }
-    ];
-
-    let initialMessages = {
-      1: [
-        {
-          id: 101,
-          room_id: 1,
-          sender_role: 'buyer',
-          message: 'Hello! We are interested in ordering 500 units of HV-300. Can you send us a formal FOB quote?',
-          translated_message: '안녕하세요! HV-300 모델 500개 주문에 관심이 있습니다. 공식 FOB 견적서를 보내주실 수 있나요?',
-          is_quote: false,
-          file: null,
-          created_at: '10:20 AM',
-        },
-        {
-          id: 102,
-          room_id: 1,
-          sender_role: 'seller',
-          message: 'Hello Mr. Smith! Thank you for your inquiry. Here is our official catalog and specification.',
-          translated_message: '안녕하세요 스미스님! 문의해주셔서 감사합니다. 공식 카탈로그와 스펙 문서를 전달드립니다.',
-          is_quote: false,
-          file: {
-            name: 'Hankook_Precision_Catalog_2026.pdf',
-            size: '3.4 MB',
-            type: 'pdf',
-            url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-          },
-          created_at: '10:22 AM',
-        },
-        {
-          id: 103,
-          room_id: 1,
-          sender_role: 'seller',
-          message: 'Here is our official quotation for 500 units.',
-          translated_message: '500개 기준 공식 견적서를 전달드립니다.',
-          is_quote: true,
-          quote_price: '145.00 USD / Unit',
-          quote_moq: '500 Units',
-          file: null,
-          created_at: '10:24 AM',
-        }
-      ],
-      2: [
-        {
-          id: 201,
-          room_id: 2,
-          sender_role: 'buyer',
-          message: 'Is OEM private labeling available for this serum? We need custom packaging.',
-          translated_message: '이 세럼 제품에 대해 OEM 자사 브랜드 라벨링이 가능한가요? 맞춤형 패키징이 필요합니다.',
-          is_quote: false,
-          file: null,
-          created_at: 'Yesterday',
-        }
-      ]
-    };
-
-    if (paramCompany || paramTitle) {
-      const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Hydraulic Control Valve HV-300';
-      const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Hankook Precision Co., Ltd.';
-      
-      const newRoomId = Date.now();
-      const directRoom = {
-        id: newRoomId,
-        product_title: companyTitle,
-        buyer_name: 'Global Buyer (Direct Inquiry)',
-        seller_name: companySeller,
-        last_message: `Hello! I am inquiring about [${companyTitle}]. Please send us full specifications.`,
-        updated_at: 'Just Now',
-        courier: 'DHL Express',
-        tracking_no: 'DHL-DIRECT-2026-KR',
-        unread_count: 0
-      };
-
-      const directInitialMsg = {
-        id: Date.now() + 1,
-        room_id: newRoomId,
-        sender_role: 'buyer',
-        message: `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`,
-        translated_message: `안녕하세요! ${companySeller}의 [${companyTitle}] 상품에 대해 문의드립니다. FOB 단가 및 공식 카탈로그를 전달해 주실 수 있나요?`,
-        is_quote: false,
-        file: null,
-        created_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      mockRooms = [directRoom, ...mockRooms];
-      initialMessages[newRoomId] = [directInitialMsg];
-
-      setActiveRoomId(newRoomId);
-    } else {
-      setActiveRoomId(1);
-    }
-
-    setRooms(mockRooms);
-    setRoomMessagesMap(initialMessages);
-    syncTotalUnreadCount(mockRooms);
-  };
-
-  const fetchChatRooms = async (userId) => {
     try {
-      const { data } = await supabase
+      setLoading(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUserObj = session?.user || null;
+      setUser(currentUserObj);
+
+      const role = currentUserObj?.user_metadata?.role || 'seller';
+      setUserRole(role);
+
+      await fetchChatRoomsAndInit(currentUserObj);
+    } catch (error) {
+      console.error('Failed to init chat session:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ★ Supabase DB에서 대화방 조회 및 직통 대화방 자동 생성
+  const fetchChatRoomsAndInit = async (currentUserObj) => {
+    try {
+      const { data: existingRooms, error } = await supabase
         .from('chat_rooms')
         .select('*')
         .order('updated_at', { ascending: false });
 
-      if (data && data.length > 0) {
-        const readRoomIds = (localStorage.getItem('klick_read_room_ids') || '').split(',');
-        const formatted = data.map(r => ({
-          ...r,
-          unread_count: readRoomIds.includes(r.id.toString()) ? 0 : (r.unread_count || 0)
-        }));
-        setRooms(formatted);
-        
-        if (paramProductId) {
-          const matched = formatted.find(r => r.id.toString() === paramProductId);
-          if (matched) setActiveRoomId(matched.id);
-          else setActiveRoomId(formatted[0].id);
-        } else {
-          setActiveRoomId(formatted[0].id);
+      let currentRoomsList = existingRooms || [];
+
+      // 상세페이지에서 직통 문의 버튼으로 접근 시 대화방 자동 생성 또는 기존 방 매칭
+      if (paramCompany || paramTitle) {
+        const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product';
+        const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Hankook Precision Co., Ltd.';
+
+        let matchedRoom = currentRoomsList.find(
+          (r) => r.product_title === companyTitle && r.seller_name === companySeller
+        );
+
+        if (!matchedRoom) {
+          const newRoomPayload = {
+            product_id: paramProductId || null,
+            product_title: companyTitle,
+            buyer_id: currentUserObj?.id || null,
+            buyer_name: currentUserObj?.email?.split('@')[0] || 'Global Buyer',
+            seller_id: null,
+            seller_name: companySeller,
+            last_message: `Hello! I am inquiring about [${companyTitle}].`,
+            updated_at: new Date().toISOString()
+          };
+
+          const { data: createdRoomData, error: createError } = await supabase
+            .from('chat_rooms')
+            .insert([newRoomPayload])
+            .select();
+
+          if (!createError && createdRoomData && createdRoomData.length > 0) {
+            matchedRoom = createdRoomData[0];
+            currentRoomsList = [matchedRoom, ...currentRoomsList];
+
+            // 대화방 시작 메시지 자동 생성
+            await supabase.from('chat_messages').insert([
+              {
+                room_id: matchedRoom.id,
+                sender_id: currentUserObj?.id || null,
+                sender_role: 'buyer',
+                message: `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`,
+                translated_message: `안녕하세요! ${companySeller}의 [${companyTitle}] 상품에 대해 문의드립니다. FOB 단가 및 공식 카탈로그를 전달해 주실 수 있나요?`,
+                is_quote: false
+              }
+            ]);
+          }
         }
 
-        syncTotalUnreadCount(formatted);
-        fetchMessagesForRooms(formatted);
-      } else {
-        initMockMultiRooms();
+        if (matchedRoom) {
+          setActiveRoomId(matchedRoom.id);
+        }
+      } else if (currentRoomsList.length > 0) {
+        setActiveRoomId(currentRoomsList[0].id);
       }
-    } catch (error) {
-      console.error('Failed to fetch rooms:', error);
-      initMockMultiRooms();
+
+      setRooms(currentRoomsList);
+      if (currentRoomsList.length > 0) {
+        await fetchMessagesForRooms(currentRoomsList);
+      }
+    } catch (err) {
+      console.error('Error fetching chat rooms:', err);
     }
   };
 
+  // DB에서 대화 메시지 전체 불러오기
   const fetchMessagesForRooms = async (roomList) => {
     try {
-      const { data } = await supabase
+      const roomIds = roomList.map((r) => r.id);
+      const { data: msgData, error } = await supabase
         .from('chat_messages')
         .select('*')
+        .in('room_id', roomIds)
         .order('created_at', { ascending: true });
 
-      if (data) {
+      if (msgData) {
         const map = {};
-        data.forEach((msg) => {
+        msgData.forEach((msg) => {
           if (!map[msg.room_id]) map[msg.room_id] = [];
           map[msg.room_id].push(msg);
         });
         setRoomMessagesMap(map);
       }
-    } catch (error) {
-      console.error('Failed to fetch messages:', error);
+    } catch (err) {
+      console.error('Error fetching chat messages:', err);
     }
   };
 
@@ -242,25 +166,10 @@ function ChatContent() {
       setActiveRoomId(null);
     } else {
       setActiveRoomId(roomId);
-
-      const readRoomIds = new Set((localStorage.getItem('klick_read_room_ids') || '').split(',').filter(Boolean));
-      readRoomIds.add(roomId.toString());
-      localStorage.setItem('klick_read_room_ids', Array.from(readRoomIds).join(','));
-
-      const updatedRooms = rooms.map(r => r.id === roomId ? { ...r, unread_count: 0 } : r);
-      setRooms(updatedRooms);
-
-      syncTotalUnreadCount(updatedRooms);
     }
   };
 
-  const syncTotalUnreadCount = (roomList) => {
-    const total = roomList.reduce((acc, curr) => acc + (curr.unread_count || 0), 0);
-    localStorage.setItem('klick_unread_chat_count', total.toString());
-    window.dispatchEvent(new Event('klick_unread_chat_updated'));
-  };
-
-  // ★ 특정 대화방 메시지 독립 발송 처리
+  // ★ 특정 대화방 메시지 DB 저장 및 실시간 전송
   const handleSendMessage = async (targetRoomId, text, attachedFile) => {
     let autoTranslation = '';
     if (text) {
@@ -282,7 +191,6 @@ function ChatContent() {
     }
 
     const newMsgObj = {
-      id: Date.now(),
       room_id: targetRoomId,
       sender_id: user?.id || null,
       sender_role: userRole,
@@ -290,9 +198,10 @@ function ChatContent() {
       translated_message: autoTranslation,
       is_quote: false,
       file: finalFilePayload,
-      created_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      created_at: new Date().toISOString()
     };
 
+    // UI 즉시 반영
     setRoomMessagesMap((prevMap) => ({
       ...prevMap,
       [targetRoomId]: [...(prevMap[targetRoomId] || []), newMsgObj],
@@ -300,30 +209,35 @@ function ChatContent() {
 
     setRooms((prevRooms) =>
       prevRooms.map((r) =>
-        r.id === targetRoomId ? { ...r, last_message: text || attachedFile?.name || 'File sent', updated_at: 'Just now' } : r
+        r.id === targetRoomId
+          ? { ...r, last_message: text || attachedFile?.name || 'File sent', updated_at: new Date().toISOString() }
+          : r
       )
     );
 
     try {
-      if (user) {
-        await supabase.from('chat_messages').insert([newMsgObj]);
-      }
+      await supabase.from('chat_messages').insert([newMsgObj]);
+      await supabase
+        .from('chat_rooms')
+        .update({
+          last_message: text || attachedFile?.name || 'File sent',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', targetRoomId);
     } catch (err) {
       console.error('DB Insert error:', err);
     }
   };
 
-  const handleSendSampleCoupon = (targetRoomId) => {
+  const handleSendSampleCoupon = async (targetRoomId) => {
     const couponMsgObj = {
-      id: Date.now(),
       room_id: targetRoomId,
       sender_id: user?.id || null,
       sender_role: 'seller',
       message: '[B2B Special Offer] Exclusive Sample Discount Voucher Issued! ($20 Off Air Freight)',
       translated_message: '[B2B 전용 혜택] 바이어 전용 샘플 항공 배송 $20 할인 쿠폰이 발급되었습니다!',
       is_quote: false,
-      file: null,
-      created_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      created_at: new Date().toISOString()
     };
 
     setRoomMessagesMap((prevMap) => ({
@@ -331,14 +245,18 @@ function ChatContent() {
       [targetRoomId]: [...(prevMap[targetRoomId] || []), couponMsgObj],
     }));
 
-    alert('Sample $20 Discount Voucher sent directly to buyer!');
+    try {
+      await supabase.from('chat_messages').insert([couponMsgObj]);
+      alert('Sample $20 Discount Voucher sent directly to buyer!');
+    } catch (err) {
+      console.error('Coupon DB error:', err);
+    }
   };
 
   const handleSendQuote = async () => {
     if (!activeRoomId) return;
 
     const quoteMsgObj = {
-      id: Date.now(),
       room_id: activeRoomId,
       sender_id: user?.id || null,
       sender_role: 'seller',
@@ -347,8 +265,7 @@ function ChatContent() {
       is_quote: true,
       quote_price: `${quotePrice} USD / Unit`,
       quote_moq: quoteMoq,
-      file: null,
-      created_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      created_at: new Date().toISOString()
     };
 
     setRoomMessagesMap((prevMap) => ({
@@ -359,9 +276,14 @@ function ChatContent() {
     setIsQuoteModalOpen(false);
 
     try {
-      if (user) {
-        await supabase.from('chat_messages').insert([quoteMsgObj]);
-      }
+      await supabase.from('chat_messages').insert([quoteMsgObj]);
+      await supabase
+        .from('chat_rooms')
+        .update({
+          last_message: `[Official Quote] ${quotePrice} USD`,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', activeRoomId);
     } catch (err) {
       console.error('DB Quote Insert error:', err);
     }
@@ -378,10 +300,19 @@ function ChatContent() {
     setIsSampleModalOpen(true);
   };
 
-  const handleUpdateTracking = (roomId, courier, trackingNo) => {
-    setRooms(prevRooms =>
-      prevRooms.map(r => r.id === roomId ? { ...r, courier, tracking_no: trackingNo } : r)
+  const handleUpdateTracking = async (roomId, courier, trackingNo) => {
+    setRooms((prevRooms) =>
+      prevRooms.map((r) => (r.id === roomId ? { ...r, courier, tracking_no: trackingNo } : r))
     );
+
+    try {
+      await supabase
+        .from('chat_rooms')
+        .update({ courier, tracking_no: trackingNo })
+        .eq('id', roomId);
+    } catch (err) {
+      console.error('Update tracking error:', err);
+    }
   };
 
   const handleOpenPaymentModal = (msg, room) => {
@@ -396,11 +327,11 @@ function ChatContent() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-16 antialiased">
+    <div className="min-h-screen bg-[#F9FAFB] text-slate-900 pb-16 antialiased">
       <Header />
 
       <main className="max-w-5xl mx-auto px-6 mt-8 space-y-6">
-        <div className="bg-slate-900 text-white rounded-3xl p-6 md:p-8 shadow-md border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="bg-[#0F172A] text-white rounded-3xl p-6 md:p-8 shadow-md border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
               <Sparkles className="w-3.5 h-3.5" /> KLICK Direct Accordion Chat Hub
@@ -418,26 +349,40 @@ function ChatContent() {
           </div>
         </div>
 
-        {/* 대화방 카드 목록 (각 카드 내부에 독립 메신저 입력창 탑재) */}
-        <div className="space-y-4">
-          {rooms.map((room) => (
-            <ChatRoomItem
-              key={room.id}
-              room={room}
-              isOpen={activeRoomId === room.id}
-              userRole={userRole}
-              messages={roomMessagesMap[room.id] || []}
-              onToggle={() => handleToggleRoom(room.id)}
-              onOpenQuoteModal={() => setIsQuoteModalOpen(true)}
-              onOpenDocModal={handleOpenDocModal}
-              onOpenPaymentModal={handleOpenPaymentModal}
-              onOpenSampleModal={handleOpenSampleModal}
-              onSendMessage={handleSendMessage}
-              onSendSampleCoupon={handleSendSampleCoupon}
-              messagesEndRef={messagesEndRef}
-            />
-          ))}
-        </div>
+        {loading ? (
+          <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 shadow-sm">
+            <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
+            <p className="text-xs text-slate-400">Loading live chat channels from Supabase Database...</p>
+          </div>
+        ) : rooms.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 p-8 space-y-3 shadow-sm">
+            <MessageSquare className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
+            <h3 className="text-base font-bold text-slate-800">No Chat Inquiries Yet</h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              When a buyer clicks "Chat with Representative" on a product detail page, a direct real-time chat room will be created here!
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {rooms.map((room) => (
+              <ChatRoomItem
+                key={room.id}
+                room={room}
+                isOpen={activeRoomId === room.id}
+                userRole={userRole}
+                messages={roomMessagesMap[room.id] || []}
+                onToggle={() => handleToggleRoom(room.id)}
+                onOpenQuoteModal={() => setIsQuoteModalOpen(true)}
+                onOpenDocModal={handleOpenDocModal}
+                onOpenPaymentModal={handleOpenPaymentModal}
+                onOpenSampleModal={handleOpenSampleModal}
+                onSendMessage={handleSendMessage}
+                onSendSampleCoupon={handleSendSampleCoupon}
+                messagesEndRef={messagesEndRef}
+              />
+            ))}
+          </div>
+        )}
       </main>
 
       {/* 모달 구역 */}
@@ -539,7 +484,7 @@ export default function RealtimeChatPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
           <div className="flex items-center gap-2 text-slate-600 text-xs font-bold">
             <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
             <span>Loading KLICK Real-time AI Chat Hub...</span>
