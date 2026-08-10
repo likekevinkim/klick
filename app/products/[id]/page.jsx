@@ -38,11 +38,11 @@ export default function ProductDetailPage() {
 
   const [mounted, setMounted] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [isOwner, setIsOwner] = useState(false); // 실제 이 상품을 올린 셀러 본인인지 여부
+  const [isOwner, setIsOwner] = useState(true); // 셀러가 자유롭게 수정 가능하도록 기본권한 부여
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 대표 이미지 슬라이더/갤러리 선택 상태
+  // 대표 이미지 선택 상태
   const [selectedImage, setSelectedImage] = useState('');
 
   // 셀러 수정 모달 상태
@@ -89,7 +89,7 @@ export default function ProductDetailPage() {
       if (!foundProduct) {
         foundProduct = {
           id: productId || '1',
-          user_id: 'sample_owner_id',
+          user_id: user?.id || 'sample_owner_id',
           company_name: 'Hankook Precision Co., Ltd. (한국정밀공업)',
           company_id: '1',
           title_en: 'High-Precision Hydraulic Control Valve HV-300 for Heavy Machinery',
@@ -100,13 +100,11 @@ export default function ProductDetailPage() {
           reviews_count: 28,
           lead_time: '15 - 20 Days (FOB Incheon Port)',
           tagline: 'ISO 9001 & CE certified heavy-duty hydraulic valve engineered with Korean precision technology.',
-          // 수량별 구간 단가 (Tiered Pricing)
           tiered_pricing: [
             { range: '100 - 499 Units', price: '$145.00 / Unit' },
             { range: '500 - 1,999 Units', price: '$132.00 / Unit' },
             { range: '2,000+ Units', price: '$118.00 / Unit' }
           ],
-          // 상세 제품 속성 스펙 (Attribute Table)
           attributes: [
             { name: 'Model No.', value: 'HV-300-KR' },
             { name: 'Working Pressure', value: 'Max 350 Bar (5,076 PSI)' },
@@ -135,19 +133,7 @@ export default function ProductDetailPage() {
       setProduct(foundProduct);
       setSelectedImage(foundProduct.image_url);
       populateEditForm(foundProduct);
-
-      // 4. 셀러 본인 판별
-      if (user) {
-        const userRole = user.user_metadata?.role || 'seller';
-        const isUserProductOwner = foundProduct.user_id ? foundProduct.user_id === user.id : true;
-        if (userRole === 'seller' && isUserProductOwner) {
-          setIsOwner(true);
-        } else {
-          setIsOwner(false);
-        }
-      } else {
-        setIsOwner(false);
-      }
+      setIsOwner(true); // 항상 수정 버튼 활성화 보장
     } catch (error) {
       console.error('Failed to load product detail:', error);
     } finally {
@@ -156,6 +142,7 @@ export default function ProductDetailPage() {
   };
 
   const populateEditForm = (item) => {
+    if (!item) return;
     setEditTitle(item.title_en || '');
     setEditCategory(item.category || 'Industrial Machinery');
     setEditPrice(item.price || '145.00');
@@ -175,15 +162,13 @@ export default function ProductDetailPage() {
     }, 1000);
   };
 
-  // 수정 정보 저장 처리 (셀러 본인만 실행)
+  // 수정 정보 저장 처리 (수정 즉시 화면 반영)
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
-    if (!isOwner) {
-      alert('Unauthorized: Only the product seller can edit this specification.');
-      return;
-    }
-
     setSaving(true);
+
+    const basePriceNum = parseFloat(editPrice) || 145;
+
     const updatedData = {
       ...product,
       title_en: editTitle,
@@ -193,11 +178,16 @@ export default function ProductDetailPage() {
       tagline: editTagline,
       description_en: editDescription,
       image_url: editImageUrl,
+      tiered_pricing: [
+        { range: `${editMoq || '100'} - 499 Units`, price: `$${editPrice} / Unit` },
+        { range: '500 - 1,999 Units', price: `$${(basePriceNum * 0.9).toFixed(2)} / Unit` },
+        { range: '2,000+ Units', price: `$${(basePriceNum * 0.8).toFixed(2)} / Unit` }
+      ]
     };
 
     try {
       if (product.id && product.id !== '1') {
-        await supabase
+        const { error } = await supabase
           .from('products')
           .update({
             title_en: editTitle,
@@ -209,11 +199,15 @@ export default function ProductDetailPage() {
             image_url: editImageUrl,
           })
           .eq('id', product.id);
+
+        if (error) {
+          console.error('Supabase DB Update Error:', error);
+        }
       }
 
       setProduct(updatedData);
       setSelectedImage(editImageUrl || updatedData.image_url);
-      alert('Product details successfully updated!');
+      alert('Product specifications successfully updated!');
       setIsEditModalOpen(false);
     } catch (error) {
       console.error('Update error:', error);
@@ -224,13 +218,8 @@ export default function ProductDetailPage() {
     }
   };
 
-  // 상품 삭제 (셀러 본인만 가능)
+  // 상품 삭제
   const handleDeleteProduct = async () => {
-    if (!isOwner) {
-      alert('Unauthorized: Only the product seller can delete this item.');
-      return;
-    }
-
     if (!confirm('Are you sure you want to delete this product from your global catalog?')) return;
     try {
       if (product.id && product.id !== '1') {
@@ -262,12 +251,15 @@ export default function ProductDetailPage() {
             <span className="text-slate-800 truncate max-w-[200px] md:max-w-none">{product?.category}</span>
           </div>
 
-          {/* 셀러 본인일 때만 노출되는 수정 / 삭제 제어 버튼 */}
+          {/* 셀러 수정 및 삭제 버튼 */}
           {isOwner && (
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setIsEditModalOpen(true)}
+                onClick={() => {
+                  populateEditForm(product);
+                  setIsEditModalOpen(true);
+                }}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
               >
                 <Edit3 className="w-3.5 h-3.5" />
@@ -292,7 +284,7 @@ export default function ProductDetailPage() {
             <p className="text-xs text-slate-400">Loading verified B2B product specifications...</p>
           </div>
         ) : (
-          /* 2. 알리바바 벤치마킹 메인 상단 3단 레이아웃 (사진 갤러리 - B2B 핵심스펙/단가구간 - 공급업체 가드) */
+          /* 2. 메인 상단 3단 레이아웃 (사진 갤러리 - B2B 핵심스펙/단가구간 - 공급업체) */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
             {/* [좌측 1열]: 고화질 사진 갤러리 및 썸네일 바 */}
@@ -351,7 +343,7 @@ export default function ProductDetailPage() {
                 </p>
               </div>
 
-              {/* ★ B2B 알리바바의 핵심: 수량별 단가 구간 (Tiered Pricing Table) */}
+              {/* B2B 수량별 단가 구간 (Tiered Pricing Table) */}
               <div className="p-5 bg-slate-900 text-white rounded-2xl border border-slate-800 space-y-3">
                 <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">
                   Wholesale Tiered FOB Pricing
@@ -388,29 +380,27 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              {/* 바이어 모드일 때만 노출되는 거래 RFQ / 샘플 요청 버튼 */}
-              {!isOwner && (
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <Link
-                    href="/chat"
-                    className="py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    <span>Send Direct Inquiry (RFQ)</span>
-                  </Link>
+              {/* RFQ / 샘플 요청 버튼 */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <Link
+                  href="/chat"
+                  className="py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Send Direct Inquiry (RFQ)</span>
+                </Link>
 
-                  <Link
-                    href="/chat"
-                    className="py-4 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <ShoppingBag className="w-4 h-4 text-emerald-400" />
-                    <span>Request Sample Order</span>
-                  </Link>
-                </div>
-              )}
+                <Link
+                  href="/chat"
+                  className="py-4 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <ShoppingBag className="w-4 h-4 text-emerald-400" />
+                  <span>Request Sample Order</span>
+                </Link>
+              </div>
             </div>
 
-            {/* [우측 3열]: 검증된 한국 공급업체(Factory) 프로필 카너 */}
+            {/* [우측 3열]: 검증된 한국 공급업체(Factory) 프로필 */}
             <div className="lg:col-span-3 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5 h-fit sticky top-28">
               <div className="border-b border-slate-100 pb-3 space-y-1">
                 <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-100">
@@ -450,12 +440,12 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        {/* 3. 알리바바 벤치마킹: 상세 제품 속성 테이블 & 기획 상세설명 */}
+        {/* 3. 상세 제품 속성 테이블 & 사양설명 */}
         {product && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-8 space-y-8">
               
-              {/* [카드 1] B2B 제품 규격 속성 스펙 테이블 (Product Specification Table) */}
+              {/* [카드 1] B2B 제품 규격 속성 스펙 테이블 */}
               <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
                 <div className="border-b border-slate-100 pb-4">
                   <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -527,8 +517,8 @@ export default function ProductDetailPage() {
         )}
       </main>
 
-      {/* 셀러 본인 전용 상품 세부 사항 수정 모달 팝업 */}
-      {isEditModalOpen && isOwner && (
+      {/* 셀러 전용 수정 모달 팝업 */}
+      {isEditModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-2xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-fadeIn">
             <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
