@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronRight, Edit3, Trash2, Loader2, Star, MessageSquare, CheckCircle2, User } from 'lucide-react';
+import { ChevronRight, Edit3, Trash2, Loader2, Star, CheckCircle2, User } from 'lucide-react';
 import ProductDetailVisual from '@/components/products/ProductDetailVisual';
 import ProductDetailSpecs from '@/components/products/ProductDetailSpecs';
 import ProductFormModal from '@/components/products/ProductFormModal';
@@ -22,7 +22,7 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 실시간 바이어 리뷰 & 평점 시스템 상태
+  // 실시간 바이어 리뷰 상태
   const [reviews, setReviews] = useState([]);
   const [newRating, setNewRating] = useState(5);
   const [newReviewText, setNewRatingText] = useState('');
@@ -57,7 +57,16 @@ export default function ProductDetailPage() {
         if (data) foundProduct = data;
       }
 
-      // 샘플 데이터 및 기본 초기 리뷰 설정
+      // 로컬 스토리지에 수정된 영구 백업 데이터가 존재하는지 검증
+      const savedLocal = localStorage.getItem(`klick_product_${productId}`);
+      if (savedLocal) {
+        try {
+          foundProduct = JSON.parse(savedLocal);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
       const mockReviews = [
         {
           id: 1,
@@ -141,7 +150,6 @@ export default function ProductDetailPage() {
     }
   };
 
-  // 해외 바이어 실시간 평점/리뷰 제출 및 실시간 평균 평점 재계산
   const handleAddReview = (e) => {
     e.preventDefault();
     if (!newReviewText.trim()) return;
@@ -157,7 +165,6 @@ export default function ProductDetailPage() {
     const updatedReviews = [newReviewObj, ...reviews];
     setReviews(updatedReviews);
 
-    // 평균 평점 재계산
     const totalRating = updatedReviews.reduce((sum, r) => sum + r.rating, 0);
     const avgRating = (totalRating / updatedReviews.length).toFixed(1);
 
@@ -172,10 +179,12 @@ export default function ProductDetailPage() {
     alert('Thank you! Your review and rating have been submitted.');
   };
 
+  // ★ 사진 삭제 및 수정 정보 저장 (Supabase DB + LocalStorage 영구 보존)
   const handleUpdateProduct = async (payload) => {
     try {
       const updatedData = { ...product, ...payload };
 
+      // 1. DB 업데이트
       if (product.id && product.id !== '1') {
         await supabase
           .from('products')
@@ -183,8 +192,11 @@ export default function ProductDetailPage() {
           .eq('id', product.id);
       }
 
+      // 2. 새로고침 시에도 지운 사진이 원복되지 않도록 LocalStorage에 영구 갱신 저장
+      localStorage.setItem(`klick_product_${productId}`, JSON.stringify(updatedData));
+
       setProduct(updatedData);
-      alert('Product specifications successfully updated!');
+      alert('Product specifications and updated gallery successfully saved!');
     } catch (error) {
       console.error('Update error:', error);
     }
@@ -196,6 +208,7 @@ export default function ProductDetailPage() {
       if (product.id && product.id !== '1') {
         await supabase.from('products').delete().eq('id', product.id);
       }
+      localStorage.removeItem(`klick_product_${productId}`);
       alert('Product deleted successfully.');
       router.push('/products');
     } catch (error) {
@@ -211,7 +224,6 @@ export default function ProductDetailPage() {
       <Header />
 
       <main className="max-w-7xl mx-auto px-6 mt-8 space-y-10">
-        {/* 브레드크럼 네비게이션 및 제어 버튼 */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-xs text-slate-500 font-bold">
             <Link href="/" className="hover:text-blue-600">Home</Link>
@@ -251,13 +263,11 @@ export default function ProductDetailPage() {
           </div>
         ) : (
           <div className="space-y-10">
-            {/* 1. 알리바바 미디어 갤러리 & 공장 프로필 카너 */}
             <ProductDetailVisual product={product} />
 
-            {/* 2. 수량별 구간 단가표 & 기술 스펙 속성 테이블 */}
             <ProductDetailSpecs product={product} isOwner={isOwner} />
 
-            {/* 3. ★ 바이어 실제 평점 및 리뷰 수집 세션 */}
+            {/* 바이어 리뷰 세션 */}
             <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
               <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
                 <div>
@@ -269,7 +279,6 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              {/* 바이어 리뷰 작성 폼 */}
               <form onSubmit={handleAddReview} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                 <span className="text-xs font-extrabold text-slate-800 block">Leave a Review for this Factory Product</span>
 
@@ -323,7 +332,6 @@ export default function ProductDetailPage() {
                 </div>
               </form>
 
-              {/* 작성된 리뷰 리스트 */}
               <div className="space-y-3 pt-2">
                 {reviews.map((rev) => (
                   <div key={rev.id} className="p-4 bg-slate-50/60 rounded-2xl border border-slate-100 space-y-1.5">
@@ -359,7 +367,7 @@ export default function ProductDetailPage() {
         )}
       </main>
 
-      {/* 4. 셀러 수정 모달 */}
+      {/* 수정 모달 */}
       {isEditModalOpen && (
         <ProductFormModal
           isOpen={isEditModalOpen}

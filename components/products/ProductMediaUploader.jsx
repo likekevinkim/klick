@@ -18,6 +18,7 @@ export default function ProductMediaUploader({
   const galleryFileInputRef = useRef(null);
   const videoFileInputRef = useRef(null);
 
+  // 메인 커버 사진 파일 업로드
   const handleMainFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -25,6 +26,7 @@ export default function ProductMediaUploader({
     }
   };
 
+  // 추가 갤러리 사진 다중 파일 선택 (누적 추가)
   const handleGalleryFilesChange = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
@@ -33,6 +35,7 @@ export default function ProductMediaUploader({
     }
   };
 
+  // 비디오 파일 선택
   const handleVideoFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -40,30 +43,30 @@ export default function ProductMediaUploader({
     }
   };
 
+  // ★ 갤러리 사진 개별 삭제 (즉시 지움 처리)
   const handleRemoveGalleryImage = (index) => {
-    setGalleryImages(prev => prev.filter((_, idx) => idx !== index));
+    const updated = galleryImages.filter((_, idx) => idx !== index);
+    setGalleryImages(updated);
   };
 
+  // 갤러리 사진 순서 변경 (좌로 이동)
   const handleMoveImageLeft = (index) => {
     if (index === 0) return;
-    setGalleryImages(prev => {
-      const updated = [...prev];
-      const temp = updated[index - 1];
-      updated[index - 1] = updated[index];
-      updated[index] = temp;
-      return updated;
-    });
+    const updated = [...galleryImages];
+    const temp = updated[index - 1];
+    updated[index - 1] = updated[index];
+    updated[index] = temp;
+    setGalleryImages(updated);
   };
 
+  // 갤러리 사진 순서 변경 (우로 이동)
   const handleMoveImageRight = (index) => {
     if (index === galleryImages.length - 1) return;
-    setGalleryImages(prev => {
-      const updated = [...prev];
-      const temp = updated[index + 1];
-      updated[index + 1] = updated[index];
-      updated[index] = temp;
-      return updated;
-    });
+    const updated = [...galleryImages];
+    const temp = updated[index + 1];
+    updated[index + 1] = updated[index];
+    updated[index] = temp;
+    setGalleryImages(updated);
   };
 
   return (
