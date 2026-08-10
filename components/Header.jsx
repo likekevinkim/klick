@@ -152,75 +152,73 @@ export default function Header() {
   };
 
   const userRole = user?.user_metadata?.role || 'seller';
-  const displayName = userRole === 'seller'
-    ? (user?.user_metadata?.company_name_en || user?.user_metadata?.company_name || user?.email?.split('@')[0])
-    : (user?.user_metadata?.buyer_name || user?.email?.split('@')[0]);
 
   return (
     <header className="sticky top-0 z-[99999] bg-slate-900 text-white border-b border-slate-800 shadow-md">
       {/* 구글 번역 숨김 요소 */}
       <div id="google_translate_element" className="hidden"></div>
 
-      <div className="max-w-7xl mx-auto px-6 h-18 flex items-center justify-between gap-4">
-        {/* KLICK 브랜드 로고 */}
-        <Link href="/" className="flex items-center gap-2.5 cursor-pointer group notranslate" translate="no">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-extrabold text-white text-xl shadow-lg group-hover:bg-blue-500 transition">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-18 flex items-center justify-between gap-2 sm:gap-4">
+        {/* KLICK 브랜드 로고 (모바일 가로폭 최적화) */}
+        <Link href="/" className="flex items-center gap-2 cursor-pointer group notranslate flex-shrink-0" translate="no">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-600 rounded-xl flex items-center justify-center font-extrabold text-white text-lg sm:text-xl shadow-lg group-hover:bg-blue-500 transition">
             K
           </div>
           <div className="flex flex-col">
-            <span className="font-extrabold text-xl tracking-tight text-white flex items-center gap-1">
-              KLICK <span className="text-xs font-semibold bg-blue-600/30 text-blue-400 px-2 py-0.5 rounded-full border border-blue-500/30">B2B</span>
+            <span className="font-extrabold text-lg sm:text-xl tracking-tight text-white flex items-center gap-1">
+              KLICK <span className="text-[10px] sm:text-xs font-semibold bg-blue-600/30 text-blue-400 px-1.5 sm:px-2 py-0.5 rounded-full border border-blue-500/30">B2B</span>
             </span>
-            <span className="text-[10px] text-slate-400 font-medium tracking-wider">
-              Global Trade Marketplace
+            <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium tracking-wider hidden xs:block">
+              Global Trade
             </span>
           </div>
         </Link>
 
-        {/* 내비게이션 & 사용자 맞춤 버튼 영역 */}
-        <nav className="flex items-center gap-3">
-          {/* 1. 홈 바로가기 버튼 */}
+        {/* 내비게이션 & 사용자 맞춤 버튼 영역 (반응형 최적화) */}
+        <nav className="flex items-center gap-1.5 sm:gap-3">
+          {/* 1. 홈 바로가기 (아이콘 중심으로 간소화하여 여백 확보) */}
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition"
+            title="Home"
+            className="p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center justify-center"
           >
             <Home className="w-4 h-4 text-blue-400" />
-            <span>Home</span>
+            <span className="sr-only">Home</span>
           </Link>
 
-          {/* 2. 공개 RFQ 게시판 바로가기 버튼 */}
+          {/* 2. 공개 RFQ 게시판 바로가기 (모바일 아이콘 중심, PC 텍스트 노출) */}
           <Link
             href="/rfq"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition cursor-pointer"
+            className="p-2 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition cursor-pointer flex items-center gap-1.5"
           >
             <FileText className="w-4 h-4 text-emerald-400" />
-            <span>RFQ Board</span>
+            <span className="hidden sm:inline">RFQ Board</span>
           </Link>
 
-          {/* 3. 로그인 상태 분기 UI */}
+          {/* 3. 로그인 상태 분기 UI ([Seller Hub] / [Buyer Hub]로 간소화) */}
           {user ? (
             <div className="relative">
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer"
+                className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
               >
                 <User className="w-4 h-4 text-blue-400" />
-                <span className="max-w-[140px] truncate">
-                  {userRole === 'seller' ? `[Seller] ${displayName}` : `[Buyer] ${displayName}`}
+                <span className="font-extrabold">
+                  {userRole === 'seller' ? 'Seller Hub' : 'Buyer Hub'}
                 </span>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
 
               {/* 드롭다운 메뉴 영역 */}
               {isUserMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-fadeIn">
+                <div className="absolute right-0 mt-2 w-52 sm:w-56 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-fadeIn">
                   <div className="px-4 py-2 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     {userRole === 'seller' ? 'Seller Control Hub' : 'Buyer Sourcing Center'}
                   </div>
 
                   {userRole === 'seller' ? (
                     <>
-                      {/* 1. Factory Profile & Showroom (요청에 따라 1번 위치로 이동) */}
+                      {/* 1. Factory Profile & Showroom */}
                       <Link
                         href="/companies/1"
                         onClick={() => setIsUserMenuOpen(false)}
@@ -230,7 +228,7 @@ export default function Header() {
                         <span>Factory Profile & Showroom</span>
                       </Link>
 
-                      {/* 2. Product Dashboard (2번 위치) */}
+                      {/* 2. Product Dashboard */}
                       <Link
                         href="/products"
                         onClick={() => setIsUserMenuOpen(false)}
@@ -240,7 +238,7 @@ export default function Header() {
                         <span>Product Dashboard</span>
                       </Link>
 
-                      {/* 3. Live Chat Hub (3번 위치) */}
+                      {/* 3. Live Chat Hub */}
                       <Link
                         href="/chat"
                         onClick={() => setIsUserMenuOpen(false)}
@@ -285,29 +283,29 @@ export default function Header() {
               )}
             </div>
           ) : (
-            /* 비로그인 상태인 경우만 Sign In / Up 버튼 노출 */
+            /* 비로그인 상태 UI */
             <Link
               href="/login"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+              className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5"
             >
               <UserCheck className="w-4 h-4 text-blue-400" />
-              <span>Sign In / Up</span>
+              <span className="hidden sm:inline">Sign In / Up</span>
             </Link>
           )}
 
-          {/* 4. [가장 우측 상단] 구글 다국어 언어 선택 드롭다운 */}
-          <div className="relative border-l border-slate-800 pl-2 ml-1">
+          {/* 4. 다국어 언어 선택 드롭다운 (패딩 모바일 최적화) */}
+          <div className="relative border-l border-slate-800 pl-1.5 sm:pl-2 ml-0.5 sm:ml-1">
             <button
               onClick={() => setIsLangOpen(!isLangOpen)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer"
+              className="px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1"
             >
               <Globe className="w-4 h-4 text-blue-400" />
               <span className="notranslate" translate="no">{currentLang}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              <ChevronDown className="w-3 h-3 text-slate-400" />
             </button>
 
             {isLangOpen && (
-              <div className="absolute right-0 mt-2 w-44 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-fadeIn">
+              <div className="absolute right-0 mt-2 w-40 sm:w-44 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-fadeIn">
                 <div className="px-3 py-1.5 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Select Language
                 </div>
