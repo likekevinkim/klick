@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronRight, Edit3, Trash2, Loader2, Star, CheckCircle2, User } from 'lucide-react';
+import { ChevronRight, Edit3, Trash2, Loader2, Star, CheckCircle2, User, Package } from 'lucide-react';
 import ProductDetailVisual from '@/components/products/ProductDetailVisual';
 import ProductDetailSpecs from '@/components/products/ProductDetailSpecs';
 import ProductFormModal from '@/components/products/ProductFormModal';
@@ -17,9 +17,8 @@ export default function ProductDetailPage() {
   const productId = params?.id;
 
   const [mounted, setMounted] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
   
-  // 셀러 본인 및 수정 권한 상태
+  // 작성자 셀러 소유권 상태
   const [isOwner, setIsOwner] = useState(false);
   
   const [product, setProduct] = useState(null);
@@ -41,19 +40,17 @@ export default function ProductDetailPage() {
     }
   }, [productId]);
 
+  // Supabase DB에서 실제 ID로 조회
   const initProductDetail = async () => {
     try {
       setLoading(true);
 
-      // 1. Supabase 세션 유저 및 역할(Role) 확인
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user || null;
-      setCurrentUser(user);
 
-      // 2. Supabase DB에서 해당 ID 상품 조회
       let foundProduct = null;
-      if (productId && productId !== '1') {
-        const { data } = await supabase
+      if (productId) {
+        const { data, error } = await supabase
           .from('products')
           .select('*')
           .eq('id', productId)
@@ -62,112 +59,26 @@ export default function ProductDetailPage() {
         if (data) foundProduct = data;
       }
 
-      // 로컬 스토리지 수정 영구 백업 데이터 검증
-      const savedLocal = localStorage.getItem(`klick_product_${productId}`);
-      if (savedLocal) {
-        try {
-          foundProduct = JSON.parse(savedLocal);
-        } catch (e) {
-          console.error(e);
-        }
-      }
-
-      // 기본 샘플 데이터
-      if (!foundProduct) {
-        foundProduct = {
-          id: productId || '1',
-          user_id: user?.id || 'sample_seller_owner_id',
-          company_name: 'Hankook Precision Co., Ltd. (한국정밀공업)',
-          company_id: '1',
-          factory_location: 'Incheon, South Korea 🇰🇷',
-          certifications: 'ISO 9001, CE Certified',
-          title_en: 'High-Precision Hydraulic Control Valve HV-300 Heavy Duty',
-          title_ko: '초고압 산업용 유압 제어 밸브 HV-300',
-          category: 'Industrial Machinery',
-          price: '145.00',
-          moq: '100 Units',
-          rating: 5.0,
-          reviews_count: 2,
-          lead_time: '15 - 20 Days (FOB Incheon Port)',
-          product_size: '240 x 180 x 120 mm / 4.5kg',
-          tagline: 'ISO 9001 & CE certified heavy-duty hydraulic valve engineered with Korean precision technology.',
-          video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
-          tiered_pricing: [
-            { range: '100 - 499 Units', price: '$145.00 / Unit' },
-            { range: '500 - 1,999 Units', price: '$132.00 / Unit' },
-            { range: '2,000+ Units', price: '$118.00 / Unit' }
-          ],
-          attributes: [
-            { name: 'Model No.', value: 'HV-300-KR' },
-            { name: 'Working Pressure', value: 'Max 350 Bar (5,076 PSI)' },
-            { name: 'Flow Rate', value: '120 L/min' },
-            { name: 'Body Material', value: 'Ductile Iron GGG40 / Heavy Alloy' },
-            { name: 'Operating Temp', value: '-20°C to +80°C' },
-            { name: 'Certification', value: 'ISO 9001:2015, CE Certified' },
-            { name: 'Country of Origin', value: 'South Korea (Made in Korea)' },
-            { name: 'OEM / ODM', value: 'Available (Custom Logo & Packaging)' }
-          ],
-          description_en: `### Official Verified Export Specification Sheet
-- **Product Name**: High-Precision Hydraulic Control Valve HV-300
-- **Category**: Industrial Machinery
-- **Manufacturer**: Hankook Precision Co., Ltd.
-- **Factory Location**: Incheon, South Korea 🇰🇷
-- **Quality Standard**: ISO 9001:2015, CE Certified
-- **Lead Time**: 15 - 20 Days (FOB Incheon Port)
-
-### Key Industrial Features
-1. **High Durability Alloy**: Built with high-grade Korean forged alloy steel for extreme 350 Bar pressure.
-2. **Zero-Defect Quality Assurance**: 100% factory pressure test report provided with bulk export shipments.
-3. **OEM / ODM Customization**: Custom logo laser engraving and specialized export packaging available.`,
-          image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-          gallery_images: [
-            'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-            'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=800&q=80',
-            'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=800&q=80'
-          ],
-          created_at: new Date().toISOString(),
-        };
-      }
-
-      const mockReviews = [
-        {
-          id: 1,
-          buyer_name: 'David Miller (US Machinery Corp)',
-          rating: 5,
-          comment: 'Outstanding quality and fast delivery to Los Angeles port. The ISO 9001 certification report was fully provided.',
-          created_at: '2026-08-01'
-        },
-        {
-          id: 2,
-          buyer_name: 'Elena Rostova (Euro Industrial GbmH)',
-          rating: 5,
-          comment: 'Very professional Korean manufacturer. Spool precision meets our extreme high pressure standards.',
-          created_at: '2026-07-28'
-        }
-      ];
-
-      setReviews(mockReviews);
       setProduct(foundProduct);
 
-      // ★ [수정 권한 판단 핵심 로직 개선]:
-      // 1. 유저 역할이 'seller'이거나 기본 셀러 권한인 경우
-      // 2. 로그인된 셀러 ID와 상품의 user_id가 같거나, 대시보드 등록 상품인 경우 수정 권한 부여
+      // 소유권 판단 로직
       const userRole = user?.user_metadata?.role || 'seller';
-
-      if (userRole === 'seller') {
-        if (!foundProduct.user_id || (user && foundProduct.user_id === user.id) || foundProduct.user_id === 'sample_seller_owner_id') {
+      if (user && userRole === 'seller' && foundProduct?.user_id) {
+        if (user.id === foundProduct.user_id) {
           setIsOwner(true);
         } else {
           setIsOwner(false);
         }
+      } else if (userRole === 'seller' && foundProduct) {
+        setIsOwner(true);
       } else {
-        // 바이어(buyer) 계정이면 절대 수정 불가
         setIsOwner(false);
       }
     } catch (error) {
       console.error('Failed to load product detail:', error);
       setIsOwner(false);
     } finally {
+      // 오타 정정 완료: fontally -> finally
       setLoading(false);
     }
   };
@@ -201,7 +112,7 @@ export default function ProductDetailPage() {
     alert('Thank you! Your review and rating have been submitted.');
   };
 
-  // 소유권자 셀러 본인만 실행 가능한 수정 로직
+  // 수정한 내용을 Supabase DB에 직접 UPDATE
   const handleUpdateProduct = async (payload) => {
     if (!isOwner) {
       alert('Access Denied: Only the seller who registered this product can edit its specifications.');
@@ -210,37 +121,43 @@ export default function ProductDetailPage() {
     }
 
     try {
-      const updatedData = { ...product, ...payload };
-
-      if (product.id && product.id !== '1') {
-        await supabase
+      if (product?.id) {
+        const { error } = await supabase
           .from('products')
           .update(payload)
           .eq('id', product.id);
+
+        if (error) {
+          alert('Update failed: ' + error.message);
+          return;
+        }
       }
 
-      localStorage.setItem(`klick_product_${productId}`, JSON.stringify(updatedData));
-      setProduct(updatedData);
-      alert('Product specifications successfully updated!');
+      setProduct(prev => ({ ...prev, ...payload }));
+      alert('Product specifications successfully updated in Database!');
+      setIsEditModalOpen(false);
     } catch (error) {
       console.error('Update error:', error);
     }
   };
 
-  // 소유권자 셀러 본인만 실행 가능한 삭제 로직
+  // Supabase DB에서 레코드 완전 삭제
   const handleDeleteProduct = async () => {
     if (!isOwner) {
       alert('Access Denied: Only the seller who registered this product can delete it.');
       return;
     }
 
-    if (!confirm('Are you sure you want to delete this product from your global catalog?')) return;
+    if (!confirm('Are you sure you want to delete this product from the database?')) return;
     try {
-      if (product.id && product.id !== '1') {
-        await supabase.from('products').delete().eq('id', product.id);
+      if (product?.id) {
+        const { error } = await supabase.from('products').delete().eq('id', product.id);
+        if (error) {
+          alert('Delete failed: ' + error.message);
+          return;
+        }
       }
-      localStorage.removeItem(`klick_product_${productId}`);
-      alert('Product deleted successfully.');
+      alert('Product deleted successfully from Database.');
       router.push('/products');
     } catch (error) {
       console.error('Delete error:', error);
@@ -251,7 +168,7 @@ export default function ProductDetailPage() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 antialiased">
+    <div className="min-h-screen bg-[#F9FAFB] text-slate-900 pb-24 antialiased">
       <Header />
 
       <main className="max-w-7xl mx-auto px-6 mt-8 space-y-10">
@@ -262,10 +179,9 @@ export default function ProductDetailPage() {
             <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
             <Link href="/products" className="hover:text-blue-600">Products Catalog</Link>
             <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
-            <span className="text-slate-800 truncate max-w-[200px] md:max-w-none">{product?.category}</span>
+            <span className="text-slate-800 truncate max-w-[200px] md:max-w-none">{product?.category || 'Catalog'}</span>
           </div>
 
-          {/* 셀러 계정이 접속했거나 본인 등록 상품일 때(isOwner === true) 수정/삭제 버튼 노출 */}
           {isOwner && (
             <div className="flex items-center gap-2 animate-fadeIn">
               <button
@@ -290,9 +206,21 @@ export default function ProductDetailPage() {
         </div>
 
         {loading ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
+          <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 shadow-sm">
             <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
-            <p className="text-xs text-slate-400">Loading verified B2B product specifications...</p>
+            <p className="text-xs text-slate-400">Loading verified B2B product specifications from Database...</p>
+          </div>
+        ) : !product ? (
+          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 space-y-3 shadow-sm">
+            <Package className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
+            <h3 className="text-base font-bold text-slate-800">Product Not Found</h3>
+            <p className="text-xs text-slate-500">This product may have been deleted or does not exist in the database.</p>
+            <Link
+              href="/products"
+              className="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white font-extrabold text-xs rounded-xl shadow-md"
+            >
+              Back to Dashboard
+            </Link>
           </div>
         ) : (
           <div className="space-y-10">
@@ -308,7 +236,7 @@ export default function ProductDetailPage() {
                     <Star className="w-5 h-5 text-amber-500 fill-amber-400" />
                     Verified Buyer Reviews & Ratings ({product?.reviews_count || reviews.length})
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Average Rating: <strong className="text-slate-900">{product?.rating} / 5.0</strong> based on verified global transactions.</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Average Rating: <strong className="text-slate-900">{product?.rating || '5.0'} / 5.0</strong> based on verified global transactions.</p>
                 </div>
               </div>
 

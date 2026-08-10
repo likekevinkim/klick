@@ -17,7 +17,8 @@ import {
   Factory, 
   Send,
   Loader2,
-  MessageSquare
+  MessageSquare,
+  Plus
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -43,10 +44,9 @@ export default function HomePage() {
 
   useEffect(() => {
     setMounted(true);
-    fetchFeaturedProducts();
+    fetchHomeProducts();
     updateUnreadCount();
 
-    // ★ localStorage 및 커스텀 이벤트 기반 실시간 안읽은 뱃지 연동 리스너
     const handleUnreadUpdate = () => {
       updateUnreadCount();
     };
@@ -57,7 +57,6 @@ export default function HomePage() {
     };
   }, []);
 
-  // localStorage 읽음 상태 동기화 로직
   const updateUnreadCount = () => {
     const savedCount = localStorage.getItem('klick_unread_chat_count');
     if (savedCount !== null) {
@@ -67,96 +66,27 @@ export default function HomePage() {
     }
   };
 
-  // ★ Supabase DB 및 로컬 스토리지 신규 등록 상품 통합 조회
-  const fetchFeaturedProducts = async () => {
+  // ★ Supabase DB에서 가짜 데이터 없이 오직 실제 등록된 상품만 조회
+  const fetchHomeProducts = async () => {
     try {
       setLoadingProducts(true);
 
-      // 1. Supabase DB 조회를 시도
-      let dbProducts = [];
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (data && data.length > 0) {
-        dbProducts = data;
+      if (error) {
+        console.error('Supabase fetch error on homepage:', error);
+        setProducts([]);
+      } else if (data) {
+        setProducts(data);
+      } else {
+        setProducts([]);
       }
-
-      // 2. 로컬 스토리지에 등록/수정된 상품 데이터를 확인하여 합침
-      const localProductKeys = Object.keys(localStorage).filter(key => key.startsWith('klick_product_'));
-      const localProducts = [];
-
-      localProductKeys.forEach(key => {
-        try {
-          const item = JSON.parse(localStorage.getItem(key));
-          if (item && item.id) {
-            localProducts.push(item);
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      });
-
-      // 중복 제거 및 최신 상품 순 합치기
-      const combinedMap = new Map();
-
-      // DB 상품 추가
-      dbProducts.forEach(p => combinedMap.set(p.id.toString(), p));
-      // 로컬 수정/등록 상품 덮어쓰기 (우선순위 부여)
-      localProducts.forEach(p => combinedMap.set(p.id.toString(), p));
-
-      let finalProductsList = Array.from(combinedMap.values());
-
-      // 3. 만약 DB 및 로컬 모두 데이터가 없을 경우 가동되는 B2B 백업 샘플 상품 리스트
-      if (finalProductsList.length === 0) {
-        finalProductsList = [
-          {
-            id: '1',
-            title_en: 'High-Precision Hydraulic Control Valve HV-300 Heavy Duty',
-            category: 'Industrial Machinery',
-            company_name: 'Hankook Precision Co., Ltd.',
-            price: '145.00',
-            moq: '100 Sets',
-            tagline: 'ISO 9001 CE Certified 350 Bar High Pressure Valve',
-            image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-          },
-          {
-            id: '2',
-            title_en: 'Heavy-Duty Hydraulic Actuator Cylinder AC-500 Automation',
-            category: 'Industrial Machinery',
-            company_name: 'Hankook Precision Co., Ltd.',
-            price: '320.00',
-            moq: '50 Units',
-            tagline: 'Zero-leakage heavy industrial grade hydraulic actuator',
-            image_url: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=800&q=80',
-          },
-          {
-            id: '3',
-            title_en: 'Organic K-Beauty Repair Serum 50ml Private Label OEM',
-            category: 'K-Beauty & Cosmetics',
-            company_name: 'Corea Bio Cosmetics Inc.',
-            price: '12.50',
-            moq: '1,000 Pcs',
-            tagline: 'CPNP certified vegan skincare OEM ODM custom packaging',
-            image_url: 'https://images.unsplash.com/photo-1608248597263-00079e9614f2?auto=format&fit=crop&w=800&q=80',
-          },
-          {
-            id: '4',
-            title_en: 'Smart Industrial Automation Micro Sensor Module PCB',
-            category: 'Electronics & Smart IT',
-            company_name: 'Sintronics Tech Korea',
-            price: '28.00',
-            moq: '200 Units',
-            tagline: 'High precision PCB micro sensor module for smart factories',
-            image_url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80',
-          }
-        ];
-      }
-
-      setProducts(finalProductsList);
     } catch (error) {
-      console.error('Failed to load featured products for homepage:', error);
+      console.error('Failed to load products for homepage:', error);
+      setProducts([]);
     } finally {
       setLoadingProducts(false);
     }
@@ -165,8 +95,10 @@ export default function HomePage() {
   // 카테고리 및 검색어 필터링
   const filteredProducts = products.filter((item) => {
     const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
-    const matchesSearch = (item.title_en || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (item.company_name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = 
+      (item.title_en || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.title_ko || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.company_name || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -187,7 +119,6 @@ export default function HomePage() {
               <span>Direct B2B Gateway to South Korean Manufacturers</span>
             </div>
 
-            {/* 실시간 안읽은 채팅 메시지 뱃지 */}
             {unreadCount > 0 && (
               <Link
                 href="/chat"
@@ -251,7 +182,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 2. 알리바바 스타일의 컴팩트한 상품 그리드 (DB 및 로컬 등록 신규 상품 노출) */}
+      {/* 2. 실제 DB 연동 카탈로그 그리드 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-2 border-b border-slate-200 pb-3">
           <div className="space-y-0.5">
@@ -272,7 +203,7 @@ export default function HomePage() {
             href="/products"
             className="text-xs font-extrabold text-blue-600 hover:underline flex items-center gap-1 self-start md:self-auto"
           >
-            <span>View All Products ({products.length})</span>
+            <span>View Dashboard ({products.length})</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -281,13 +212,24 @@ export default function HomePage() {
         {loadingProducts ? (
           <div className="text-center py-16 bg-white rounded-3xl border border-slate-200">
             <Loader2 className="w-6 h-6 text-blue-600 animate-spin mx-auto mb-2" />
-            <p className="text-xs text-slate-400">Loading catalog items...</p>
+            <p className="text-xs text-slate-400">Loading catalog items from database...</p>
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200 space-y-2">
-            <Package className="w-10 h-10 text-slate-300 mx-auto stroke-1" />
-            <h3 className="text-xs font-bold text-slate-800">No Products Found</h3>
-            <p className="text-[11px] text-slate-500">Try adjusting your category or search term.</p>
+          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 space-y-3 p-6">
+            <Package className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
+            <h3 className="text-sm font-bold text-slate-800">No Products Registered Yet</h3>
+            <p className="text-xs text-slate-500">
+              There are no live products matching your criteria in the database. Please register a product from the Seller Dashboard!
+            </p>
+            <div className="pt-2">
+              <Link
+                href="/products"
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Register First Product</span>
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
@@ -303,7 +245,7 @@ export default function HomePage() {
                     {item.image_url ? (
                       <img
                         src={item.image_url}
-                        alt={item.title_en}
+                        alt={item.title_en || item.title_ko}
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                       />
                     ) : (
@@ -321,20 +263,20 @@ export default function HomePage() {
                     <span className="truncate">{item.company_name || 'Verified Factory'}</span>
                   </div>
 
-                  {/* 제목 (2줄 제한) */}
+                  {/* 제목 */}
                   <h3 className="text-xs font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition min-h-[32px]">
-                    {item.title_en}
+                    {item.title_en || item.title_ko}
                   </h3>
 
                   {/* 단가 & MOQ 표기 */}
                   <div className="pt-1 border-t border-slate-100 space-y-0.5">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-sm font-extrabold text-emerald-600">${item.price}</span>
+                      <span className="text-sm font-extrabold text-emerald-600">${item.price || '0.00'}</span>
                       <span className="text-[10px] text-slate-400 font-semibold">/ Unit</span>
                     </div>
 
                     <div className="text-[10px] text-slate-500 font-medium">
-                      MOQ: <span className="font-extrabold text-slate-800">{item.moq}</span>
+                      MOQ: <span className="font-extrabold text-slate-800">{item.moq || '1 Unit'}</span>
                     </div>
                   </div>
                 </div>

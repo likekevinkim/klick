@@ -21,13 +21,11 @@ export default function ProductDashboardPage() {
     fetchProducts();
   }, []);
 
-  // ★ Supabase DB 실시간 최우선 조회 및 로컬 스토리지 병합 연동
+  // ★ Supabase DB에서 실제 상품 목록만 직접 조회
   const fetchProducts = async () => {
     try {
       setLoading(true);
 
-      // 1. Supabase DB 조회
-      let dbProducts = [];
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -35,135 +33,87 @@ export default function ProductDashboardPage() {
 
       if (error) {
         console.error('Supabase fetch error:', error);
-      } else if (data && data.length > 0) {
-        dbProducts = data;
+        setProducts([]);
+      } else if (data) {
+        setProducts(data);
+      } else {
+        setProducts([]);
       }
-
-      // 2. 로컬 스토리지에 보관된 임시 백업 데이터 병합
-      const localProductKeys = Object.keys(localStorage).filter(key => key.startsWith('klick_product_'));
-      const localProducts = [];
-
-      localProductKeys.forEach(key => {
-        try {
-          const item = JSON.parse(localStorage.getItem(key));
-          if (item && item.id) {
-            localProducts.push(item);
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      });
-
-      // DB 및 로컬 데이터 합치기 (중복 제거)
-      const combinedMap = new Map();
-      dbProducts.forEach(p => combinedMap.set(p.id.toString(), p));
-      localProducts.forEach(p => combinedMap.set(p.id.toString(), p));
-
-      let finalProducts = Array.from(combinedMap.values());
-
-      // 3. 데이터가 전혀 없을 경우 기본 가동 샘플
-      if (finalProducts.length === 0) {
-        finalProducts = [
-          {
-            id: '1',
-            title_en: 'High-Precision Hydraulic Control Valve HV-300 Heavy Duty',
-            title_ko: '초고압 산업용 유압 제어 밸브 HV-300',
-            category: 'Industrial Machinery',
-            company_name: 'Hankook Precision Co., Ltd. (한국정밀공업)',
-            price: '145.00',
-            moq: '100 Units',
-            lead_time: '15 - 20 Days',
-            tagline: 'ISO 9001 certified heavy-duty industrial valve engineered with Korean precision technology.',
-            image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-            created_at: new Date().toISOString(),
-          },
-          {
-            id: '2',
-            title_en: 'Heavy-Duty Hydraulic Actuator Cylinder AC-500 Automation',
-            title_ko: '중공업용 유압 실린더 액츄에이터 AC-500',
-            category: 'Industrial Machinery',
-            company_name: 'Hankook Precision Co., Ltd. (한국정밀공업)',
-            price: '320.00',
-            moq: '50 Units',
-            lead_time: '20 - 25 Days',
-            tagline: 'Heavy industrial grade actuator built for zero-leakage durability in extreme conditions.',
-            image_url: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=800&q=80',
-            created_at: new Date().toISOString(),
-          }
-        ];
-      }
-
-      setProducts(finalProducts);
     } catch (error) {
       console.error('Failed to load seller products:', error);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // ★ 새 상품 등록 시 Supabase DB 인서트 & 상태 즉시 반영
+  // ★ 새 상품 생성 시 Supabase DB에 명확하게 INSERT 및 상태 동기화
   const handleCreateProduct = async (payload) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id || 'sample_seller_owner_id';
+      const userId = session?.user?.id || null;
 
       const fullPayload = {
-        ...payload,
-        user_id: userId,
+        title_en: payload.title_en,
+        title_ko: payload.title_ko,
+        category: payload.category,
+        price: payload.price,
+        moq: payload.moq,
+        lead_time: payload.lead_time,
+        product_size: payload.product_size,
         company_name: payload.company_name || 'Hankook Precision Co., Ltd.',
+        factory_location: payload.factory_location || 'South Korea 🇰🇷',
+        certifications: payload.certifications || 'ISO 9001, CE Certified',
+        tagline: payload.tagline,
+        description_en: payload.description_en,
+        image_url: payload.image_url,
+        gallery_images: payload.gallery_images,
+        video_url: payload.video_url,
+        tiered_pricing: payload.tiered_pricing,
+        user_id: userId,
         created_at: new Date().toISOString()
       };
 
-      // DB 저장을 시도
       const { data, error } = await supabase
         .from('products')
         .insert([fullPayload])
         .select();
 
-      let createdItem = fullPayload;
-
       if (error) {
         console.error('Supabase DB Insert Error:', error);
-        // DB에 컬럼이 부족하거나 에러 시 로컬 ID 채번
-        createdItem.id = Date.now().toString();
-      } else if (data && data.length > 0) {
-        createdItem = data[0];
-      } else {
-        createdItem.id = Date.now().toString();
+        alert('DB 저장 중 오류가 발생했습니다: ' + error.message);
+        return;
       }
 
-      // 로컬 스토리지에 영구 백업 저장
-      localStorage.setItem(`klick_product_${createdItem.id}`, JSON.stringify(createdItem));
-
-      // 대시보드 리스트 상단에 즉시 추가
-      setProducts([createdItem, ...products]);
-
-      alert('Product successfully published to Supabase Database & Global Catalog!');
+      if (data && data.length > 0) {
+        setProducts([data[0], ...products]);
+        alert('Product successfully saved to Supabase Database!');
+      } else {
+        fetchProducts();
+      }
     } catch (err) {
       console.error('Error creating product:', err);
-      alert('Product published locally!');
+      alert('Failed to save product to database.');
     }
   };
 
-  // ★ 상품 삭제 시 Supabase DB & 로컬 스토리지 동시 삭제
+  // ★ 상품 삭제 시 Supabase DB에서 삭제
   const handleDeleteProduct = async (e, id) => {
     e.stopPropagation();
-    if (!confirm('Are you sure you want to delete this product from your catalog?')) return;
+    if (!confirm('Are you sure you want to delete this product permanently from the database?')) return;
 
     try {
-      if (id && id !== '1' && id !== '2') {
-        const { error } = await supabase.from('products').delete().eq('id', id);
-        if (error) {
-          console.error('Supabase delete error:', error);
-        }
+      const { error } = await supabase.from('products').delete().eq('id', id);
+      if (error) {
+        console.error('Supabase delete error:', error);
+        alert('Delete failed: ' + error.message);
+        return;
       }
 
-      localStorage.removeItem(`klick_product_${id}`);
       setProducts(products.filter(p => p.id.toString() !== id.toString()));
-      alert('Product deleted successfully.');
+      alert('Product deleted successfully from Database.');
     } catch (error) {
       console.error('Delete error:', error);
-      setProducts(products.filter(p => p.id.toString() !== id.toString()));
     }
   };
 
@@ -183,7 +133,7 @@ export default function ProductDashboardPage() {
               Export Product Dashboard
             </h1>
             <p className="text-xs md:text-sm text-slate-400">
-              Manage live factory catalog items, AI English copywriting, video tours, and tiered FOB pricing connected to Database.
+              Manage live factory catalog items connected directly to Supabase Database.
             </p>
           </div>
 
@@ -215,7 +165,7 @@ export default function ProductDashboardPage() {
             <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 space-y-3">
               <Package className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
               <h3 className="text-base font-bold text-slate-800">No Products Registered Yet</h3>
-              <p className="text-xs text-slate-500">Click "Register New Product" to start exporting to global buyers.</p>
+              <p className="text-xs text-slate-500">Click "Register New Product" to add your first product to Supabase DB.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
