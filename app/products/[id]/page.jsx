@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronRight, Edit3, Trash2, Loader2 } from 'lucide-react';
+import { ChevronRight, Edit3, Trash2, Loader2, Star, MessageSquare, CheckCircle2, User } from 'lucide-react';
 import ProductDetailVisual from '@/components/products/ProductDetailVisual';
 import ProductDetailSpecs from '@/components/products/ProductDetailSpecs';
 import ProductFormModal from '@/components/products/ProductFormModal';
@@ -21,6 +21,12 @@ export default function ProductDetailPage() {
   const [isOwner, setIsOwner] = useState(true);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // 실시간 바이어 리뷰 & 평점 시스템 상태
+  const [reviews, setReviews] = useState([]);
+  const [newRating, setNewRating] = useState(5);
+  const [newReviewText, setNewRatingText] = useState('');
+  const [buyerName, setBuyerName] = useState('');
 
   // 셀러 수정 모달 상태
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -51,6 +57,24 @@ export default function ProductDetailPage() {
         if (data) foundProduct = data;
       }
 
+      // 샘플 데이터 및 기본 초기 리뷰 설정
+      const mockReviews = [
+        {
+          id: 1,
+          buyer_name: 'David Miller (US Machinery Corp)',
+          rating: 5,
+          comment: 'Outstanding quality and fast delivery to Los Angeles port. The ISO 9001 certification report was fully provided.',
+          created_at: '2026-08-01'
+        },
+        {
+          id: 2,
+          buyer_name: 'Elena Rostova (Euro Industrial GbmH)',
+          rating: 5,
+          comment: 'Very professional Korean manufacturer. Spool precision meets our extreme high pressure standards.',
+          created_at: '2026-07-28'
+        }
+      ];
+
       if (!foundProduct) {
         foundProduct = {
           id: productId || '1',
@@ -64,8 +88,8 @@ export default function ProductDetailPage() {
           category: 'Industrial Machinery',
           price: '145.00',
           moq: '100 Units',
-          rating: 4.9,
-          reviews_count: 28,
+          rating: 5.0,
+          reviews_count: 2,
           lead_time: '15 - 20 Days (FOB Incheon Port)',
           product_size: '240 x 180 x 120 mm / 4.5kg',
           tagline: 'ISO 9001 & CE certified heavy-duty hydraulic valve engineered with Korean precision technology.',
@@ -107,6 +131,7 @@ export default function ProductDetailPage() {
         };
       }
 
+      setReviews(mockReviews);
       setProduct(foundProduct);
       setIsOwner(true);
     } catch (error) {
@@ -114,6 +139,37 @@ export default function ProductDetailPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // 해외 바이어 실시간 평점/리뷰 제출 및 실시간 평균 평점 재계산
+  const handleAddReview = (e) => {
+    e.preventDefault();
+    if (!newReviewText.trim()) return;
+
+    const newReviewObj = {
+      id: Date.now(),
+      buyer_name: buyerName.trim() || 'Global Buyer',
+      rating: Number(newRating),
+      comment: newReviewText.trim(),
+      created_at: new Date().toISOString().split('T')[0]
+    };
+
+    const updatedReviews = [newReviewObj, ...reviews];
+    setReviews(updatedReviews);
+
+    // 평균 평점 재계산
+    const totalRating = updatedReviews.reduce((sum, r) => sum + r.rating, 0);
+    const avgRating = (totalRating / updatedReviews.length).toFixed(1);
+
+    setProduct(prev => ({
+      ...prev,
+      rating: parseFloat(avgRating),
+      reviews_count: updatedReviews.length
+    }));
+
+    setNewRatingText('');
+    setBuyerName('');
+    alert('Thank you! Your review and rating have been submitted.');
   };
 
   const handleUpdateProduct = async (payload) => {
@@ -200,11 +256,110 @@ export default function ProductDetailPage() {
 
             {/* 2. 수량별 구간 단가표 & 기술 스펙 속성 테이블 */}
             <ProductDetailSpecs product={product} isOwner={isOwner} />
+
+            {/* 3. ★ 바이어 실제 평점 및 리뷰 수집 세션 */}
+            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+              <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                    <Star className="w-5 h-5 text-amber-500 fill-amber-400" />
+                    Verified Buyer Reviews & Ratings ({product?.reviews_count || reviews.length})
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Average Rating: <strong className="text-slate-900">{product?.rating} / 5.0</strong> based on verified global transactions.</p>
+                </div>
+              </div>
+
+              {/* 바이어 리뷰 작성 폼 */}
+              <form onSubmit={handleAddReview} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                <span className="text-xs font-extrabold text-slate-800 block">Leave a Review for this Factory Product</span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Your Name / Company</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. John Smith (US Import LLC)"
+                      value={buyerName}
+                      onChange={(e) => setBuyerName(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Rating (1 to 5 Stars)</label>
+                    <select
+                      value={newRating}
+                      onChange={(e) => setNewRating(Number(e.target.value))}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-amber-600"
+                    >
+                      <option value={5}>★★★★★ (5.0 - Excellent Quality)</option>
+                      <option value={4}>★★★★☆ (4.0 - Very Good)</option>
+                      <option value={3}>★★★☆☆ (3.0 - Average)</option>
+                      <option value={2}>★★☆☆☆ (2.0 - Below Expectations)</option>
+                      <option value={1}>★☆☆☆☆ (1.0 - Poor)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <textarea
+                    rows={2}
+                    required
+                    placeholder="Write your review about product quality, shipping speed, or seller response..."
+                    value={newReviewText}
+                    onChange={(e) => setNewRatingText(e.target.value)}
+                    className="w-full p-3 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Submit Review</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* 작성된 리뷰 리스트 */}
+              <div className="space-y-3 pt-2">
+                {reviews.map((rev) => (
+                  <div key={rev.id} className="p-4 bg-slate-50/60 rounded-2xl border border-slate-100 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-extrabold text-xs">
+                          <User className="w-4 h-4" />
+                        </div>
+                        <span className="text-xs font-extrabold text-slate-900">{rev.buyer_name}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1 text-amber-500 text-xs font-bold">
+                        <div className="flex">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`w-3.5 h-3.5 ${i < rev.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-slate-400 text-[10px] ml-1">{rev.created_at}</span>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-700 font-medium pl-9 leading-relaxed">
+                      "{rev.comment}"
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </main>
 
-      {/* 3. 통합 수정 모달 */}
+      {/* 4. 셀러 수정 모달 */}
       {isEditModalOpen && (
         <ProductFormModal
           isOpen={isEditModalOpen}
