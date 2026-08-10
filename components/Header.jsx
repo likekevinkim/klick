@@ -14,11 +14,7 @@ import {
   Building2, 
   MessageSquare, 
   FileText, 
-  Home,
-  Bell,
-  X,
-  CheckCircle2,
-  Clock
+  Home
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -27,29 +23,11 @@ export default function Header() {
   const [currentLang, setCurrentLang] = useState('EN');
   const [isLangOpen, setIsLangOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [user, setUser] = useState(null);
   const pathname = usePathname();
 
-  // 알림 리스트 상태
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: 'New RFQ Inquiry Received',
-      message: 'John Smith (US Sourcing LLC) sent a quotation request for HV-300.',
-      time: '10 mins ago',
-      read: false,
-      link: '/chat'
-    },
-    {
-      id: 2,
-      title: 'Sample Order Payment Confirmed',
-      message: 'Payment for 2 sample units of Repair Serum has been completed.',
-      time: '1 hour ago',
-      read: false,
-      link: '/chat'
-    }
-  ]);
+  // 실시간 안읽은 채팅 메시지 카운트 상태
+  const [unreadChatCount, setUnreadChatCount] = useState(2);
 
   const languages = [
     { code: 'en', label: 'EN', name: 'English (US)' },
@@ -60,12 +38,16 @@ export default function Header() {
     { code: 'ar', label: 'AR', name: 'العربية (AR)' },
   ];
 
+  // 구글 번역 쿠키 설정 및 셀렉터 변경 트리거
   const setGoogleTranslateCookie = (langCode) => {
     if (!langCode) return;
     const domain = window.location.hostname;
+    
+    // 1. 쿠키 이중 경로 저장
     document.cookie = `googtrans=/en/${langCode}; path=/;`;
     document.cookie = `googtrans=/en/${langCode}; path=/; domain=${domain};`;
 
+    // 2. 구글 번역 드롭다운 셀렉터 이벤트 강제 발생
     const triggerGoogleCombo = () => {
       const googleCombo = document.querySelector('.goog-te-combo');
       if (googleCombo) {
@@ -75,10 +57,12 @@ export default function Header() {
     };
 
     triggerGoogleCombo();
+    // DOM 렌더링 지연 대비 0.3초 후 2차 트리거
     setTimeout(triggerGoogleCombo, 300);
   };
 
   useEffect(() => {
+    // 1. Supabase 세션 초기 조회 및 이중 재검증
     const fetchUserSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
@@ -92,14 +76,17 @@ export default function Header() {
     };
     fetchUserSession();
 
+    // 2. Supabase 세션 상태 변화 실시간 감지
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
     });
 
+    // 3. 저장된 언어 불러오기 (기본값: EN)
     const savedCode = localStorage.getItem('klick_lang_code') || 'en';
     const savedLabel = localStorage.getItem('klick_lang_label') || 'EN';
     setCurrentLang(savedLabel);
 
+    // 4. 구글 번역 스크립트 동적 주입 및 리스너 등록
     if (!document.getElementById('google-translate-script')) {
       const addScript = document.createElement('script');
       addScript.id = 'google-translate-script';
@@ -136,7 +123,12 @@ export default function Header() {
     };
   }, []);
 
+  // 5. 채팅 페이지(`/chat`) 진입 시 안읽은 채팅 수 자동으로 0 초기화 처리
   useEffect(() => {
+    if (pathname === '/chat') {
+      setUnreadChatCount(0);
+    }
+    
     const savedCode = localStorage.getItem('klick_lang_code');
     if (savedCode && savedCode !== 'en') {
       const timer = setTimeout(() => {
@@ -155,6 +147,7 @@ export default function Header() {
     localStorage.setItem('klick_lang_label', label);
 
     setGoogleTranslateCookie(langCode);
+    // 번역 엔진 쿠키 적용을 위해 새로고침
     window.location.reload();
   };
 
@@ -165,18 +158,14 @@ export default function Header() {
     router.push('/');
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
-  };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
   const userRole = user?.user_metadata?.role || 'seller';
 
   return (
     <header className="sticky top-0 z-[99999] bg-slate-900 text-white border-b border-slate-800 shadow-md">
+      {/* 구글 번역 숨김 요소 */}
       <div id="google_translate_element" className="hidden"></div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-18 flex items-center justify-between gap-2 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-18 flex items-center justify-between gap-2 sm:gap-4">
         {/* KLICK 브랜드 로고 */}
         <Link href="/" className="flex items-center gap-2 cursor-pointer group notranslate flex-shrink-0" translate="no">
           <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-600 rounded-xl flex items-center justify-center font-extrabold text-white text-lg sm:text-xl shadow-lg group-hover:bg-blue-500 transition">
@@ -192,8 +181,9 @@ export default function Header() {
           </div>
         </Link>
 
-        {/* 내비게이션 & 맞춤 버튼 영역 */}
+        {/* 내비게이션 & 사용자 맞춤 버튼 영역 */}
         <nav className="flex items-center gap-1.5 sm:gap-3">
+          {/* 1. 홈 바로가기 (아이콘 형태 노출) */}
           <Link
             href="/"
             title="Home"
@@ -203,6 +193,7 @@ export default function Header() {
             <span className="sr-only">Home</span>
           </Link>
 
+          {/* 2. 공개 RFQ 게시판 버튼 (모바일 아이콘 중심, PC 텍스트 노출) */}
           <Link
             href="/rfq"
             className="p-2 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition cursor-pointer flex items-center gap-1.5"
@@ -211,90 +202,36 @@ export default function Header() {
             <span className="hidden sm:inline">RFQ Board</span>
           </Link>
 
-          {/* ★ 실시간 알림 센터 드롭다운 */}
-          {user && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsNotificationOpen(!isNotificationOpen);
-                  setIsUserMenuOpen(false);
-                  setIsLangOpen(false);
-                }}
-                className="p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition relative cursor-pointer"
-                title="Notifications"
-              >
-                <Bell className="w-4 h-4 text-amber-400" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center shadow-md animate-pulse">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-
-              {isNotificationOpen && (
-                <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 py-3 z-50 animate-fadeIn">
-                  <div className="px-4 pb-2 border-b border-slate-100 flex items-center justify-between">
-                    <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
-                      <Bell className="w-3.5 h-3.5 text-amber-500" /> Trade Notifications
-                    </span>
-                    {unreadCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={markAllAsRead}
-                        className="text-[10px] font-bold text-blue-600 hover:underline"
-                      >
-                        Mark all as read
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
-                    {notifications.length === 0 ? (
-                      <div className="p-6 text-center text-xs text-slate-400">
-                        No new notifications.
-                      </div>
-                    ) : (
-                      notifications.map((n) => (
-                        <Link
-                          key={n.id}
-                          href={n.link}
-                          onClick={() => setIsNotificationOpen(false)}
-                          className={`p-3.5 block transition hover:bg-slate-50 ${!n.read ? 'bg-blue-50/40' : ''}`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <span className="text-xs font-extrabold text-slate-800 line-clamp-1">{n.title}</span>
-                            <span className="text-[9px] text-slate-400 flex-shrink-0">{n.time}</span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">{n.message}</p>
-                        </Link>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 로그인 상태 분기 UI ([Seller Hub] / [Buyer Hub]) */}
+          {/* 3. 로그인 상태 분기 UI (모바일에서는 아이콘만 노출, PC에서는 [Seller Hub] / [Buyer Hub] 텍스트 표기) */}
           {user ? (
             <div className="relative">
               <button
                 type="button"
                 onClick={() => {
                   setIsUserMenuOpen(!isUserMenuOpen);
-                  setIsNotificationOpen(false);
                   setIsLangOpen(false);
                 }}
-                className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+                className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5 relative"
               >
-                <User className="w-4 h-4 text-blue-400" />
-                <span className="font-extrabold">
+                <div className="relative">
+                  <User className="w-4 h-4 text-blue-400" />
+                  {/* 안읽은 메시지 뱃지 (아이콘 상단) */}
+                  {unreadChatCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-extrabold rounded-full flex items-center justify-center shadow-md animate-pulse">
+                      {unreadChatCount}
+                    </span>
+                  )}
+                </div>
+
+                {/* 스마트폰 화면(sm 미만)에서는 글자를 숨기고 PC에서만 노출 */}
+                <span className="font-extrabold hidden sm:inline">
                   {userRole === 'seller' ? 'Seller Hub' : 'Buyer Hub'}
                 </span>
+                
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
 
+              {/* 드롭다운 메뉴 영역 */}
               {isUserMenuOpen && (
                 <div className="absolute right-0 mt-2 w-52 sm:w-56 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-fadeIn">
                   <div className="px-4 py-2 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -303,6 +240,7 @@ export default function Header() {
 
                   {userRole === 'seller' ? (
                     <>
+                      {/* 1. Factory Profile & Showroom */}
                       <Link
                         href="/companies/1"
                         onClick={() => setIsUserMenuOpen(false)}
@@ -312,6 +250,7 @@ export default function Header() {
                         <span>Factory Profile & Showroom</span>
                       </Link>
 
+                      {/* 2. Product Dashboard */}
                       <Link
                         href="/products"
                         onClick={() => setIsUserMenuOpen(false)}
@@ -321,13 +260,24 @@ export default function Header() {
                         <span>Product Dashboard</span>
                       </Link>
 
+                      {/* 3. Live Chat Hub (안읽은 메시지 수 뱃지 연결) */}
                       <Link
                         href="/chat"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          setUnreadChatCount(0);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center justify-between"
                       >
-                        <MessageSquare className="w-4 h-4 text-purple-500" />
-                        <span>Live Chat Hub</span>
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-purple-500" />
+                          <span>Live Chat Hub</span>
+                        </div>
+                        {unreadChatCount > 0 && (
+                          <span className="px-2 py-0.5 bg-rose-500 text-white text-[10px] font-extrabold rounded-full">
+                            {unreadChatCount} new
+                          </span>
+                        )}
                       </Link>
                     </>
                   ) : (
@@ -343,11 +293,21 @@ export default function Header() {
 
                       <Link
                         href="/chat"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          setUnreadChatCount(0);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center justify-between"
                       >
-                        <MessageSquare className="w-4 h-4 text-purple-500" />
-                        <span>Live Chat Hub</span>
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-purple-500" />
+                          <span>Live Chat Hub</span>
+                        </div>
+                        {unreadChatCount > 0 && (
+                          <span className="px-2 py-0.5 bg-rose-500 text-white text-[10px] font-extrabold rounded-full">
+                            {unreadChatCount} new
+                          </span>
+                        )}
                       </Link>
                     </>
                   )}
@@ -366,6 +326,7 @@ export default function Header() {
               )}
             </div>
           ) : (
+            /* 비로그인 상태 UI */
             <Link
               href="/login"
               className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5"
@@ -375,14 +336,13 @@ export default function Header() {
             </Link>
           )}
 
-          {/* 다국어 언어 선택 드롭다운 */}
+          {/* 4. 다국어 언어 선택 드롭다운 */}
           <div className="relative border-l border-slate-800 pl-1.5 sm:pl-2 ml-0.5 sm:ml-1">
             <button
               type="button"
               onClick={() => {
                 setIsLangOpen(!isLangOpen);
                 setIsUserMenuOpen(false);
-                setIsNotificationOpen(false);
               }}
               className="px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1"
             >
