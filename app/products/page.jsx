@@ -47,11 +47,11 @@ export default function ProductDashboardPage() {
     }
   };
 
-  // ★ 새 상품 생성 시 DB 스키마 컬럼 예외 처리가 반영된 INSERT 로직
+  // ★ 새 상품 생성 시 user_id 컬럼 오차 예외 처리가 반영된 안전 INSERT 로직
   const handleCreateProduct = async (payload) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id || null;
+      const currentUserId = session?.user?.id || null;
 
       const fullPayload = {
         title_en: payload.title_en || 'Export Product',
@@ -70,9 +70,13 @@ export default function ProductDashboardPage() {
         gallery_images: payload.gallery_images || [],
         video_url: payload.video_url || '',
         tiered_pricing: payload.tiered_pricing || [],
-        user_id: userId,
         created_at: new Date().toISOString()
       };
+
+      // user_id 존재 시 페이로드에 동적 삽입
+      if (currentUserId) {
+        fullPayload.user_id = currentUserId;
+      }
 
       // 1차 DB 저장을 시도
       let { data, error } = await supabase
@@ -80,34 +84,49 @@ export default function ProductDashboardPage() {
         .insert([fullPayload])
         .select();
 
-      // 만약 신규 추가 컬럼 오류 발생 시, 기본 필수 컬럼으로 안전 재시도(Fallback)
+      // user_id 컬럼 누락 에러 발생 시 fallback 제거 시도
+      if (error && error.message?.includes('user_id')) {
+        console.warn('user_id 컬럼 누락 감지, user_id 제외 후 안전 저장 재시도...');
+        const payloadWithoutUserId = { ...fullPayload };
+        delete payloadWithoutUserId.user_id;
+
+        const retryResult = await supabase
+          .from('products')
+          .insert([payloadWithoutUserId])
+          .select();
+
+        if (!retryResult.error && retryResult.data) {
+          data = retryResult.data;
+          error = null;
+        }
+      }
+
+      // 2차 기본 필수 컬럼 유연 저장 (기타 B2B 컬럼 누락 대응)
       if (error && error.message?.includes('column')) {
-        console.warn('DB 추가 컬럼 누락 감지, 기본 필수 컬럼으로 유연 저장 시도중...');
-        
-        const fallbackPayload = {
+        console.warn('기타 DB 컬럼 누락 감지, 최소 필수 컬럼으로 저장 시도...');
+        const minimalPayload = {
           title_en: payload.title_en || 'Export Product',
           category: payload.category || 'General Manufacturing',
           price: payload.price || '0.00',
           moq: payload.moq || '1 Unit',
           image_url: payload.image_url || '',
-          user_id: userId,
           created_at: new Date().toISOString()
         };
 
-        const fallbackResult = await supabase
+        const minimalResult = await supabase
           .from('products')
-          .insert([fallbackPayload])
+          .insert([minimalPayload])
           .select();
 
-        if (!fallbackResult.error && fallbackResult.data) {
-          data = fallbackResult.data;
+        if (!minimalResult.error && minimalResult.data) {
+          data = minimalResult.data;
           error = null;
         }
       }
 
       if (error) {
         console.error('Supabase DB Insert Error:', error);
-        alert('DB 저장 중 오류가 발생했습니다: ' + error.message + '\n\n안내해 드린 SQL 스크립트를 Supabase SQL Editor에서 먼저 실행해 주세요.');
+        alert('DB 저장 오류: ' + error.message + '\n\nSupabase SQL Editor에서 안내 스크립트를 실행해 주세요.');
         return;
       }
 
