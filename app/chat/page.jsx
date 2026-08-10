@@ -1,7 +1,7 @@
 // app/chat/page.jsx
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import Header from '@/components/Header';
 import B2bPaymentModal from '@/components/B2bPaymentModal';
 import ChatRoomItem from '@/components/chat/ChatRoomItem';
@@ -20,7 +20,8 @@ import {
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-export default function RealtimeChatPage() {
+// 1. 내부 실시간 채팅 컨텐츠 컴포넌트 (useSearchParams 수신)
+function ChatContent() {
   const searchParams = useSearchParams();
   const paramProductId = searchParams.get('productId');
   const paramCompany = searchParams.get('company');
@@ -30,7 +31,7 @@ export default function RealtimeChatPage() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState('seller');
 
-  // 대화방 목록 및 현재 열린 대화방 ID (activeRoomId)
+  // 대화방 목록 및 선택된 대화방 ID 상태
   const [rooms, setRooms] = useState([]);
   const [activeRoomId, setActiveRoomId] = useState(null);
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
@@ -164,7 +165,7 @@ export default function RealtimeChatPage() {
       ]
     };
 
-    // ★ [핵심] URL 파라미터를 통한 특정 상품/회사 지정 접속 시 직통 대화방 자동 생성 및 즉시 오픈
+    // URL 파라미터를 통한 특정 회사 직통 연결 시 대화방 자동 생성 및 활성화
     if (paramCompany || paramTitle) {
       const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Hydraulic Control Valve HV-300';
       const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Hankook Precision Co., Ltd.';
@@ -196,7 +197,6 @@ export default function RealtimeChatPage() {
       mockRooms = [directRoom, ...mockRooms];
       initialMessages[newRoomId] = [directInitialMsg];
 
-      // 직통 대화방을 바로 활성화(열림)
       setActiveRoomId(newRoomId);
     }
 
@@ -220,7 +220,6 @@ export default function RealtimeChatPage() {
         }));
         setRooms(formatted);
         
-        // 파라미터가 있으면 해당 ID 방 지정
         if (paramProductId) {
           const matched = formatted.find(r => r.id.toString() === paramProductId);
           if (matched) setActiveRoomId(matched.id);
@@ -510,7 +509,7 @@ export default function RealtimeChatPage() {
           ))}
         </div>
 
-        {/* 펼쳐진 대화방의 실시간 메시지 입력 폼 */}
+        {/* 활성화된 대화방의 실시간 메시지 입력 폼 */}
         {activeRoomId && (
           <div className="bg-white rounded-3xl border border-slate-200 p-4 space-y-2 shadow-sm animate-fadeIn">
             {attachedFile && (
@@ -610,7 +609,7 @@ export default function RealtimeChatPage() {
         )}
       </main>
 
-      {/* 모달 연동 */}
+      {/* 모달 영역 */}
       {isQuoteModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6">
@@ -702,5 +701,23 @@ export default function RealtimeChatPage() {
         />
       )}
     </div>
+  );
+}
+
+// 2. 메인 Export 컴포넌트: Next.js 정적 빌드 규칙을 준수하는 Suspense Boundary 탑재
+export default function RealtimeChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <div className="flex items-center gap-2 text-slate-600 text-xs font-bold">
+            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+            <span>Loading KLICK Real-time AI Chat Hub...</span>
+          </div>
+        </div>
+      }
+    >
+      <ChatContent />
+    </Suspense>
   );
 }
