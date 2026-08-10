@@ -61,39 +61,44 @@ export default function Header() {
     setTimeout(triggerGoogleCombo, 300);
   };
 
-  // ★ Supabase DB 및 localStorage 기반 안읽은 메시지 수 계산
+  // ★ Supabase DB 기반 상대방 발신 중 '진짜 안 읽은 메시지' 정밀 계산
   const updateUnreadCountFromStorage = async () => {
-    // 채팅 페이지(/chat)에 접속해 있다면 뱃지 수치를 0으로 초기화
-    if (window.location.pathname === '/chat') {
-      setUnreadChatCount(0);
-      localStorage.setItem('klick_unread_chat_count', '0');
-      return;
-    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUser = session?.user || null;
+      const currentRole = currentUser?.user_metadata?.role || 'seller';
 
-    const savedCount = localStorage.getItem('klick_unread_chat_count');
-    if (savedCount !== null) {
-      setUnreadChatCount(parseInt(savedCount, 10));
-    } else {
-      try {
-        const { data: roomData } = await supabase.from('chat_rooms').select('id');
-        if (roomData && roomData.length > 0) {
-          const roomIds = roomData.map((r) => r.id);
-          const { data: msgData } = await supabase
-            .from('chat_messages')
-            .select('*')
-            .in('room_id', roomIds);
+      // 로컬 스토리지에 읽은 대화방 ID 목록 가져오기
+      const readRoomIds = (localStorage.getItem('klick_read_room_ids') || '').split(',').filter(Boolean);
 
-          if (msgData) {
-            const count = Math.min(msgData.length, 99);
-            setUnreadChatCount(count);
-            localStorage.setItem('klick_unread_chat_count', count.toString());
-          }
-        } else {
-          setUnreadChatCount(0);
+      const { data: roomData } = await supabase.from('chat_rooms').select('id');
+      if (roomData && roomData.length > 0) {
+        const roomIds = roomData.map((r) => r.id);
+        const { data: msgData } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .in('room_id', roomIds);
+
+        if (msgData) {
+          const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
+
+          // 상대방이 보낸 메시지 중, 아직 읽지 않은 대화방(readRoomIds에 없음)의 메시지만 안읽음으로 인정
+          const unreadMsgs = msgData.filter((m) => {
+            const isOpponent = m.sender_role === opponentRole;
+            const isRoomUnread = !readRoomIds.includes(m.room_id.toString());
+            return isOpponent && isRoomUnread;
+          });
+
+          const count = Math.min(unreadMsgs.length, 99);
+          setUnreadChatCount(count);
+          localStorage.setItem('klick_unread_chat_count', count.toString());
         }
-      } catch (err) {
-        console.error('Failed to calculate unread count:', err);
+      } else {
+        setUnreadChatCount(0);
+        localStorage.setItem('klick_unread_chat_count', '0');
       }
+    } catch (err) {
+      console.error('Failed to calculate exact unread count:', err);
     }
   };
 
@@ -122,7 +127,7 @@ export default function Header() {
     const savedLabel = localStorage.getItem('klick_lang_label') || 'EN';
     setCurrentLang(savedLabel);
 
-    // 4. ★ 안읽은 메시지 수 초기화 및 실시간 리스너 등록
+    // 4. 안읽은 메시지 수 정밀 초기화 및 실시간 리스너 등록
     updateUnreadCountFromStorage();
 
     const handleUnreadUpdate = () => {
@@ -130,20 +135,14 @@ export default function Header() {
     };
     window.addEventListener('klick_unread_chat_updated', handleUnreadUpdate);
 
-    // ★ Supabase Realtime 기반 새 메시지 INSERT 즉시 감지 및 뱃지 +1 증가
+    // Supabase Realtime 기반 새 메시지 INSERT 즉시 감지 및 재계산
     const realtimeChannel = supabase
       .channel('public:chat_messages_header_count')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         () => {
-          if (window.location.pathname !== '/chat') {
-            setUnreadChatCount((prev) => {
-              const nextCount = prev + 1;
-              localStorage.setItem('klick_unread_chat_count', nextCount.toString());
-              return nextCount;
-            });
-          }
+          updateUnreadCountFromStorage();
         }
       )
       .subscribe();
@@ -187,7 +186,7 @@ export default function Header() {
     };
   }, []);
 
-  // 6. 페이지 이동(pathname 변경) 감지 시 번역 쿠키 유지 및 재스캔
+  // 6. 페이지 이동(pathname 변경) 감지 시 번역 쿠키 유지 및 수치 재스캔
   useEffect(() => {
     updateUnreadCountFromStorage();
 
@@ -209,7 +208,6 @@ export default function Header() {
     localStorage.setItem('klick_lang_label', label);
 
     setGoogleTranslateCookie(langCode);
-    // 번역 엔진 쿠키 적용을 위해 새로고침
     window.location.reload();
   };
 
@@ -246,7 +244,7 @@ export default function Header() {
 
         {/* 내비게이션 & 사용자 맞춤 버튼 영역 */}
         <nav className="flex items-center gap-1.5 sm:gap-3">
-          {/* 1. 홈 바로가기 (아이콘 형태 노출) */}
+          {/* 1. 홈 바로가기 */}
           <Link
             href="/"
             title="Home"
@@ -265,7 +263,7 @@ export default function Header() {
             <span className="hidden sm:inline">RFQ Board</span>
           </Link>
 
-          {/* 3. 로그인 상태 분기 UI (안읽은 메시지 수 unreadChatCount 실시간 동기화) */}
+          {/* 3. 로그인 상태 분기 UI (진짜 안 읽은 메시지 수 unreadChatCount 실시간 동기화) */}
           {user ? (
             <div className="relative">
               <button
@@ -278,7 +276,7 @@ export default function Header() {
               >
                 <div className="relative">
                   <User className="w-4 h-4 text-blue-400" />
-                  {/* ★ 안읽은 메시지 수 뱃지 (0보다 클 때만 노출) */}
+                  {/* 안읽은 메시지 수 뱃지 (0보다 클 때만 노출) */}
                   {unreadChatCount > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-extrabold rounded-full flex items-center justify-center shadow-md animate-pulse">
                       {unreadChatCount}
@@ -322,7 +320,7 @@ export default function Header() {
                         <span>Product Dashboard</span>
                       </Link>
 
-                      {/* 3. Live Chat Hub (안읽은 메시지 수 뱃지 실시간 노출) */}
+                      {/* 3. Live Chat Hub (진짜 안 읽은 메시지 수 뱃지 실시간 노출) */}
                       <Link
                         href="/chat"
                         onClick={() => setIsUserMenuOpen(false)}

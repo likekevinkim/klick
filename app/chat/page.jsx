@@ -105,7 +105,7 @@ function ChatContent() {
     }
   };
 
-  // 대화방 목록 조회 및 안읽은 개수 계산
+  // ★ 대화방 목록 조회 및 읽은 대화방 제외 '진짜 안 읽은 수치' 정밀 계산
   const fetchChatRoomsAndInit = async (currentUserObj, currentRole) => {
     try {
       const { data: existingRooms } = await supabase
@@ -115,7 +115,9 @@ function ChatContent() {
 
       let currentRoomsList = existingRooms || [];
 
-      // 대화방별 메시지를 조회하여 안읽은 수치(unread_count) 계산
+      // 이미 사용자가 클릭해서 연 대화방 목록
+      const readRoomIds = (localStorage.getItem('klick_read_room_ids') || '').split(',').filter(Boolean);
+
       if (currentRoomsList.length > 0) {
         const roomIds = currentRoomsList.map((r) => r.id);
         const { data: msgData } = await supabase
@@ -132,16 +134,18 @@ function ChatContent() {
             if (!map[msg.room_id]) map[msg.room_id] = [];
             map[msg.room_id].push(msg);
 
-            // 상대방이 보낸 메시지인 경우 안읽은 수 카운트
+            // 상대방이 보낸 메시지이며, 아직 대화방을 열지 않은 경우에만 unread_count에 가산
             const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
-            if (msg.sender_role === opponentRole) {
+            const isRoomUnread = !readRoomIds.includes(msg.room_id.toString());
+            
+            if (msg.sender_role === opponentRole && isRoomUnread) {
               unreadMap[msg.room_id] = (unreadMap[msg.room_id] || 0) + 1;
             }
           });
 
           setRoomMessagesMap(map);
 
-          // 안읽은 개수를 대화방 객체에 부여
+          // 안읽은 개수를 대화방 객체에 매핑
           currentRoomsList = currentRoomsList.map((r) => ({
             ...r,
             unread_count: unreadMap[r.id] || 0
@@ -199,6 +203,11 @@ function ChatContent() {
 
         if (matchedRoom) {
           setActiveRoomId(matchedRoom.id);
+          
+          // 열어본 방은 바로 읽음 처리 목록에 등록
+          const updatedReadSet = new Set(readRoomIds);
+          updatedReadSet.add(matchedRoom.id.toString());
+          localStorage.setItem('klick_read_room_ids', Array.from(updatedReadSet).join(','));
         }
       } else {
         setActiveRoomId(null);
@@ -210,23 +219,28 @@ function ChatContent() {
     }
   };
 
+  // ★ 대화방을 클릭하여 열었을 때 해당 대화방만 정밀 '읽음(is_read)' 처리 및 수치 차감
   const handleToggleRoom = (roomId) => {
     if (activeRoomId === roomId) {
       setActiveRoomId(null);
     } else {
       setActiveRoomId(roomId);
 
-      // 열어본 방은 unread_count를 0으로 차감 처리
+      // 1. 해당 대화방 ID를 읽은 목록에 저장
+      const readRoomIds = new Set((localStorage.getItem('klick_read_room_ids') || '').split(',').filter(Boolean));
+      readRoomIds.add(roomId.toString());
+      localStorage.setItem('klick_read_room_ids', Array.from(readRoomIds).join(','));
+
+      // 2. 해당 대화방의 unread_count만 0으로 차감
       setRooms((prevRooms) =>
         prevRooms.map((r) => (r.id === roomId ? { ...r, unread_count: 0 } : r))
       );
 
-      localStorage.setItem('klick_unread_chat_count', '0');
+      // 3. 전체 헤더 뱃지 수치 재계산을 위해 이벤트 발송
       window.dispatchEvent(new Event('klick_unread_chat_updated'));
     }
   };
 
-  // 메시지 보내는 순간 UI에 즉각 렌더링(Optimistic Render)
   const handleSendMessage = async (targetRoomId, text, attachedFile) => {
     let autoTranslation = '';
     if (text) {
@@ -259,13 +273,11 @@ function ChatContent() {
       created_at: new Date().toISOString()
     };
 
-    // 1. UI 화면 대화창 목록에 바로 추가
     setRoomMessagesMap((prevMap) => ({
       ...prevMap,
       [targetRoomId]: [...(prevMap[targetRoomId] || []), newMsgObj],
     }));
 
-    // 2. 대화방 카드 최근 메시지 갱신
     setRooms((prevRooms) =>
       prevRooms.map((r) =>
         r.id === targetRoomId
@@ -274,7 +286,6 @@ function ChatContent() {
       )
     );
 
-    // 3. 비동기 DB 레코드 삽입
     try {
       const { error: msgInsertError } = await supabase.from('chat_messages').insert([{
         room_id: targetRoomId,
