@@ -84,6 +84,9 @@ function ChatContent() {
           : r
       )
     );
+
+    // 헤더 수치 재계산 이벤트 동기화
+    window.dispatchEvent(new Event('klick_unread_chat_updated'));
   };
 
   const initChatSession = async () => {
@@ -105,7 +108,7 @@ function ChatContent() {
     }
   };
 
-  // 대화방 목록 조회 및 읽은 대화방 제외 '진짜 안 읽은 수치' 정밀 계산
+  // ★ 대화방 목록 조회 및 읽은 대화방 제외 '진짜 안 읽은 수치' 정밀 계산
   const fetchChatRoomsAndInit = async (currentUserObj, currentRole) => {
     try {
       const { data: existingRooms } = await supabase
@@ -134,7 +137,7 @@ function ChatContent() {
             if (!map[msg.room_id]) map[msg.room_id] = [];
             map[msg.room_id].push(msg);
 
-            // 상대방이 보낸 메시지이며, 아직 대화방을 열지 않은 경우에만 unread_count에 가산
+            // 상대방이 보낸 메시지이며, 아직 대화방을 열지 않은 경우에만 unread_count 가산
             const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
             const isRoomUnread = !readRoomIds.includes(msg.room_id.toString());
             
@@ -214,12 +217,13 @@ function ChatContent() {
       }
 
       setRooms(currentRoomsList);
+      window.dispatchEvent(new Event('klick_unread_chat_updated'));
     } catch (err) {
       console.error('Error fetching chat rooms:', err);
     }
   };
 
-  // 대화방을 클릭하여 열었을 때 해당 대화방만 정밀 '읽음(is_read)' 처리 및 수치 차감
+  // 대화방을 클릭하여 열었을 때 해당 대화방만 정밀 '읽음' 처리 및 수치 차감
   const handleToggleRoom = (roomId) => {
     if (activeRoomId === roomId) {
       setActiveRoomId(null);

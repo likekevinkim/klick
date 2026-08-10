@@ -26,7 +26,7 @@ export default function Header() {
   const [user, setUser] = useState(null);
   const pathname = usePathname();
 
-  // 실시간 안읽은 채팅 메시지 총 개수 상태 (기본 동기화 수치)
+  // 실시간 안읽은 채팅 메시지 총 개수 상태
   const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   const languages = [
@@ -43,11 +43,9 @@ export default function Header() {
     if (!langCode) return;
     const domain = window.location.hostname;
     
-    // 1. 쿠키 이중 경로 저장
     document.cookie = `googtrans=/en/${langCode}; path=/;`;
     document.cookie = `googtrans=/en/${langCode}; path=/; domain=${domain};`;
 
-    // 2. 구글 번역 드롭다운 셀렉터 이벤트 강제 발생
     const triggerGoogleCombo = () => {
       const googleCombo = document.querySelector('.goog-te-combo');
       if (googleCombo) {
@@ -57,7 +55,6 @@ export default function Header() {
     };
 
     triggerGoogleCombo();
-    // DOM 렌더링 지연 대비 0.3초 후 2차 트리거
     setTimeout(triggerGoogleCombo, 300);
   };
 
@@ -82,7 +79,7 @@ export default function Header() {
         if (msgData) {
           const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
 
-          // 상대방이 보낸 메시지 중, 아직 읽지 않은 대화방(readRoomIds에 없음)의 메시지만 안읽음으로 인정
+          // 상대방이 보낸 메시지 중, 아직 열어보지 않은 대화방(readRoomIds에 없음)의 메시지만 카운트
           const unreadMsgs = msgData.filter((m) => {
             const isOpponent = m.sender_role === opponentRole;
             const isRoomUnread = !readRoomIds.includes(m.room_id.toString());
@@ -120,6 +117,7 @@ export default function Header() {
     // 2. Supabase 세션 상태 변화 실시간 감지
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
+      updateUnreadCountFromStorage();
     });
 
     // 3. 저장된 언어 불러오기 (기본값: EN)
@@ -216,6 +214,7 @@ export default function Header() {
     setUser(null);
     setIsUserMenuOpen(false);
     localStorage.removeItem('klick_unread_chat_count');
+    localStorage.removeItem('klick_read_room_ids');
     router.push('/');
   };
 
@@ -278,8 +277,8 @@ export default function Header() {
                   <User className="w-4 h-4 text-blue-400" />
                   {/* 안읽은 메시지 수 뱃지 (0보다 클 때만 노출) */}
                   {unreadChatCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-extrabold rounded-full flex items-center justify-center shadow-md animate-pulse">
-                      {unreadChatCount}
+                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-md animate-pulse">
+                      {unreadChatCount > 99 ? '99+' : unreadChatCount}
                     </span>
                   )}
                 </div>
