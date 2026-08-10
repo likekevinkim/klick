@@ -1,7 +1,7 @@
 // app/products/page.jsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -11,20 +11,21 @@ import {
   Sparkles, 
   Edit3, 
   Trash2, 
-  ExternalLink, 
   CheckCircle2, 
-  Globe, 
   Building2, 
   FileText, 
   Loader2, 
   Image as ImageIcon,
   DollarSign,
-  Layers,
   ArrowRight,
   Video,
-  Clock,
-  Ruler,
-  X
+  X,
+  Upload,
+  Bold,
+  Italic,
+  List,
+  Heading,
+  Link as LinkIcon
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -40,10 +41,16 @@ export default function ProductDashboardPage() {
   const [moq, setMoq] = useState('100 Units');
   const [leadTime, setLeadTime] = useState('15 - 20 Days (FOB)');
   const [productSize, setProductSize] = useState('240 x 180 x 120 mm / 4.5kg');
-  const [videoUrl, setVideoUrl] = useState('');
+  
+  // 미디어 입력 방식 선택 ('file' or 'url')
+  const [mediaInputType, setMediaInputType] = useState('file'); 
   const [mainImageUrl, setMainImageUrl] = useState('');
-  const [galleryImagesStr, setGalleryImagesStr] = useState('');
+  const [galleryImages, setGalleryImages] = useState([]);
+  const [videoUrl, setVideoUrl] = useState('');
+
+  // 에디터 및 상세설명 상태
   const [descriptionKo, setDescriptionKo] = useState('');
+  const [editorContent, setEditorContent] = useState('');
 
   // 구간 단가 (Tiered Pricing) 상태
   const [tieredPricing, setTieredPricing] = useState([
@@ -56,10 +63,14 @@ export default function ProductDashboardPage() {
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [titleEn, setTitleEn] = useState('');
   const [taglineEn, setTaglineEn] = useState('');
-  const [descriptionEn, setDescriptionEn] = useState('');
 
   // 모달 상태
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // DOM 참조
+  const mainFileInputRef = useRef(null);
+  const galleryFileInputRef = useRef(null);
+  const videoFileInputRef = useRef(null);
 
   useEffect(() => {
     setMounted(true);
@@ -113,6 +124,33 @@ export default function ProductDashboardPage() {
     }
   };
 
+  // 대표 이미지 파일 업로드 처리
+  const handleMainFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setMainImageUrl(url);
+    }
+  };
+
+  // 추가 갤러리 이미지 파일 업로드 처리
+  const handleGalleryFilesChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      const newUrls = files.map(file => URL.createObjectURL(file));
+      setGalleryImages(prev => [...prev, ...newUrls]);
+    }
+  };
+
+  // 비디오 파일 업로드 처리
+  const handleVideoFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setVideoUrl(url);
+    }
+  };
+
   // 구간 단가 항목 추가/삭제
   const handleAddPriceTier = () => {
     setTieredPricing([...tieredPricing, { min_qty: '5,000+ Units', price: '100.00' }]);
@@ -128,20 +166,59 @@ export default function ProductDashboardPage() {
     setTieredPricing(updated);
   };
 
-  // AI 자동 영문 카피라이팅 & 기술 상세페이지 기획 생성
+  // 에디터 서식 태그 주입 조작 함수
+  const handleInsertEditorTag = (tagType) => {
+    let insertedText = '';
+    if (tagType === 'bold') insertedText = ' **Bold Spec Text** ';
+    if (tagType === 'italic') insertedText = ' *Italic Text* ';
+    if (tagType === 'heading') insertedText = '\n### Technical Specification Heading\n';
+    if (tagType === 'list') insertedText = '\n- Specification Item 1\n- Specification Item 2\n';
+    if (tagType === 'image') {
+      const imgUrl = prompt('Enter Image URL to embed in description:', 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80');
+      if (imgUrl) insertedText = `\n![Product Image](${imgUrl})\n`;
+    }
+    if (tagType === 'video') {
+      const vidUrl = prompt('Enter Demo Video URL to embed:', 'https://www.w3schools.com/html/mov_bbb.mp4');
+      if (vidUrl) insertedText = `\n[Video Embed: ${vidUrl}]\n`;
+    }
+    if (tagType === 'link') {
+      const linkUrl = prompt('Enter Website or Document Link URL:', 'https://klick.trade');
+      if (linkUrl) insertedText = ` [Download Spec PDF](${linkUrl}) `;
+    }
+
+    setEditorContent(prev => prev + insertedText);
+  };
+
+  // AI 영문 카피라이팅 & 리치 에디터 본문 자동 기획 생성
   const handleGenerateAiCopywriting = () => {
     if (!titleKo) {
-      alert('제품 한글 명칭을 입력해 주세요.');
+      alert('제품 한글 명칭을 먼저 입력해 주세요.');
       return;
     }
 
     setIsAiGenerating(true);
     setTimeout(() => {
-      setTitleEn(`High-Precision ${titleKo} (Export Premium Standard)`);
-      setTaglineEn(`ISO 9001 & CE certified ${category.toLowerCase()} engineered with Korean advanced technology.`);
-      setDescriptionEn(
-        `Official Verified Export Specification:\n- Product Name: ${titleKo}\n- Category: ${category}\n- Quality Standard: ISO 9001:2015, CE, RoHS Approved\n- Size & Weight: ${productSize}\n- Lead Time: ${leadTime}\n\nFeatures & Benefits:\n1. Engineered with high-durability materials for zero-defect reliability.\n2. Custom OEM logo branding and specialized export packaging available upon request.\n\nDescription:\n${descriptionKo || 'This high-performance Korean manufactured product is optimized for extreme operating conditions and long-term industrial reliability.'}`
-      );
+      const aiGeneratedTitle = `High-Precision ${titleKo} (Export Premium Standard)`;
+      const aiGeneratedTagline = `ISO 9001 & CE certified ${category.toLowerCase()} engineered with Korean advanced technology.`;
+      
+      const aiRichFormattedContent = `### Official Verified Export Specification Sheet
+- **Product Name**: ${titleKo}
+- **Category**: ${category}
+- **Quality Standard**: ISO 9001:2015, CE Certified
+- **Size & Weight**: ${productSize}
+- **Lead Time**: ${leadTime}
+
+### Key Industrial Features
+1. **High Durability Alloy**: Built with high-grade Korean materials for extreme pressure environments.
+2. **Zero-Defect Quality Assurance**: 100% factory pressure test report provided with bulk export shipments.
+3. **OEM / ODM Customization**: Custom logo laser engraving and specialized export packaging available.
+
+### Description
+${descriptionKo || 'This high-performance Korean manufactured product is optimized for heavy industrial automation and long-term operating reliability.'}`;
+
+      setTitleEn(aiGeneratedTitle);
+      setTaglineEn(aiGeneratedTagline);
+      setEditorContent(aiRichFormattedContent);
       setIsAiGenerating(false);
     }, 1200);
   };
@@ -154,10 +231,6 @@ export default function ProductDashboardPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id || null;
 
-      const galleryArray = galleryImagesStr
-        ? galleryImagesStr.split(',').map(s => s.trim()).filter(Boolean)
-        : [mainImageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'];
-
       const newProductPayload = {
         title_en: titleEn || titleKo,
         title_ko: titleKo,
@@ -168,9 +241,9 @@ export default function ProductDashboardPage() {
         product_size: productSize,
         video_url: videoUrl,
         tagline: taglineEn || `${titleKo} Export Model`,
-        description_en: descriptionEn || descriptionKo,
+        description_en: editorContent || descriptionKo,
         image_url: mainImageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-        gallery_images: galleryArray,
+        gallery_images: galleryImages.length > 0 ? galleryImages : [mainImageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'],
         tiered_pricing: tieredPricing.map(t => ({ range: t.min_qty, price: `$${t.price} / Unit` })),
         company_name: 'Hankook Precision Co., Ltd.',
         user_id: userId,
@@ -188,7 +261,7 @@ export default function ProductDashboardPage() {
         setProducts([localMock, ...products]);
       }
 
-      alert('Product and specifications successfully published to the global catalog!');
+      alert('Product and rich specifications successfully published to the global catalog!');
       resetForm();
       setIsAddModalOpen(false);
     } catch (error) {
@@ -202,13 +275,12 @@ export default function ProductDashboardPage() {
     setTitleEn('');
     setTaglineEn('');
     setDescriptionKo('');
-    setDescriptionEn('');
+    setEditorContent('');
     setMainImageUrl('');
-    setGalleryImagesStr('');
+    setGalleryImages([]);
     setVideoUrl('');
   };
 
-  // 상품 삭제 처리
   const handleDeleteProduct = async (e, id) => {
     e.stopPropagation();
     if (!confirm('Are you sure you want to delete this product from your catalog?')) return;
@@ -231,7 +303,7 @@ export default function ProductDashboardPage() {
 
       <main className="max-w-7xl mx-auto px-6 mt-8 space-y-8">
         
-        {/* 상단 대시보드 타이틀 & 새 상품 등록 버튼 */}
+        {/* 상단 대시보드 헤더 */}
         <div className="bg-slate-900 text-white p-8 rounded-3xl border border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-extrabold border border-blue-500/30">
@@ -255,7 +327,7 @@ export default function ProductDashboardPage() {
           </button>
         </div>
 
-        {/* 등록된 상품 카탈로그 그리드 */}
+        {/* 카탈로그 상품 리스트 */}
         <div className="space-y-4">
           <div className="flex items-center justify-between border-b border-slate-200 pb-3">
             <div className="flex items-center gap-2">
@@ -351,7 +423,7 @@ export default function ProductDashboardPage() {
         </div>
       </main>
 
-      {/* 새 상품 등록 모달 */}
+      {/* ★ 파일 선택기 & 리치 텍스트 에디터가 탑재된 상품 등록 모달 */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-3xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-fadeIn">
@@ -361,7 +433,7 @@ export default function ProductDashboardPage() {
                   <Plus className="w-5 h-5 text-blue-600" />
                   Register New Export Product Specification
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">Input your product details and AI will translate & format for global B2B buyers.</p>
+                <p className="text-xs text-slate-500 mt-0.5">Upload photos/videos or paste URLs, and let AI build your rich specification sheet.</p>
               </div>
 
               <button
@@ -375,9 +447,10 @@ export default function ProductDashboardPage() {
 
             <form onSubmit={handleAddProduct} className="space-y-6">
               
+              {/* 1. 기본 인포메이션 */}
               <div className="space-y-4">
                 <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider block border-b pb-1">
-                  1. Basic Information
+                  1. Basic Product Information
                 </span>
 
                 <div>
@@ -434,7 +507,7 @@ export default function ProductDashboardPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Dimensions & Weight</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Dimensions & Weight Specification</label>
                   <input
                     type="text"
                     placeholder="예: 240 x 180 x 120 mm / 4.5kg"
@@ -445,6 +518,7 @@ export default function ProductDashboardPage() {
                 </div>
               </div>
 
+              {/* 2. 수량별 구간 단가 (Tiered Pricing) */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b pb-1">
                   <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider">
@@ -493,86 +567,222 @@ export default function ProductDashboardPage() {
                 </div>
               </div>
 
+              {/* 3. ★ 미디어 업로더 (파일 선택 & URL 입력 탭 전환 지원) */}
               <div className="space-y-3">
-                <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider block border-b pb-1">
-                  3. Product Images & Demonstration Video
-                </span>
+                <div className="flex items-center justify-between border-b pb-1">
+                  <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider">
+                    3. Product Photos & Video Upload
+                  </span>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Main Cover Image URL *</label>
-                  <input
-                    type="url"
-                    required
-                    placeholder="https://images.unsplash.com/..."
-                    value={mainImageUrl}
-                    onChange={(e) => setMainImageUrl(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
+                  <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setMediaInputType('file')}
+                      className={`px-2.5 py-1 rounded-md transition ${mediaInputType === 'file' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
+                    >
+                      File Select
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMediaInputType('url')}
+                      className={`px-2.5 py-1 rounded-md transition ${mediaInputType === 'url' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
+                    >
+                      Paste URL
+                    </button>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Additional Gallery Photos (Comma Separated URLs)</label>
-                  <input
-                    type="text"
-                    placeholder="https://img1.jpg, https://img2.jpg"
-                    value={galleryImagesStr}
-                    onChange={(e) => setGalleryImagesStr(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
+                {mediaInputType === 'file' ? (
+                  /* 파일 선택 방식 (Drag & Drop Zone) */
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* 메인 커버 이미지 파일 선택 */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-700">Main Cover Image *</label>
+                      <input
+                        type="file"
+                        ref={mainFileInputRef}
+                        accept="image/*"
+                        onChange={handleMainFileChange}
+                        className="hidden"
+                      />
+                      <div
+                        onClick={() => mainFileInputRef.current?.click()}
+                        className="border-2 border-dashed border-slate-300 hover:border-blue-500 bg-slate-50 hover:bg-blue-50/50 rounded-2xl p-4 text-center cursor-pointer transition space-y-1"
+                      >
+                        {mainImageUrl ? (
+                          <div className="relative h-28 rounded-xl overflow-hidden border border-slate-200">
+                            <img src={mainImageUrl} alt="Main Cover" className="w-full h-full object-cover" />
+                            <span className="absolute top-1 right-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded">Change</span>
+                          </div>
+                        ) : (
+                          <>
+                            <Upload className="w-6 h-6 text-blue-600 mx-auto" />
+                            <span className="text-xs font-extrabold text-slate-700 block">Click to Upload Cover Image</span>
+                            <span className="text-[10px] text-slate-400 block">PNG, JPG, WEBP up to 10MB</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Factory Short Demo Video URL (MP4 or Embed)</label>
-                  <input
-                    type="url"
-                    placeholder="https://www.w3schools.com/html/mov_bbb.mp4"
-                    value={videoUrl}
-                    onChange={(e) => setVideoUrl(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
+                    {/* 추가 갤러리 이미지 다중 파일 선택 */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-700">Additional Gallery Photos</label>
+                      <input
+                        type="file"
+                        ref={galleryFileInputRef}
+                        accept="image/*"
+                        multiple
+                        onChange={handleGalleryFilesChange}
+                        className="hidden"
+                      />
+                      <div
+                        onClick={() => galleryFileInputRef.current?.click()}
+                        className="border-2 border-dashed border-slate-300 hover:border-blue-500 bg-slate-50 hover:bg-blue-50/50 rounded-2xl p-4 text-center cursor-pointer transition space-y-1"
+                      >
+                        {galleryImages.length > 0 ? (
+                          <div className="flex items-center gap-1.5 overflow-x-auto h-28">
+                            {galleryImages.map((url, gIdx) => (
+                              <div key={gIdx} className="w-20 h-full rounded-xl overflow-hidden border flex-shrink-0 relative">
+                                <img src={url} alt={`Gallery ${gIdx + 1}`} className="w-full h-full object-cover" />
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <>
+                            <ImageIcon className="w-6 h-6 text-emerald-600 mx-auto" />
+                            <span className="text-xs font-extrabold text-slate-700 block">Click to Add Gallery Photos</span>
+                            <span className="text-[10px] text-slate-400 block">Select multiple image files</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* URL 입력 방식 */
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Main Cover Image URL *</label>
+                      <input
+                        type="url"
+                        placeholder="https://images.unsplash.com/..."
+                        value={mainImageUrl}
+                        onChange={(e) => setMainImageUrl(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Factory Short Demo Video URL (MP4 / Embed)</label>
+                      <input
+                        type="url"
+                        placeholder="https://www.w3schools.com/html/mov_bbb.mp4"
+                        value={videoUrl}
+                        onChange={(e) => setVideoUrl(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="p-5 bg-blue-50/70 rounded-2xl border border-blue-100 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-extrabold text-blue-900 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-blue-600" /> AI Export Copywriter Engine
+              {/* 4. ★ AI 자동 기획 & 리치 텍스트 에디터 (Rich Specification Editor) */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b pb-1">
+                  <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider">
+                    4. Detailed Specifications & Rich Media Description
                   </span>
 
                   <button
                     type="button"
                     onClick={handleGenerateAiCopywriting}
                     disabled={isAiGenerating}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
-                    {isAiGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                    <span>AI Generate English Spec Sheet</span>
+                    {isAiGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-amber-300" />}
+                    <span>AI Auto-Generate Spec Sheet</span>
                   </button>
                 </div>
 
-                {titleEn && (
-                  <div className="space-y-2 text-xs text-slate-700 pt-2 border-t border-blue-100 animate-fadeIn">
-                    <div>
-                      <span className="font-bold text-blue-900 block text-[10px]">AI Generated Title:</span>
-                      <span className="font-extrabold text-slate-900">{titleEn}</span>
-                    </div>
-                    <div>
-                      <span className="font-bold text-blue-900 block text-[10px]">AI Generated Tagline:</span>
-                      <span className="text-slate-600">{taglineEn}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
+                {/* 리치 에디터 툴바 (Rich Editor Toolbar) */}
+                <div className="border border-slate-300 rounded-2xl overflow-hidden bg-slate-50 space-y-0">
+                  <div className="p-2 bg-slate-100 border-b border-slate-200 flex items-center gap-1 flex-wrap text-slate-700">
+                    <button
+                      type="button"
+                      onClick={() => handleInsertEditorTag('bold')}
+                      className="p-1.5 bg-white hover:bg-blue-50 text-slate-700 rounded-lg border border-slate-200 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                      title="Bold Text"
+                    >
+                      <Bold className="w-3.5 h-3.5" />
+                    </button>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Product Description (Korean / Specs)</label>
-                <textarea
-                  rows={4}
-                  placeholder="제품 한글 사양이나 특장점을 자유롭게 입력하세요. AI가 글로벌 영어 규격으로 다듬어 드립니다."
-                  value={descriptionKo}
-                  onChange={(e) => setDescriptionKo(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
+                    <button
+                      type="button"
+                      onClick={() => handleInsertEditorTag('italic')}
+                      className="p-1.5 bg-white hover:bg-blue-50 text-slate-700 rounded-lg border border-slate-200 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                      title="Italic Text"
+                    >
+                      <Italic className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleInsertEditorTag('heading')}
+                      className="p-1.5 bg-white hover:bg-blue-50 text-slate-700 rounded-lg border border-slate-200 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                      title="Add Heading Section"
+                    >
+                      <Heading className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleInsertEditorTag('list')}
+                      className="p-1.5 bg-white hover:bg-blue-50 text-slate-700 rounded-lg border border-slate-200 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                      title="Bullet List"
+                    >
+                      <List className="w-3.5 h-3.5" />
+                    </button>
+
+                    <span className="w-px h-4 bg-slate-300 mx-1" />
+
+                    <button
+                      type="button"
+                      onClick={() => handleInsertEditorTag('image')}
+                      className="p-1.5 bg-white hover:bg-emerald-50 text-emerald-700 rounded-lg border border-slate-200 text-xs font-extrabold flex items-center gap-1 cursor-pointer"
+                      title="Embed Spec Image in Description"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5" />
+                      <span className="text-[10px]">Add Image</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleInsertEditorTag('video')}
+                      className="p-1.5 bg-white hover:bg-rose-50 text-rose-700 rounded-lg border border-slate-200 text-xs font-extrabold flex items-center gap-1 cursor-pointer"
+                      title="Embed Video Link"
+                    >
+                      <Video className="w-3.5 h-3.5" />
+                      <span className="text-[10px]">Add Video</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleInsertEditorTag('link')}
+                      className="p-1.5 bg-white hover:bg-blue-50 text-blue-700 rounded-lg border border-slate-200 text-xs font-extrabold flex items-center gap-1 cursor-pointer"
+                      title="Add Web Link or PDF Download"
+                    >
+                      <LinkIcon className="w-3.5 h-3.5" />
+                      <span className="text-[10px]">Add Link</span>
+                    </button>
+                  </div>
+
+                  <textarea
+                    rows={6}
+                    placeholder="자유롭게 제품 사양, 글, 이미지, 동영상 링크를 추가하세요. (AI 자동 생성 버튼을 누르면 영어 전문 카피가 자동 입력됩니다)"
+                    value={editorContent}
+                    onChange={(e) => setEditorContent(e.target.value)}
+                    className="w-full p-4 text-xs font-mono leading-relaxed bg-white focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-3">
@@ -589,7 +799,7 @@ export default function ProductDashboardPage() {
                   className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Publish Specification</span>
+                  <span>Publish Product Specification</span>
                 </button>
               </div>
             </form>

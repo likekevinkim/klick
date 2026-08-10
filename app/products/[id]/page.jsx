@@ -115,11 +115,16 @@ export default function ProductDetailPage() {
             { name: 'Country of Origin', value: 'South Korea (Made in Korea)' },
             { name: 'OEM / ODM', value: 'Available (Custom Logo & Packaging)' }
           ],
-          description_en: `Official Export Specification:
-- High-Performance Hydraulic Control Valve HV-300 designed for heavy industrial automation, excavators, and construction machinery.
-- Manufactured in Incheon, South Korea under strict ISO 9001 quality standards with zero-leakage spool technology.
-- Severe weather resistant anti-corrosion coating applied as standard.
-- Full inspection test report provided with every bulk export shipment.`,
+          description_en: `### Official Verified Export Specification Sheet
+- **Product Name**: High-Precision Hydraulic Control Valve HV-300
+- **Category**: Industrial Machinery
+- **Quality Standard**: ISO 9001:2015, CE Certified
+- **Lead Time**: 15 - 20 Days (FOB Incheon Port)
+
+### Key Industrial Features
+1. **High Durability Alloy**: Built with high-grade Korean forged alloy steel for extreme 350 Bar pressure.
+2. **Zero-Defect Quality Assurance**: 100% factory pressure test report provided with bulk export shipments.
+3. **OEM / ODM Customization**: Custom logo laser engraving and specialized export packaging available.`,
           image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
           gallery_images: [
             'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
@@ -237,6 +242,7 @@ export default function ProductDetailPage() {
 
       <main className="max-w-7xl mx-auto px-6 mt-8 space-y-10">
         
+        {/* 상단 브레드크럼 & 제어 버튼 */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-xs text-slate-500 font-bold">
             <Link href="/" className="hover:text-blue-600">Home</Link>
@@ -280,7 +286,7 @@ export default function ProductDetailPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
-            {/* [좌측 1열]: 고화질 미디어 갤러리 (사진 & 15초 비디오) */}
+            {/* [좌측 1열]: 미디어 갤러리 */}
             <div className="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <div className="w-full h-80 md:h-96 bg-slate-100 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center relative group">
                 {isVideoActive && product?.video_url ? (
@@ -329,7 +335,7 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* [중앙 2열]: 품명, 평점, 수량별 단가 구간(Tiered Pricing), 납기일 */}
+            {/* [중앙 2열]: 스펙 요약 및 구간 단가표 */}
             <div className="lg:col-span-4 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
@@ -353,7 +359,7 @@ export default function ProductDetailPage() {
                 </p>
               </div>
 
-              {/* B2B 수량별 단가 구간 (Tiered Pricing Table) */}
+              {/* 구간 단가표 */}
               <div className="p-5 bg-slate-900 text-white rounded-2xl border border-slate-800 space-y-3">
                 <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">
                   Wholesale Tiered FOB Pricing
@@ -408,7 +414,7 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* [우측 3열]: 검증된 한국 공급업체(Factory) 프로필 */}
+            {/* [우측 3열]: 공급업체 프로필 */}
             <div className="lg:col-span-3 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5 h-fit sticky top-28">
               <div className="border-b border-slate-100 pb-3 space-y-1">
                 <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-100">
@@ -448,7 +454,7 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        {/* 3. 상세 제품 속성 테이블 & 사양설명 */}
+        {/* 3. 리치 에디터 및 속성 스펙 노출 섹션 */}
         {product && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-8 space-y-8">
@@ -459,7 +465,6 @@ export default function ProductDetailPage() {
                     <Layers className="w-5 h-5 text-blue-600" />
                     Product Attribute Specifications Table
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Verified technical properties and export compliance details.</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
@@ -481,15 +486,16 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
+              {/* 리치 포맷팅 사양 본문 렌더링 */}
               <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
                 <div className="border-b border-slate-100 pb-4">
                   <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
                     <FileText className="w-5 h-5 text-blue-600" />
-                    Detailed Description & Features
+                    Detailed Specification Sheet & Features
                   </h2>
                 </div>
 
-                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-xs md:text-sm text-slate-700 whitespace-pre-line leading-relaxed font-mono">
+                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-xs md:text-sm text-slate-800 whitespace-pre-line leading-relaxed font-mono">
                   {product.description_en}
                 </div>
               </div>
@@ -522,7 +528,7 @@ export default function ProductDetailPage() {
         )}
       </main>
 
-      {/* 셀러 전용 수정 모달 팝업 */}
+      {/* 셀러 수정 모달 */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-2xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-fadeIn">
@@ -606,7 +612,7 @@ export default function ProductDetailPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Demo Video URL (MP4 / YouTube)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Demo Video URL (MP4 / Embed)</label>
                 <input
                   type="url"
                   placeholder="https://www.w3schools.com/html/mov_bbb.mp4"
@@ -641,7 +647,7 @@ export default function ProductDetailPage() {
                 </div>
 
                 <textarea
-                  rows={4}
+                  rows={5}
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono leading-relaxed"
