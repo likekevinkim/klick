@@ -36,12 +36,13 @@ export default function Header() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         (payload) => {
+          // 새 메시지가 들어오면 안읽은 메시지 수 재계산 및 뱃지 업데이트
           handleNewRealtimeMessage(payload.new);
         }
       )
       .subscribe();
 
-    // 로컬 커스텀 이벤트 연동 (채팅방 진입/클릭 시 동기화)
+    // 로컬 커스텀 이벤트 연동 (채팅방 진입 시 즉시 0으로 차감)
     const handleUnreadUpdate = () => {
       const savedCount = localStorage.getItem('klick_unread_chat_count');
       if (savedCount !== null) {
@@ -70,17 +71,25 @@ export default function Header() {
     }
 
     // 안읽은 메시지 수 초기 계산
-    calculateUnreadCount();
+    calculateUnreadCount(currentUser);
   };
 
-  // DB 및 로컬 저장소 기준 안읽은 메시지 수 계산
-  const calculateUnreadCount = async () => {
+  // DB 및 로컬 상태 기반 안읽은 메시지 수 계산
+  const calculateUnreadCount = async (currentUser) => {
     try {
       const savedCount = localStorage.getItem('klick_unread_chat_count');
       
+      // 현재 채팅방(/chat)에 진입해 있는 상태라면 안읽은 개수 0 처리
+      if (pathname === '/chat') {
+        setUnreadCount(0);
+        localStorage.setItem('klick_unread_chat_count', '0');
+        return;
+      }
+
       if (savedCount !== null) {
         setUnreadCount(parseInt(savedCount, 10));
       } else {
+        // DB에서 최근 대화방 내역 기반 안읽은 개수 계산
         const { data: roomData } = await supabase
           .from('chat_rooms')
           .select('id');
@@ -93,9 +102,10 @@ export default function Header() {
             .in('room_id', roomIds);
 
           if (msgData) {
+            // 내가 보낸 메시지가 아닌 상대방이 보낸 메시지 수 카운트
             const targetRole = userRole === 'seller' ? 'buyer' : 'seller';
             const unreadMsgs = msgData.filter(m => m.sender_role === targetRole);
-            const count = Math.min(unreadMsgs.length, 99);
+            const count = Math.min(unreadMsgs.length, 99); // 최대 99+
             
             setUnreadCount(count);
             localStorage.setItem('klick_unread_chat_count', count.toString());
@@ -107,8 +117,12 @@ export default function Header() {
     }
   };
 
-  // 실시간으로 새 메시지가 수신되었을 때 알림 뱃지 업데이트
+  // 실시간으로 새 메시지가 INSERT 되었을 때 호출되는 스위치
   const handleNewRealtimeMessage = (newMsg) => {
+    // 채팅 페이지에 접속 중일 때는 뱃지 증가시키지 않음
+    if (window.location.pathname === '/chat') return;
+
+    // 상대방이 보낸 메시지일 때 알림 뱃지 +1 증가
     setUnreadCount((prev) => {
       const nextCount = prev + 1;
       localStorage.setItem('klick_unread_chat_count', nextCount.toString());
@@ -162,7 +176,7 @@ export default function Header() {
             <span>판매자 대시보드</span>
           </Link>
 
-          {/* ★ 실시간 안읽은 메시지 뱃지가 표출되는 Live Chat Hub 버튼 */}
+          {/* ★ 실시간 안읽은 메시지 뱃지가 적용된 원래 'Live Chat Hub' 메뉴 */}
           <Link
             href="/chat"
             className={`px-4 py-2 rounded-xl transition flex items-center gap-1.5 relative ${
@@ -172,7 +186,7 @@ export default function Header() {
             <MessageSquare className="w-4 h-4" />
             <span>Live Chat Hub</span>
 
-            {/* 안읽은 메시지가 있을 때 빨간색 뱃지 표출 */}
+            {/* 안읽은 메시지가 1개 이상일 때 노출되는 빨간색 알림 뱃지 */}
             {unreadCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg border-2 border-[#0F172A] animate-pulse">
                 {unreadCount > 99 ? '99+' : `${unreadCount} New`}
@@ -181,7 +195,7 @@ export default function Header() {
           </Link>
         </nav>
 
-        {/* 3. 로그인 / 프로필 드롭다운 */}
+        {/* 3. 로그인 / 사용자 프로필 제어 구역 */}
         <div className="flex items-center gap-3">
           {user ? (
             <div className="relative">
@@ -197,6 +211,7 @@ export default function Header() {
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
 
+              {/* 프로필 드롭다운 메뉴 */}
               {isProfileMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 p-2 space-y-1 z-[999999] animate-fadeIn">
                   <div className="px-3 py-2 border-b border-slate-100 space-y-0.5">
