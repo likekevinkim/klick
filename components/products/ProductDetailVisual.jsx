@@ -23,7 +23,7 @@ export default function ProductDetailVisual({ product }) {
   const [selectedImage, setSelectedImage] = useState('');
   const [isVideoActive, setIsVideoActive] = useState(false);
 
-  // ★ product 데이터 변경 시 대표 사진 실시간 동기화
+  // product 데이터 로드 시 대표 사진 및 갤러리 이미지 동기화
   useEffect(() => {
     let mainImg = product?.image_url || '';
     if (!mainImg && product?.gallery_images) {
@@ -41,7 +41,7 @@ export default function ProductDetailVisual({ product }) {
     setSelectedImage(mainImg);
   }, [product]);
 
-  // 대표 사진과 추가 갤러리 이미지 중복 없는 배열 병합
+  // 대표 사진과 추가 갤러리 사진 병합
   const displayGallery = [];
   if (product?.image_url) displayGallery.push(product.image_url);
 

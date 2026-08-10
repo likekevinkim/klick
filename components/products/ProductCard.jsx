@@ -4,27 +4,36 @@
 import { Package, CheckCircle2, ArrowRight, Trash2 } from 'lucide-react';
 
 export default function ProductCard({ item, onClick, onDelete }) {
-  // 3중 이미지 주소 추출 (image_url -> gallery_images 0번째 -> 기본 이미지)
-  let displayImage = item?.image_url || '';
-  if (!displayImage && item?.gallery_images) {
-    if (Array.isArray(item.gallery_images) && item.gallery_images.length > 0) {
-      displayImage = item.gallery_images[0];
-    } else if (typeof item.gallery_images === 'string') {
-      try {
-        const parsed = JSON.parse(item.gallery_images);
-        if (Array.isArray(parsed) && parsed.length > 0) displayImage = parsed[0];
-      } catch (e) {
-        displayImage = item.gallery_images;
+  // ★ 사진 파싱 안전 헬퍼: DB에 다양한 형태(JSON, string, array)로 저장된 이미지를 무조건 단일 이미지 URL로 추출
+  const getValidImageUrl = (productItem) => {
+    if (!productItem) return '';
+    if (typeof productItem.image_url === 'string' && productItem.image_url.trim().length > 0) {
+      return productItem.image_url;
+    }
+    if (productItem.gallery_images) {
+      if (Array.isArray(productItem.gallery_images) && productItem.gallery_images.length > 0) {
+        return productItem.gallery_images[0];
+      }
+      if (typeof productItem.gallery_images === 'string') {
+        try {
+          const parsed = JSON.parse(productItem.gallery_images);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+          if (typeof parsed === 'string') return parsed;
+        } catch (e) {
+          if (productItem.gallery_images.startsWith('http')) return productItem.gallery_images;
+        }
       }
     }
-  }
+    return '';
+  };
 
+  const displayImage = getValidImageUrl(item);
   const titleText = item?.title_en || item?.title_ko || item?.product_name || 'Verified B2B Product';
 
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-3xl border border-slate-200 hover:border-blue-500 hover:shadow-xl transition duration-200 overflow-hidden flex flex-col justify-between group cursor-pointer p-5 space-y-4"
+      className="bg-white rounded-3xl border border-slate-200 hover:border-blue-500 hover:shadow-xl transition duration-200 overflow-hidden flex flex-col justify-between group cursor-pointer p-5 space-y-4 shadow-sm"
     >
       <div className="space-y-4">
         {/* 대표 이미지 박스 */}
@@ -35,6 +44,7 @@ export default function ProductCard({ item, onClick, onDelete }) {
               alt={titleText}
               className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
               onError={(e) => {
+                e.currentTarget.onerror = null;
                 e.currentTarget.style.display = 'none';
               }}
             />
@@ -51,10 +61,10 @@ export default function ProductCard({ item, onClick, onDelete }) {
         <div className="space-y-2">
           <div className="flex items-center gap-1.5 text-[11px] font-extrabold text-blue-600">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-            <span>{item?.company_name || 'Verified Korean Factory'}</span>
+            <span className="truncate">{item?.company_name || 'Verified Korean Factory'}</span>
           </div>
 
-          <h3 className="text-sm font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition">
+          <h3 className="text-sm font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition min-h-[38px]">
             {titleText}
           </h3>
 

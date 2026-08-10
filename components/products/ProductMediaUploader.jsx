@@ -18,55 +18,79 @@ export default function ProductMediaUploader({
   const galleryFileInputRef = useRef(null);
   const videoFileInputRef = useRef(null);
 
-  // 메인 커버 사진 파일 업로드
-  const handleMainFileChange = (e) => {
+  // 파일 업로드 시 DB 저장이 가능한 Data URL(Base64) 변환 함수
+  const fileToDataUrl = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // 메인 커버 사진 선택
+  const handleMainFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      setMainImageUrl(URL.createObjectURL(file));
+      try {
+        const dataUrl = await fileToDataUrl(file);
+        setMainImageUrl(dataUrl);
+      } catch (err) {
+        console.error('Main image load error:', err);
+      }
     }
   };
 
-  // 추가 갤러리 사진 다중 파일 선택 (누적 추가)
-  const handleGalleryFilesChange = (e) => {
+  // 추가 갤러리 사진 선택 (다중)
+  const handleGalleryFilesChange = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
-      const newUrls = files.map(file => URL.createObjectURL(file));
-      setGalleryImages(prev => [...prev, ...newUrls]);
+      try {
+        const dataUrls = await Promise.all(files.map(fileToDataUrl));
+        setGalleryImages(prev => [...prev, ...dataUrls]);
+      } catch (err) {
+        console.error('Gallery image load error:', err);
+      }
     }
   };
 
-  // 비디오 파일 선택
-  const handleVideoFileChange = (e) => {
+  // 동영상 파일 선택
+  const handleVideoFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      setVideoUrl(URL.createObjectURL(file));
+      try {
+        const dataUrl = await fileToDataUrl(file);
+        setVideoUrl(dataUrl);
+      } catch (err) {
+        console.error('Video load error:', err);
+      }
     }
   };
 
-  // ★ 갤러리 사진 개별 삭제 (즉시 지움 처리)
   const handleRemoveGalleryImage = (index) => {
-    const updated = galleryImages.filter((_, idx) => idx !== index);
-    setGalleryImages(updated);
+    setGalleryImages(prev => prev.filter((_, idx) => idx !== index));
   };
 
-  // 갤러리 사진 순서 변경 (좌로 이동)
   const handleMoveImageLeft = (index) => {
     if (index === 0) return;
-    const updated = [...galleryImages];
-    const temp = updated[index - 1];
-    updated[index - 1] = updated[index];
-    updated[index] = temp;
-    setGalleryImages(updated);
+    setGalleryImages(prev => {
+      const updated = [...prev];
+      const temp = updated[index - 1];
+      updated[index - 1] = updated[index];
+      updated[index] = temp;
+      return updated;
+    });
   };
 
-  // 갤러리 사진 순서 변경 (우로 이동)
   const handleMoveImageRight = (index) => {
     if (index === galleryImages.length - 1) return;
-    const updated = [...galleryImages];
-    const temp = updated[index + 1];
-    updated[index + 1] = updated[index];
-    updated[index] = temp;
-    setGalleryImages(updated);
+    setGalleryImages(prev => {
+      const updated = [...prev];
+      const temp = updated[index + 1];
+      updated[index + 1] = updated[index];
+      updated[index] = temp;
+      return updated;
+    });
   };
 
   return (
@@ -97,7 +121,7 @@ export default function ProductMediaUploader({
       {mediaInputType === 'file' ? (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* 메인 커버 사진 파일 업로드 */}
+            {/* 메인 커버 사진 */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700">Main Cover Image *</label>
               <input
@@ -126,7 +150,7 @@ export default function ProductMediaUploader({
               </div>
             </div>
 
-            {/* 제품 홍보 동영상 파일 업로드 */}
+            {/* 제품 홍보 동영상 */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700">Factory Demo Video File</label>
               <input
@@ -156,7 +180,7 @@ export default function ProductMediaUploader({
             </div>
           </div>
 
-          {/* 추가 갤러리 사진 다중 업로드 & 순서 변경/삭제 영역 */}
+          {/* 추가 갤러리 사진 */}
           <div className="space-y-2 border-t pt-3 border-slate-100">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-bold text-slate-700">
@@ -236,7 +260,6 @@ export default function ProductMediaUploader({
           </div>
         </div>
       ) : (
-        /* URL 직접 입력 방식 */
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">Main Cover Image URL *</label>
