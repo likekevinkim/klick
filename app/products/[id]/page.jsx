@@ -18,7 +18,10 @@ export default function ProductDetailPage() {
 
   const [mounted, setMounted] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [isOwner, setIsOwner] = useState(true);
+  
+  // ★ 작성자 셀러 본인 여부 상태 (기본값 false 보안 설정)
+  const [isOwner, setIsOwner] = useState(false);
+  
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -42,10 +45,12 @@ export default function ProductDetailPage() {
     try {
       setLoading(true);
 
+      // 1. 세션 유저 및 역할(Role) 확인
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user || null;
       setCurrentUser(user);
 
+      // 2. Supabase DB에서 해당 ID 상품 조회
       let foundProduct = null;
       if (productId && productId !== '1') {
         const { data } = await supabase
@@ -57,7 +62,7 @@ export default function ProductDetailPage() {
         if (data) foundProduct = data;
       }
 
-      // 로컬 스토리지에 수정된 영구 백업 데이터가 존재하는지 검증
+      // 로컬 스토리지 수정 데이터 검증
       const savedLocal = localStorage.getItem(`klick_product_${productId}`);
       if (savedLocal) {
         try {
@@ -67,27 +72,11 @@ export default function ProductDetailPage() {
         }
       }
 
-      const mockReviews = [
-        {
-          id: 1,
-          buyer_name: 'David Miller (US Machinery Corp)',
-          rating: 5,
-          comment: 'Outstanding quality and fast delivery to Los Angeles port. The ISO 9001 certification report was fully provided.',
-          created_at: '2026-08-01'
-        },
-        {
-          id: 2,
-          buyer_name: 'Elena Rostova (Euro Industrial GbmH)',
-          rating: 5,
-          comment: 'Very professional Korean manufacturer. Spool precision meets our extreme high pressure standards.',
-          created_at: '2026-07-28'
-        }
-      ];
-
+      // 기본 샘플 데이터
       if (!foundProduct) {
         foundProduct = {
           id: productId || '1',
-          user_id: user?.id || 'sample_owner_id',
+          user_id: 'sample_seller_owner_id_999', // 샘플 고유 소유자 ID
           company_name: 'Hankook Precision Co., Ltd. (한국정밀공업)',
           company_id: '1',
           factory_location: 'Incheon, South Korea 🇰🇷',
@@ -140,11 +129,38 @@ export default function ProductDetailPage() {
         };
       }
 
+      const mockReviews = [
+        {
+          id: 1,
+          buyer_name: 'David Miller (US Machinery Corp)',
+          rating: 5,
+          comment: 'Outstanding quality and fast delivery to Los Angeles port. The ISO 9001 certification report was fully provided.',
+          created_at: '2026-08-01'
+        },
+        {
+          id: 2,
+          buyer_name: 'Elena Rostova (Euro Industrial GbmH)',
+          rating: 5,
+          comment: 'Very professional Korean manufacturer. Spool precision meets our extreme high pressure standards.',
+          created_at: '2026-07-28'
+        }
+      ];
+
       setReviews(mockReviews);
       setProduct(foundProduct);
-      setIsOwner(true);
+
+      // ★ [핵심 보안 검증]: 역할이 'seller'이고, 로그인 유저 ID와 상품 등록자의 user_id가 100% 일치할 때만 권한 부여
+      const userRole = user?.user_metadata?.role || 'buyer';
+      
+      if (user && userRole === 'seller' && foundProduct?.user_id && user.id === foundProduct.user_id) {
+        setIsOwner(true);
+      } else {
+        // 바이어 계정이거나, 타인 셀러이거나, 비로그인 시 엄격 차단
+        setIsOwner(false);
+      }
     } catch (error) {
       console.error('Failed to load product detail:', error);
+      setIsOwner(false);
     } finally {
       setLoading(false);
     }
@@ -179,12 +195,17 @@ export default function ProductDetailPage() {
     alert('Thank you! Your review and rating have been submitted.');
   };
 
-  // ★ 사진 삭제 및 수정 정보 저장 (Supabase DB + LocalStorage 영구 보존)
+  // 소유권자 셀러 본인만 실행 가능한 수정 로직
   const handleUpdateProduct = async (payload) => {
+    if (!isOwner) {
+      alert('Access Denied: Only the seller who registered this product can edit its specifications.');
+      setIsEditModalOpen(false);
+      return;
+    }
+
     try {
       const updatedData = { ...product, ...payload };
 
-      // 1. DB 업데이트
       if (product.id && product.id !== '1') {
         await supabase
           .from('products')
@@ -192,17 +213,21 @@ export default function ProductDetailPage() {
           .eq('id', product.id);
       }
 
-      // 2. 새로고침 시에도 지운 사진이 원복되지 않도록 LocalStorage에 영구 갱신 저장
       localStorage.setItem(`klick_product_${productId}`, JSON.stringify(updatedData));
-
       setProduct(updatedData);
-      alert('Product specifications and updated gallery successfully saved!');
+      alert('Product specifications successfully updated!');
     } catch (error) {
       console.error('Update error:', error);
     }
   };
 
+  // 소유권자 셀러 본인만 실행 가능한 삭제 로직
   const handleDeleteProduct = async () => {
+    if (!isOwner) {
+      alert('Access Denied: Only the seller who registered this product can delete it.');
+      return;
+    }
+
     if (!confirm('Are you sure you want to delete this product from your global catalog?')) return;
     try {
       if (product.id && product.id !== '1') {
@@ -224,6 +249,7 @@ export default function ProductDetailPage() {
       <Header />
 
       <main className="max-w-7xl mx-auto px-6 mt-8 space-y-10">
+        {/* 브레드크럼 네비게이션 및 셀러 권한 컨트롤러 */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-xs text-slate-500 font-bold">
             <Link href="/" className="hover:text-blue-600">Home</Link>
@@ -233,8 +259,9 @@ export default function ProductDetailPage() {
             <span className="text-slate-800 truncate max-w-[200px] md:max-w-none">{product?.category}</span>
           </div>
 
+          {/* ★ 오직 해당 제품을 등록한 셀러 본인(isOwner === true)일 때만 수정/삭제 버튼 노출 */}
           {isOwner && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 animate-fadeIn">
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(true)}
@@ -367,8 +394,8 @@ export default function ProductDetailPage() {
         )}
       </main>
 
-      {/* 수정 모달 */}
-      {isEditModalOpen && (
+      {/* 작성자 본인만 오픈되는 수정 모달 */}
+      {isEditModalOpen && isOwner && (
         <ProductFormModal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
