@@ -7,20 +7,10 @@ import B2bPaymentModal from '@/components/B2bPaymentModal';
 import ChatRoomItem from '@/components/chat/ChatRoomItem';
 import TradeDocModal from '@/components/chat/TradeDocModal';
 import SampleTrackingModal from '@/components/chat/SampleTrackingModal';
-import { 
-  Send, 
-  Sparkles, 
-  FileText,
-  Loader2,
-  Paperclip,
-  Image as ImageIcon,
-  X,
-  Tag
-} from 'lucide-react';
+import { Sparkles, Loader2, FileText } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-// 1. 내부 실시간 채팅 컨텐츠 컴포넌트 (useSearchParams 수신)
 function ChatContent() {
   const searchParams = useSearchParams();
   const paramProductId = searchParams.get('productId');
@@ -31,15 +21,9 @@ function ChatContent() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState('seller');
 
-  // 대화방 목록 및 선택된 대화방 ID 상태
   const [rooms, setRooms] = useState([]);
   const [activeRoomId, setActiveRoomId] = useState(null);
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
-  const [newMessage, setNewMessage] = useState('');
-
-  // 첨부파일 상태
-  const [uploading, setUploading] = useState(false);
-  const [attachedFile, setAttachedFile] = useState(null);
 
   // 모달 상태
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
@@ -57,19 +41,12 @@ function ChatContent() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentQuoteData, setPaymentQuoteData] = useState(null);
 
-  // DOM 참조
-  const fileInputRef = useRef(null);
-  const imageInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
     setMounted(true);
     initChatSession();
   }, [paramProductId, paramCompany]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [roomMessagesMap, activeRoomId, attachedFile]);
 
   const initChatSession = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -165,7 +142,6 @@ function ChatContent() {
       ]
     };
 
-    // URL 파라미터를 통한 특정 회사 직통 연결 시 대화방 자동 생성 및 활성화
     if (paramCompany || paramTitle) {
       const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Hydraulic Control Valve HV-300';
       const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Hankook Precision Co., Ltd.';
@@ -198,6 +174,8 @@ function ChatContent() {
       initialMessages[newRoomId] = [directInitialMsg];
 
       setActiveRoomId(newRoomId);
+    } else {
+      setActiveRoomId(1);
     }
 
     setRooms(mockRooms);
@@ -224,6 +202,8 @@ function ChatContent() {
           const matched = formatted.find(r => r.id.toString() === paramProductId);
           if (matched) setActiveRoomId(matched.id);
           else setActiveRoomId(formatted[0].id);
+        } else {
+          setActiveRoomId(formatted[0].id);
         }
 
         syncTotalUnreadCount(formatted);
@@ -280,81 +260,14 @@ function ChatContent() {
     window.dispatchEvent(new Event('klick_unread_chat_updated'));
   };
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const fileType = file.type.includes('pdf')
-      ? 'pdf'
-      : file.type.includes('sheet') || file.type.includes('excel')
-      ? 'excel'
-      : 'document';
-
-    setAttachedFile({
-      name: file.name,
-      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-      type: fileType,
-      url: URL.createObjectURL(file),
-      fileObject: file,
-    });
-  };
-
-  const handleImageSelect = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setAttachedFile({
-      name: file.name,
-      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-      type: 'image',
-      url: URL.createObjectURL(file),
-      fileObject: file,
-    });
-  };
-
-  const handleRemoveAttachment = () => {
-    setAttachedFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    if (imageInputRef.current) imageInputRef.current.value = '';
-  };
-
-  const handleSendSampleCoupon = () => {
-    if (!activeRoomId) return;
-
-    const couponMsgObj = {
-      id: Date.now(),
-      room_id: activeRoomId,
-      sender_id: user?.id || null,
-      sender_role: 'seller',
-      message: '[B2B Special Offer] Exclusive Sample Discount Voucher Issued! ($20 Off Air Freight)',
-      translated_message: '[B2B 전용 혜택] 바이어 전용 샘플 항공 배송 $20 할인 쿠폰이 발급되었습니다!',
-      is_quote: false,
-      file: null,
-      created_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    setRoomMessagesMap((prevMap) => ({
-      ...prevMap,
-      [activeRoomId]: [...(prevMap[activeRoomId] || []), couponMsgObj],
-    }));
-
-    alert('Sample $20 Discount Voucher sent directly to buyer!');
-  };
-
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() && !attachedFile) return;
-
-    setUploading(true);
-
-    const currentText = newMessage.trim();
+  // ★ 특정 대화방 메시지 독립 발송 처리
+  const handleSendMessage = async (targetRoomId, text, attachedFile) => {
     let autoTranslation = '';
-
-    if (currentText) {
-      if (/[ㄱ-ㅎ|가-힣]/.test(currentText)) {
-        autoTranslation = `[AI Trans] ${currentText}`;
+    if (text) {
+      if (/[ㄱ-ㅎ|가-힣]/.test(text)) {
+        autoTranslation = `[AI Trans] ${text}`;
       } else {
-        autoTranslation = `[AI 번역] ${currentText}`;
+        autoTranslation = `[AI 번역] ${text}`;
       }
     }
 
@@ -370,10 +283,10 @@ function ChatContent() {
 
     const newMsgObj = {
       id: Date.now(),
-      room_id: activeRoomId,
+      room_id: targetRoomId,
       sender_id: user?.id || null,
       sender_role: userRole,
-      message: currentText,
+      message: text,
       translated_message: autoTranslation,
       is_quote: false,
       file: finalFilePayload,
@@ -382,20 +295,14 @@ function ChatContent() {
 
     setRoomMessagesMap((prevMap) => ({
       ...prevMap,
-      [activeRoomId]: [...(prevMap[activeRoomId] || []), newMsgObj],
+      [targetRoomId]: [...(prevMap[targetRoomId] || []), newMsgObj],
     }));
 
     setRooms((prevRooms) =>
       prevRooms.map((r) =>
-        r.id === activeRoomId ? { ...r, last_message: currentText || attachedFile.name, updated_at: 'Just now' } : r
+        r.id === targetRoomId ? { ...r, last_message: text || attachedFile?.name || 'File sent', updated_at: 'Just now' } : r
       )
     );
-
-    setNewMessage('');
-    setAttachedFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    if (imageInputRef.current) imageInputRef.current.value = '';
-    setUploading(false);
 
     try {
       if (user) {
@@ -404,6 +311,27 @@ function ChatContent() {
     } catch (err) {
       console.error('DB Insert error:', err);
     }
+  };
+
+  const handleSendSampleCoupon = (targetRoomId) => {
+    const couponMsgObj = {
+      id: Date.now(),
+      room_id: targetRoomId,
+      sender_id: user?.id || null,
+      sender_role: 'seller',
+      message: '[B2B Special Offer] Exclusive Sample Discount Voucher Issued! ($20 Off Air Freight)',
+      translated_message: '[B2B 전용 혜택] 바이어 전용 샘플 항공 배송 $20 할인 쿠폰이 발급되었습니다!',
+      is_quote: false,
+      file: null,
+      created_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setRoomMessagesMap((prevMap) => ({
+      ...prevMap,
+      [targetRoomId]: [...(prevMap[targetRoomId] || []), couponMsgObj],
+    }));
+
+    alert('Sample $20 Discount Voucher sent directly to buyer!');
   };
 
   const handleSendQuote = async () => {
@@ -475,7 +403,7 @@ function ChatContent() {
         <div className="bg-slate-900 text-white rounded-3xl p-6 md:p-8 shadow-md border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
-              <Sparkles className="w-3.5 h-3.5" /> KLICK Direct Accordion Chat
+              <Sparkles className="w-3.5 h-3.5" /> KLICK Direct Accordion Chat Hub
             </span>
             <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">
               Real-time AI Multilingual Chat & Trade Document Hub
@@ -490,7 +418,7 @@ function ChatContent() {
           </div>
         </div>
 
-        {/* 대화방 카드 목록 */}
+        {/* 대화방 카드 목록 (각 카드 내부에 독립 메신저 입력창 탑재) */}
         <div className="space-y-4">
           {rooms.map((room) => (
             <ChatRoomItem
@@ -504,112 +432,15 @@ function ChatContent() {
               onOpenDocModal={handleOpenDocModal}
               onOpenPaymentModal={handleOpenPaymentModal}
               onOpenSampleModal={handleOpenSampleModal}
+              onSendMessage={handleSendMessage}
+              onSendSampleCoupon={handleSendSampleCoupon}
               messagesEndRef={messagesEndRef}
             />
           ))}
         </div>
-
-        {/* 활성화된 대화방의 실시간 메시지 입력 폼 */}
-        {activeRoomId && (
-          <div className="bg-white rounded-3xl border border-slate-200 p-4 space-y-2 shadow-sm animate-fadeIn">
-            {attachedFile && (
-              <div className="px-4 py-2 bg-blue-50 border border-blue-100 flex items-center justify-between text-xs rounded-xl">
-                <div className="flex items-center gap-2 text-blue-900 font-bold">
-                  {attachedFile.type === 'image' ? (
-                    <ImageIcon className="w-4 h-4 text-emerald-600" />
-                  ) : (
-                    <FileText className="w-4 h-4 text-blue-600" />
-                  )}
-                  <span>Ready to attach:</span>
-                  <span className="font-extrabold text-blue-600 truncate max-w-[200px]">
-                    {attachedFile.name} ({attachedFile.size})
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleRemoveAttachment}
-                  className="p-1 bg-white hover:bg-rose-50 hover:text-rose-600 text-slate-500 rounded-lg border border-slate-200 transition cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-
-            <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileSelect}
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-                className="hidden"
-              />
-              <input
-                type="file"
-                ref={imageInputRef}
-                onChange={handleImageSelect}
-                accept="image/*"
-                className="hidden"
-              />
-
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="p-2.5 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-xl transition cursor-pointer border border-slate-200"
-                title="Attach Document / Quotation"
-              >
-                <Paperclip className="w-4 h-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => imageInputRef.current?.click()}
-                className="p-2.5 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-600 text-slate-600 rounded-xl transition cursor-pointer border border-slate-200"
-                title="Attach Photos / Catalog"
-              >
-                <ImageIcon className="w-4 h-4" />
-              </button>
-
-              {userRole === 'seller' && (
-                <button
-                  type="button"
-                  onClick={handleSendSampleCoupon}
-                  className="p-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl transition cursor-pointer border border-amber-200 font-extrabold text-xs flex items-center gap-1"
-                  title="Issue Sample Discount Coupon"
-                >
-                  <Tag className="w-4 h-4 text-amber-600" />
-                  <span className="hidden sm:inline">$20 Coupon</span>
-                </button>
-              )}
-
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type a message in your language (AI translates automatically)..."
-                className="flex-1 px-4 py-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
-              />
-
-              <button
-                type="submit"
-                disabled={uploading || (!newMessage.trim() && !attachedFile)}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
-              >
-                {uploading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <span>Send</span>
-                    <Send className="w-3.5 h-3.5" />
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
-        )}
       </main>
 
-      {/* 모달 영역 */}
+      {/* 모달 구역 */}
       {isQuoteModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6">
@@ -704,7 +535,6 @@ function ChatContent() {
   );
 }
 
-// 2. 메인 Export 컴포넌트: Next.js 정적 빌드 규칙을 준수하는 Suspense Boundary 탑재
 export default function RealtimeChatPage() {
   return (
     <Suspense

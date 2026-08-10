@@ -1,118 +1,364 @@
 // components/chat/ChatRoomItem.jsx
 'use client';
 
-import { User, Clock, ChevronDown, ChevronUp, MessageSquare, FileText, Truck, Sparkles } from 'lucide-react';
-import ChatMessageBubble from './ChatMessageBubble';
+import { useState, useRef, useEffect } from 'react';
+import { 
+  Building2, 
+  ChevronDown, 
+  ChevronUp, 
+  FileText, 
+  Send, 
+  Paperclip, 
+  Image as ImageIcon, 
+  X, 
+  Tag, 
+  User, 
+  CreditCard, 
+  Truck,
+  Sparkles
+} from 'lucide-react';
 
-export default function ChatRoomItem({ 
-  room, 
-  isOpen, 
-  userRole, 
-  messages, 
-  onToggle, 
-  onOpenQuoteModal, 
-  onOpenDocModal, 
-  onOpenPaymentModal, 
+export default function ChatRoomItem({
+  room,
+  isOpen,
+  userRole,
+  messages,
+  onToggle,
+  onOpenQuoteModal,
+  onOpenDocModal,
+  onOpenPaymentModal,
   onOpenSampleModal,
-  messagesEndRef 
+  onSendMessage,
+  onSendSampleCoupon,
+  messagesEndRef
 }) {
-  const targetName = userRole === 'seller' ? room.buyer_name : room.seller_name;
-  const unreadCount = room.unread_count || 0;
+  // 개별 대화방 독립 메시지 및 첨부파일 상태
+  const [inputText, setInputText] = useState('');
+  const [attachedFile, setAttachedFile] = useState(null);
+
+  const fileInputRef = useRef(null);
+  const imageInputRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isOpen, attachedFile]);
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileType = file.type.includes('pdf')
+      ? 'pdf'
+      : file.type.includes('sheet') || file.type.includes('excel')
+      ? 'excel'
+      : 'document';
+
+    setAttachedFile({
+      name: file.name,
+      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+      type: fileType,
+      url: URL.createObjectURL(file),
+      fileObject: file,
+    });
+  };
+
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setAttachedFile({
+      name: file.name,
+      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+      type: 'image',
+      url: URL.createObjectURL(file),
+      fileObject: file,
+    });
+  };
+
+  const handleRemoveAttachment = () => {
+    setAttachedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!inputText.trim() && !attachedFile) return;
+
+    onSendMessage(room.id, inputText.trim(), attachedFile);
+    setInputText('');
+    setAttachedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  };
 
   return (
-    <div
-      className={`bg-white rounded-3xl border transition overflow-hidden shadow-sm ${
-        isOpen ? 'border-blue-600 ring-2 ring-blue-600/10' : 'border-slate-200 hover:border-blue-300'
-      }`}
-    >
-      <button
+    <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm transition hover:border-blue-400">
+      {/* 1. 대화방 아코디언 상단 헤더 */}
+      <div
         onClick={onToggle}
-        className="w-full text-left p-6 flex items-center justify-between gap-4 cursor-pointer bg-white hover:bg-slate-50/80 transition"
+        className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/80 transition select-none"
       >
-        <div className="space-y-1 flex-1">
+        <div className="space-y-1 flex-1 pr-4">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
-              <User className="w-4 h-4 text-blue-600" />
-              {targetName}
-            </span>
-            
-            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
-              Inquiry Item
+            <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100 flex items-center gap-1">
+              <Building2 className="w-3 h-3" />
+              {room.seller_name}
             </span>
 
-            {/* 안읽은 메시지 개수 뱃지 (읽지 않았고 닫혀있을 때만 깜빡이는 뱃지 노출) */}
-            {!isOpen && unreadCount > 0 && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-extrabold shadow-sm animate-pulse">
-                <Sparkles className="w-3 h-3 text-amber-300" />
-                {unreadCount} new
+            {room.unread_count > 0 && (
+              <span className="bg-rose-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full animate-pulse">
+                {room.unread_count} New
               </span>
             )}
           </div>
 
-          <h3 className="text-xs md:text-sm font-extrabold text-slate-700">
+          <h3 className="text-sm font-extrabold text-slate-900 line-clamp-1">
             {room.product_title}
           </h3>
 
-          <p className="text-xs text-slate-500 truncate pt-0.5">
-            Last Message: <span className="font-medium text-slate-800">{room.last_message || 'No messages yet'}</span>
+          <p className="text-xs text-slate-500 line-clamp-1 font-medium">
+            {room.buyer_name}: "{room.last_message}"
           </p>
         </div>
 
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
-            <Clock className="w-3.5 h-3.5" /> {room.updated_at}
-          </span>
-
-          <div className={`p-2 rounded-xl transition ${isOpen ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] text-slate-400 font-bold hidden sm:inline">{room.updated_at}</span>
+          <button type="button" className="p-2 bg-slate-100 rounded-xl text-slate-600">
             {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </div>
+          </button>
         </div>
-      </button>
+      </div>
 
+      {/* 2. 대화방 펼침 구역 (메시지 내역 + 대화방 전용 하단 메신저 입력창) */}
       {isOpen && (
-        <div className="border-t border-slate-100 bg-slate-50/50 flex flex-col">
-          <div className="px-6 py-3 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between text-xs flex-wrap gap-2">
-            <span className="font-bold text-slate-600 flex items-center gap-1.5">
-              <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
-              Direct Discussion Stream
-            </span>
-
+        <div className="border-t border-slate-100 bg-slate-50/50 p-5 space-y-4 animate-fadeIn">
+          {/* 상단 무역 도구 액션바 */}
+          <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200/60">
             <div className="flex items-center gap-2">
-              {/* 대화방 전용 샘플 배송 조회 버튼 */}
+              {userRole === 'seller' && (
+                <button
+                  type="button"
+                  onClick={onOpenQuoteModal}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Send B2B Quote (RFQ)</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => onOpenSampleModal(room)}
-                className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 border border-amber-300 font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer"
               >
-                <Truck className="w-3.5 h-3.5 text-amber-600" />
-                <span>Sample Status ({room.courier || 'DHL'})</span>
+                <Truck className="w-3.5 h-3.5 text-amber-400" />
+                <span>Sample Tracking</span>
+              </button>
+            </div>
+
+            <span className="text-[10px] text-slate-400 font-bold">
+              AI Real-time Multilingual Translation Active
+            </span>
+          </div>
+
+          {/* 메시지 히스토리 스크롤 구역 */}
+          <div className="max-h-[380px] overflow-y-auto space-y-3.5 pr-2">
+            {messages.map((msg) => {
+              const isMine = msg.sender_role === userRole;
+
+              return (
+                <div
+                  key={msg.id}
+                  className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} space-y-1`}
+                >
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold px-1">
+                    <span>{isMine ? 'You' : msg.sender_role === 'seller' ? room.seller_name : room.buyer_name}</span>
+                    <span>•</span>
+                    <span>{msg.created_at}</span>
+                  </div>
+
+                  <div
+                    className={`p-4 rounded-2xl max-w-[85%] sm:max-w-[75%] space-y-2 text-xs shadow-sm ${
+                      isMine
+                        ? 'bg-blue-600 text-white rounded-tr-none'
+                        : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
+                    }`}
+                  >
+                    {/* 일반 메세지 */}
+                    {msg.message && <p className="leading-relaxed font-medium">{msg.message}</p>}
+
+                    {/* AI 번역문 */}
+                    {msg.translated_message && (
+                      <p className={`text-[11px] pt-1.5 border-t italic font-mono ${isMine ? 'border-blue-500/60 text-blue-100' : 'border-slate-100 text-slate-500'}`}>
+                        {msg.translated_message}
+                      </p>
+                    )}
+
+                    {/* 첨부파일 카너 */}
+                    {msg.file && (
+                      <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 mt-1 ${isMine ? 'bg-blue-700/60 border-blue-500' : 'bg-slate-50 border-slate-200'}`}>
+                        <div className="flex items-center gap-2 truncate">
+                          {msg.file.type === 'image' ? (
+                            <ImageIcon className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                          ) : (
+                            <FileText className="w-4 h-4 text-amber-300 flex-shrink-0" />
+                          )}
+                          <div className="truncate">
+                            <span className="font-extrabold block truncate">{msg.file.name}</span>
+                            <span className="text-[9px] opacity-75">{msg.file.size}</span>
+                          </div>
+                        </div>
+
+                        <a
+                          href={msg.file.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2.5 py-1 bg-white text-slate-900 font-extrabold text-[10px] rounded-lg shadow transition hover:bg-slate-100 cursor-pointer flex-shrink-0"
+                        >
+                          View
+                        </a>
+                      </div>
+                    )}
+
+                    {/* 견적서(RFQ) 카너 및 결제/무역 서류 출력 버튼 */}
+                    {msg.is_quote && (
+                      <div className="p-3.5 bg-slate-900 text-white rounded-xl border border-slate-800 space-y-2 mt-2">
+                        <div className="flex items-center justify-between text-emerald-400 font-extrabold">
+                          <span>Official FOB Quote</span>
+                          <span>{msg.quote_price}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-bold">MOQ: {msg.quote_moq}</div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800">
+                          <button
+                            type="button"
+                            onClick={() => onOpenDocModal(msg, room)}
+                            className="py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-[10px] rounded-lg transition flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <FileText className="w-3 h-3 text-blue-400" />
+                            <span>Trade Docs (PI/CI)</span>
+                          </button>
+
+                          {userRole === 'buyer' ? (
+                            <button
+                              type="button"
+                              onClick={() => onOpenPaymentModal(msg, room)}
+                              className="py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] rounded-lg shadow transition flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <CreditCard className="w-3 h-3" />
+                              <span>Pay Escrow</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => onOpenDocModal(msg, room)}
+                              className="py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-[10px] rounded-lg shadow transition flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <span>Edit Order Specs</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* ★ 핵심 요청 반영: 개별 대화방 하단 독점 메시지 메신저 입력창 */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-3 space-y-2 shadow-sm pt-2">
+            {attachedFile && (
+              <div className="px-3.5 py-1.5 bg-blue-50 border border-blue-100 flex items-center justify-between text-xs rounded-xl">
+                <div className="flex items-center gap-2 text-blue-900 font-bold">
+                  {attachedFile.type === 'image' ? (
+                    <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
+                  ) : (
+                    <FileText className="w-3.5 h-3.5 text-blue-600" />
+                  )}
+                  <span className="text-[10px]">Attached:</span>
+                  <span className="font-extrabold text-blue-600 text-[10px] truncate max-w-[180px]">
+                    {attachedFile.name} ({attachedFile.size})
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleRemoveAttachment}
+                  className="p-1 bg-white hover:bg-rose-50 text-slate-500 rounded-md transition cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="flex items-center gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={imageInputRef}
+                onChange={handleImageSelect}
+                accept="image/*"
+                className="hidden"
+              />
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-xl transition cursor-pointer border border-slate-200"
+                title="Attach Document / Spec Sheet"
+              >
+                <Paperclip className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                className="p-2 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-600 text-slate-600 rounded-xl transition cursor-pointer border border-slate-200"
+                title="Attach Image / Catalog"
+              >
+                <ImageIcon className="w-4 h-4" />
               </button>
 
               {userRole === 'seller' && (
                 <button
                   type="button"
-                  onClick={onOpenQuoteModal}
-                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                  onClick={() => onSendSampleCoupon(room.id)}
+                  className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl transition cursor-pointer border border-amber-200 font-extrabold text-xs flex items-center gap-1"
+                  title="Issue Sample $20 Discount Voucher"
                 >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>Send Official Quote (RFQ)</span>
+                  <Tag className="w-4 h-4 text-amber-600" />
+                  <span className="hidden sm:inline text-[10px]">$20 Off</span>
                 </button>
               )}
-            </div>
-          </div>
 
-          <div className="p-6 space-y-4 max-h-[520px] overflow-y-auto bg-white">
-            {messages.map((msg) => (
-              <ChatMessageBubble
-                key={msg.id}
-                msg={msg}
-                room={room}
-                userRole={userRole}
-                onOpenDocModal={onOpenDocModal}
-                onOpenPaymentModal={onOpenPaymentModal}
+              <input
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder={`Message ${userRole === 'seller' ? room.buyer_name : room.seller_name}...`}
+                className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
               />
-            ))}
-            <div ref={messagesEndRef} />
+
+              <button
+                type="submit"
+                disabled={!inputText.trim() && !attachedFile}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+              >
+                <span>Send</span>
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            </form>
           </div>
         </div>
       )}
