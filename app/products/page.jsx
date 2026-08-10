@@ -47,15 +47,19 @@ export default function ProductDashboardPage() {
     }
   };
 
-  // ★ 새 상품 생성 시 user_id 컬럼 오차 예외 처리가 반영된 안전 INSERT 로직
+  // ★ product_name 필수 제약조건 호환 처리가 포함된 INSERT 로직
   const handleCreateProduct = async (payload) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const currentUserId = session?.user?.id || null;
 
+      const titleEn = payload.title_en || 'Export Product';
+      const titleKo = payload.title_ko || '';
+
       const fullPayload = {
-        title_en: payload.title_en || 'Export Product',
-        title_ko: payload.title_ko || '',
+        product_name: titleEn || titleKo || 'Export Product', // product_name NOT NULL 호환 대응
+        title_en: titleEn,
+        title_ko: titleKo,
         category: payload.category || 'General Manufacturing',
         price: payload.price || '0.00',
         moq: payload.moq || '1 Unit',
@@ -73,7 +77,6 @@ export default function ProductDashboardPage() {
         created_at: new Date().toISOString()
       };
 
-      // user_id 존재 시 페이로드에 동적 삽입
       if (currentUserId) {
         fullPayload.user_id = currentUserId;
       }
@@ -84,7 +87,7 @@ export default function ProductDashboardPage() {
         .insert([fullPayload])
         .select();
 
-      // user_id 컬럼 누락 에러 발생 시 fallback 제거 시도
+      // user_id 컬럼 누락 에러 발생 시 fallback 처리
       if (error && error.message?.includes('user_id')) {
         console.warn('user_id 컬럼 누락 감지, user_id 제외 후 안전 저장 재시도...');
         const payloadWithoutUserId = { ...fullPayload };
@@ -105,7 +108,8 @@ export default function ProductDashboardPage() {
       if (error && error.message?.includes('column')) {
         console.warn('기타 DB 컬럼 누락 감지, 최소 필수 컬럼으로 저장 시도...');
         const minimalPayload = {
-          title_en: payload.title_en || 'Export Product',
+          product_name: titleEn || titleKo || 'Export Product',
+          title_en: titleEn,
           category: payload.category || 'General Manufacturing',
           price: payload.price || '0.00',
           moq: payload.moq || '1 Unit',

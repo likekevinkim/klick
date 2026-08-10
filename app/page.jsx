@@ -76,7 +76,13 @@ export default function HomePage() {
         console.error('Supabase fetch error on homepage:', error);
         setProducts([]);
       } else if (data) {
-        setProducts(data);
+        // product_name 호환성 매핑
+        const formattedData = data.map(item => ({
+          ...item,
+          title_en: item.title_en || item.product_name || '',
+          title_ko: item.title_ko || item.product_name || ''
+        }));
+        setProducts(formattedData);
       } else {
         setProducts([]);
       }
@@ -234,7 +240,7 @@ export default function HomePage() {
                     {item.image_url ? (
                       <img
                         src={item.image_url}
-                        alt={item.title_en || item.title_ko}
+                        alt={item.title_en || item.title_ko || item.product_name}
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                       />
                     ) : (
@@ -252,7 +258,7 @@ export default function HomePage() {
                   </div>
 
                   <h3 className="text-xs font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition min-h-[32px]">
-                    {item.title_en || item.title_ko}
+                    {item.title_en || item.title_ko || item.product_name}
                   </h3>
 
                   <div className="pt-1 border-t border-slate-100 space-y-0.5">

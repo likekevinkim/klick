@@ -54,7 +54,14 @@ export default function ProductDetailPage() {
           .eq('id', productId)
           .single();
 
-        if (data) foundProduct = data;
+        if (data) {
+          // product_name 컬럼 값과 title_en/title_ko 간 호환 보장
+          foundProduct = {
+            ...data,
+            title_en: data.title_en || data.product_name || '',
+            title_ko: data.title_ko || data.product_name || ''
+          };
+        }
       }
 
       setProduct(foundProduct);
@@ -119,9 +126,14 @@ export default function ProductDetailPage() {
 
     try {
       if (product?.id) {
+        const updatePayload = {
+          ...payload,
+          product_name: payload.title_en || payload.title_ko || 'Export Product' // product_name 동시 갱신
+        };
+
         const { error } = await supabase
           .from('products')
-          .update(payload)
+          .update(updatePayload)
           .eq('id', product.id);
 
         if (error) {
