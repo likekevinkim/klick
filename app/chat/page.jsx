@@ -55,9 +55,11 @@ function ChatContent() {
       .channel('public:chat_messages_page_realtime')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        { event: '*', schema: 'public', table: 'chat_messages' },
         (payload) => {
-          handleRealtimeMessageReceived(payload.new);
+          if (payload.eventType === 'INSERT') {
+            handleRealtimeMessageReceived(payload.new);
+          }
         }
       )
       .subscribe();
@@ -108,7 +110,7 @@ function ChatContent() {
     }
   };
 
-  // ★ 대화방 목록 조회 및 읽은 대화방 제외 '진짜 안 읽은 수치' 정밀 계산
+  // ★ 대화방 목록 조회 및 DB `is_read = false` 기준 안읽은 수치 계산
   const fetchChatRoomsAndInit = async (currentUserObj, currentRole) => {
     try {
       const { data: existingRooms } = await supabase
@@ -117,9 +119,6 @@ function ChatContent() {
         .order('updated_at', { ascending: false });
 
       let currentRoomsList = existingRooms || [];
-
-      // 이미 사용자가 클릭해서 연 대화방 목록
-      const readRoomIds = (localStorage.getItem('klick_read_room_ids') || '').split(',').filter(Boolean);
 
       if (currentRoomsList.length > 0) {
         const roomIds = currentRoomsList.map((r) => r.id);
@@ -137,18 +136,18 @@ function ChatContent() {
             if (!map[msg.room_id]) map[msg.room_id] = [];
             map[msg.room_id].push(msg);
 
-            // 상대방이 보낸 메시지이며, 아직 대화방을 열지 않은 경우에만 unread_count 가산
+            // 상대방이 보낸 메시지 중, is_read가 false인 레코드만 안읽은 수 카운트
             const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
-            const isRoomUnread = !readRoomIds.includes(msg.room_id.toString());
+            const isUnread = msg.sender_role === opponentRole && (msg.is_read === false || msg.is_read === null);
             
-            if (msg.sender_role === opponentRole && isRoomUnread) {
+            if (isUnread) {
               unreadMap[msg.room_id] = (unreadMap[msg.room_id] || 0) + 1;
             }
           });
 
           setRoomMessagesMap(map);
 
-          // 안읽은 개수를 대화방 객체에 매핑
+          // 안읽은 개수를 대화방 객체에 부여
           currentRoomsList = currentRoomsList.map((r) => ({
             ...r,
             unread_count: unreadMap[r.id] || 0
@@ -193,6 +192,7 @@ function ChatContent() {
               message: `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`,
               translated_message: `안녕하세요! ${companySeller}의 [${companyTitle}] 상품에 대해 문의드립니다. FOB 단가 및 공식 카탈로그를 전달해 주실 수 있나요?`,
               is_quote: false,
+              is_read: false,
               created_at: new Date().toISOString()
             };
 
@@ -206,11 +206,8 @@ function ChatContent() {
 
         if (matchedRoom) {
           setActiveRoomId(matchedRoom.id);
-          
-          // 열어본 방은 바로 읽음 처리 목록에 등록
-          const updatedReadSet = new Set(readRoomIds);
-          updatedReadSet.add(matchedRoom.id.toString());
-          localStorage.setItem('klick_read_room_ids', Array.from(updatedReadSet).join(','));
+          // 직통 진입 시 즉시 DB 읽음 처리
+          await markRoomMessagesAsRead(matchedRoom.id, currentRole);
         }
       } else {
         setActiveRoomId(null);
@@ -223,25 +220,41 @@ function ChatContent() {
     }
   };
 
+  // ★ 해당 대화방의 상대방 메시지를 DB에서 `is_read = true`로 직접 UPDATE 처리
+  const markRoomMessagesAsRead = async (roomId, currentRole) => {
+    try {
+      const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
+      await supabase
+        .from('chat_messages')
+        .update({ is_read: true })
+        .eq('room_id', roomId)
+        .eq('sender_role', opponentRole);
+
+      // 로컬 스토리지 호환성 유지
+      const readRoomIds = new Set((localStorage.getItem('klick_read_room_ids') || '').split(',').filter(Boolean));
+      readRoomIds.add(roomId.toString());
+      localStorage.setItem('klick_read_room_ids', Array.from(readRoomIds).join(','));
+
+      window.dispatchEvent(new Event('klick_unread_chat_updated'));
+    } catch (e) {
+      console.error('Failed to mark as read in DB:', e);
+    }
+  };
+
   // 대화방을 클릭하여 열었을 때 해당 대화방만 정밀 '읽음' 처리 및 수치 차감
-  const handleToggleRoom = (roomId) => {
+  const handleToggleRoom = async (roomId) => {
     if (activeRoomId === roomId) {
       setActiveRoomId(null);
     } else {
       setActiveRoomId(roomId);
 
-      // 1. 해당 대화방 ID를 읽은 목록에 저장
-      const readRoomIds = new Set((localStorage.getItem('klick_read_room_ids') || '').split(',').filter(Boolean));
-      readRoomIds.add(roomId.toString());
-      localStorage.setItem('klick_read_room_ids', Array.from(readRoomIds).join(','));
+      // 1. 해당 대화방 메시지 DB is_read = true 로 세팅
+      await markRoomMessagesAsRead(roomId, userRole);
 
-      // 2. 해당 대화방의 unread_count만 0으로 차감
+      // 2. UI 상 unread_count 0 처리
       setRooms((prevRooms) =>
         prevRooms.map((r) => (r.id === roomId ? { ...r, unread_count: 0 } : r))
       );
-
-      // 3. 전체 헤더 뱃지 수치 재계산을 위해 이벤트 발송
-      window.dispatchEvent(new Event('klick_unread_chat_updated'));
     }
   };
 
@@ -273,6 +286,7 @@ function ChatContent() {
       message: text,
       translated_message: autoTranslation,
       is_quote: false,
+      is_read: false,
       file: finalFilePayload,
       created_at: new Date().toISOString()
     };
@@ -298,6 +312,7 @@ function ChatContent() {
         message: newMsgObj.message,
         translated_message: newMsgObj.translated_message,
         is_quote: false,
+        is_read: false,
         file: newMsgObj.file,
         created_at: newMsgObj.created_at
       }]);
@@ -329,6 +344,7 @@ function ChatContent() {
       message: `[Official B2B Quote Sent] ${quoteNote}`,
       translated_message: `[공식 B2B 견적서 발송] ${quoteNote}`,
       is_quote: true,
+      is_read: false,
       quote_price: `${quotePrice} USD / Unit`,
       quote_moq: quoteMoq,
       created_at: new Date().toISOString()
@@ -349,6 +365,7 @@ function ChatContent() {
         message: quoteMsgObj.message,
         translated_message: quoteMsgObj.translated_message,
         is_quote: true,
+        is_read: false,
         quote_price: quoteMsgObj.quote_price,
         quote_moq: quoteMsgObj.quote_moq,
         created_at: quoteMsgObj.created_at

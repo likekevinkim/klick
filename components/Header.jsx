@@ -58,38 +58,25 @@ export default function Header() {
     setTimeout(triggerGoogleCombo, 300);
   };
 
-  // ★ Supabase DB 기반 상대방 발신 중 '진짜 안 읽은 메시지' 정밀 계산
+  // ★ Supabase DB `is_read = false` 기준 진짜 안 읽은 상대방 메시지 수 정밀 계산
   const updateUnreadCountFromStorage = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const currentUser = session?.user || null;
       const currentRole = currentUser?.user_metadata?.role || 'seller';
+      const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
 
-      // 로컬 스토리지에 읽은 대화방 ID 목록 가져오기
-      const readRoomIds = (localStorage.getItem('klick_read_room_ids') || '').split(',').filter(Boolean);
+      // DB에서 상대방이 나에게 보낸 메시지 중 is_read가 false (또는 NULL) 인 메시지만 직접 COUNT
+      const { data: unreadMsgs, error } = await supabase
+        .from('chat_messages')
+        .select('id, is_read')
+        .eq('sender_role', opponentRole)
+        .or('is_read.eq.false,is_read.is.null');
 
-      const { data: roomData } = await supabase.from('chat_rooms').select('id');
-      if (roomData && roomData.length > 0) {
-        const roomIds = roomData.map((r) => r.id);
-        const { data: msgData } = await supabase
-          .from('chat_messages')
-          .select('*')
-          .in('room_id', roomIds);
-
-        if (msgData) {
-          const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
-
-          // 상대방이 보낸 메시지 중, 아직 열어보지 않은 대화방(readRoomIds에 없음)의 메시지만 카운트
-          const unreadMsgs = msgData.filter((m) => {
-            const isOpponent = m.sender_role === opponentRole;
-            const isRoomUnread = !readRoomIds.includes(m.room_id.toString());
-            return isOpponent && isRoomUnread;
-          });
-
-          const count = Math.min(unreadMsgs.length, 99);
-          setUnreadChatCount(count);
-          localStorage.setItem('klick_unread_chat_count', count.toString());
-        }
+      if (!error && unreadMsgs) {
+        const count = Math.min(unreadMsgs.length, 99);
+        setUnreadChatCount(count);
+        localStorage.setItem('klick_unread_chat_count', count.toString());
       } else {
         setUnreadChatCount(0);
         localStorage.setItem('klick_unread_chat_count', '0');
@@ -133,12 +120,12 @@ export default function Header() {
     };
     window.addEventListener('klick_unread_chat_updated', handleUnreadUpdate);
 
-    // Supabase Realtime 기반 새 메시지 INSERT 즉시 감지 및 재계산
+    // Supabase Realtime 기반 새 메시지 INSERT/UPDATE 즉시 감지 및 재계산
     const realtimeChannel = supabase
       .channel('public:chat_messages_header_count')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        { event: '*', schema: 'public', table: 'chat_messages' },
         () => {
           updateUnreadCountFromStorage();
         }
@@ -214,7 +201,6 @@ export default function Header() {
     setUser(null);
     setIsUserMenuOpen(false);
     localStorage.removeItem('klick_unread_chat_count');
-    localStorage.removeItem('klick_read_room_ids');
     router.push('/');
   };
 
