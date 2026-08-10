@@ -129,7 +129,7 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Product Title (Korean)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Product Title (Korean) *</label>
                 <input
                   type="text"
                   required
@@ -239,7 +239,7 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
             </div>
           </div>
 
-          {/* 3. 미디어 업로더 컴포넌트 */}
+          {/* 3. 미디어 업로더 컴포넌트 (비디오 및 사진 개별제어 지원) */}
           <ProductMediaUploader
             mainImageUrl={mainImageUrl}
             setMainImageUrl={setMainImageUrl}
