@@ -47,8 +47,49 @@ function ChatContent() {
 
   useEffect(() => {
     setMounted(true);
+    
+    // ★ 채팅 페이지 접속 시 안읽은 뱃지 수 0으로 초기화 및 커스텀 이벤트 발송
+    localStorage.setItem('klick_unread_chat_count', '0');
+    window.dispatchEvent(new Event('klick_unread_chat_updated'));
+
     initChatSession();
+
+    // ★ 실시간 메시지 수신 구독
+    const msgChannel = supabase
+      .channel('public:chat_messages_realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        (payload) => {
+          handleRealtimeMessageReceived(payload.new);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(msgChannel);
+    };
   }, [paramProductId, paramCompany, paramTitle, paramSellerId]);
+
+  const handleRealtimeMessageReceived = (newMsg) => {
+    setRoomMessagesMap((prevMap) => {
+      const roomMsgs = prevMap[newMsg.room_id] || [];
+      // 중복 수신 방지
+      if (roomMsgs.some((m) => m.id === newMsg.id)) return prevMap;
+      return {
+        ...prevMap,
+        [newMsg.room_id]: [...roomMsgs, newMsg],
+      };
+    });
+
+    setRooms((prevRooms) =>
+      prevRooms.map((r) =>
+        r.id === newMsg.room_id
+          ? { ...r, last_message: newMsg.message || 'File sent', updated_at: newMsg.created_at }
+          : r
+      )
+    );
+  };
 
   const initChatSession = async () => {
     try {
@@ -69,7 +110,7 @@ function ChatContent() {
     }
   };
 
-  // ★ Supabase DB 대화방 생성 및 1:1 채팅 실시간 연결
+  // Supabase DB 대화방 생성 및 해당 셀러와의 직통 채팅 실시간 연결
   const fetchChatRoomsAndInit = async (currentUserObj) => {
     try {
       const { data: existingRooms } = await supabase
@@ -79,7 +120,7 @@ function ChatContent() {
 
       let currentRoomsList = existingRooms || [];
 
-      // 상세페이지에서 직통 문의 버튼으로 접근 시
+      // 상세페이지에서 채팅 문의 버튼을 눌러 들어온 경우 (URL 파라미터 감지)
       if (paramCompany || paramTitle) {
         const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product';
         const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Hankook Precision Co., Ltd.';
@@ -88,7 +129,6 @@ function ChatContent() {
           (r) => r.product_title === companyTitle && r.seller_name === companySeller
         );
 
-        // 없으면 DB에 즉시 대화방 생성
         if (!matchedRoom) {
           const newRoomPayload = {
             product_id: paramProductId ? paramProductId.toString() : null,
@@ -106,13 +146,10 @@ function ChatContent() {
             .insert([newRoomPayload])
             .select();
 
-          if (createError) {
-            console.error('Failed to create chat room in DB:', createError);
-          } else if (createdRoomData && createdRoomData.length > 0) {
+          if (!createError && createdRoomData && createdRoomData.length > 0) {
             matchedRoom = createdRoomData[0];
             currentRoomsList = [matchedRoom, ...currentRoomsList];
 
-            // 대화방 첫 문의 메시지 자동 등록
             await supabase.from('chat_messages').insert([
               {
                 room_id: matchedRoom.id,
@@ -204,21 +241,14 @@ function ChatContent() {
       created_at: new Date().toISOString()
     };
 
-    setRoomMessagesMap((prevMap) => ({
-      ...prevMap,
-      [targetRoomId]: [...(prevMap[targetRoomId] || []), newMsgObj],
-    }));
-
-    setRooms((prevRooms) =>
-      prevRooms.map((r) =>
-        r.id === targetRoomId
-          ? { ...r, last_message: text || attachedFile?.name || 'File sent', updated_at: new Date().toISOString() }
-          : r
-      )
-    );
-
     try {
-      await supabase.from('chat_messages').insert([newMsgObj]);
+      const { error: msgInsertError } = await supabase.from('chat_messages').insert([newMsgObj]);
+      if (msgInsertError) {
+        console.error('Failed to insert message to Supabase:', msgInsertError);
+        alert('메시지 DB 저장 실패: ' + msgInsertError.message);
+        return;
+      }
+
       await supabase
         .from('chat_rooms')
         .update({
@@ -242,13 +272,13 @@ function ChatContent() {
       created_at: new Date().toISOString()
     };
 
-    setRoomMessagesMap((prevMap) => ({
-      ...prevMap,
-      [targetRoomId]: [...(prevMap[targetRoomId] || []), couponMsgObj],
-    }));
-
     try {
-      await supabase.from('chat_messages').insert([couponMsgObj]);
+      const { error } = await supabase.from('chat_messages').insert([couponMsgObj]);
+      if (error) {
+        console.error('Coupon DB Error:', error);
+        alert('쿠폰 전송 실패: ' + error.message);
+        return;
+      }
       alert('Sample $20 Discount Voucher sent directly to buyer!');
     } catch (err) {
       console.error('Coupon DB error:', err);
@@ -270,15 +300,16 @@ function ChatContent() {
       created_at: new Date().toISOString()
     };
 
-    setRoomMessagesMap((prevMap) => ({
-      ...prevMap,
-      [activeRoomId]: [...(prevMap[activeRoomId] || []), quoteMsgObj],
-    }));
-
     setIsQuoteModalOpen(false);
 
     try {
-      await supabase.from('chat_messages').insert([quoteMsgObj]);
+      const { error } = await supabase.from('chat_messages').insert([quoteMsgObj]);
+      if (error) {
+        console.error('Quote DB error:', error);
+        alert('견적서 전송 실패: ' + error.message);
+        return;
+      }
+
       await supabase
         .from('chat_rooms')
         .update({
