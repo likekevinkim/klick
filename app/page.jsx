@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   Building2, 
   Globe, 
@@ -13,18 +14,15 @@ import {
   Sparkles, 
   CheckCircle2, 
   Search, 
-  TrendingUp, 
-  Layers, 
   Factory, 
   Send,
   Loader2,
-  ExternalLink,
-  MessageSquare,
-  Award
+  MessageSquare
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function HomePage() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -59,7 +57,7 @@ export default function HomePage() {
     };
   }, []);
 
-  // ★ localStorage 읽음 상태 동기화 로직 (채팅창 방문 시 0으로 동기화)
+  // localStorage 읽음 상태 동기화 로직
   const updateUnreadCount = () => {
     const savedCount = localStorage.getItem('klick_unread_chat_count');
     if (savedCount !== null) {
@@ -69,21 +67,50 @@ export default function HomePage() {
     }
   };
 
-  // Supabase DB에서 실제 셀러가 업로드한 최신 상품 목록 조회
+  // ★ Supabase DB 및 로컬 스토리지 신규 등록 상품 통합 조회
   const fetchFeaturedProducts = async () => {
     try {
       setLoadingProducts(true);
 
+      // 1. Supabase DB 조회를 시도
+      let dbProducts = [];
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (data && data.length > 0) {
-        setProducts(data);
-      } else {
-        // DB 데이터가 없을 경우 가동되는 대표 B2B 상품 리스트
-        setProducts([
+        dbProducts = data;
+      }
+
+      // 2. 로컬 스토리지에 등록/수정된 상품 데이터를 확인하여 합침
+      const localProductKeys = Object.keys(localStorage).filter(key => key.startsWith('klick_product_'));
+      const localProducts = [];
+
+      localProductKeys.forEach(key => {
+        try {
+          const item = JSON.parse(localStorage.getItem(key));
+          if (item && item.id) {
+            localProducts.push(item);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      });
+
+      // 중복 제거 및 최신 상품 순 합치기
+      const combinedMap = new Map();
+
+      // DB 상품 추가
+      dbProducts.forEach(p => combinedMap.set(p.id.toString(), p));
+      // 로컬 수정/등록 상품 덮어쓰기 (우선순위 부여)
+      localProducts.forEach(p => combinedMap.set(p.id.toString(), p));
+
+      let finalProductsList = Array.from(combinedMap.values());
+
+      // 3. 만약 DB 및 로컬 모두 데이터가 없을 경우 가동되는 B2B 백업 샘플 상품 리스트
+      if (finalProductsList.length === 0) {
+        finalProductsList = [
           {
             id: '1',
             title_en: 'High-Precision Hydraulic Control Valve HV-300 Heavy Duty',
@@ -124,8 +151,10 @@ export default function HomePage() {
             tagline: 'High precision PCB micro sensor module for smart factories',
             image_url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80',
           }
-        ]);
+        ];
       }
+
+      setProducts(finalProductsList);
     } catch (error) {
       console.error('Failed to load featured products for homepage:', error);
     } finally {
@@ -158,7 +187,7 @@ export default function HomePage() {
               <span>Direct B2B Gateway to South Korean Manufacturers</span>
             </div>
 
-            {/* ★ 실시간 안읽은 채팅 메시지 뱃지 (0개보다 많을 때만 노출) */}
+            {/* 실시간 안읽은 채팅 메시지 뱃지 */}
             {unreadCount > 0 && (
               <Link
                 href="/chat"
@@ -222,7 +251,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 2. ★ 핵심: 알리바바 스타일의 컴팩트한 상품 그리드 (Alibaba B2B Compact Layout) */}
+      {/* 2. 알리바바 스타일의 컴팩트한 상품 그리드 (DB 및 로컬 등록 신규 상품 노출) */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-2 border-b border-slate-200 pb-3">
           <div className="space-y-0.5">
@@ -263,13 +292,13 @@ export default function HomePage() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
             {filteredProducts.map((item) => (
-              <Link
+              <div
                 key={item.id}
-                href={`/products/${item.id}`}
+                onClick={() => router.push(`/products/${item.id}`)}
                 className="bg-white rounded-2xl border border-slate-200 hover:border-blue-500 hover:shadow-lg transition duration-200 overflow-hidden flex flex-col justify-between group p-3 space-y-3 cursor-pointer"
               >
                 <div className="space-y-2.5">
-                  {/* 알리바바 규격 이미지 박스 */}
+                  {/* 이미지 박스 */}
                   <div className="w-full aspect-square bg-slate-100 rounded-xl overflow-hidden border border-slate-100 relative flex items-center justify-center">
                     {item.image_url ? (
                       <img
@@ -297,7 +326,7 @@ export default function HomePage() {
                     {item.title_en}
                   </h3>
 
-                  {/* 알리바바 단가 & MOQ 표기 */}
+                  {/* 단가 & MOQ 표기 */}
                   <div className="pt-1 border-t border-slate-100 space-y-0.5">
                     <div className="flex items-baseline gap-1">
                       <span className="text-sm font-extrabold text-emerald-600">${item.price}</span>
@@ -317,7 +346,7 @@ export default function HomePage() {
                   </span>
                   <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition" />
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
