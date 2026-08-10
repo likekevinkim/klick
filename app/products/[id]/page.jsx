@@ -237,7 +237,6 @@ export default function ProductDetailPage() {
 
       <main className="max-w-7xl mx-auto px-6 mt-8 space-y-10">
         
-        {/* 브레드크럼 & 편집 버튼 */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-xs text-slate-500 font-bold">
             <Link href="/" className="hover:text-blue-600">Home</Link>

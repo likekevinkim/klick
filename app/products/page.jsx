@@ -351,7 +351,7 @@ export default function ProductDashboardPage() {
         </div>
       </main>
 
-      {/* ★ 전문 B2B 새 상품 등록 모달 (사진/동영상/구간단가/AI 지원) */}
+      {/* 새 상품 등록 모달 */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-3xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-fadeIn">
@@ -375,7 +375,6 @@ export default function ProductDashboardPage() {
 
             <form onSubmit={handleAddProduct} className="space-y-6">
               
-              {/* 1. 기본 인포메이션 */}
               <div className="space-y-4">
                 <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider block border-b pb-1">
                   1. Basic Information
@@ -446,7 +445,6 @@ export default function ProductDashboardPage() {
                 </div>
               </div>
 
-              {/* 2. 알리바바형 수량별 구간 단가 (Tiered Pricing) */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b pb-1">
                   <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider">
@@ -495,7 +493,6 @@ export default function ProductDashboardPage() {
                 </div>
               </div>
 
-              {/* 3. 미디어 링크 (대표사진/갤러리사진/동영상) */}
               <div className="space-y-3">
                 <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider block border-b pb-1">
                   3. Product Images & Demonstration Video
@@ -536,7 +533,6 @@ export default function ProductDashboardPage() {
                 </div>
               </div>
 
-              {/* 4. AI 지원 자동 기획 & 카피라이팅 엔진 */}
               <div className="p-5 bg-blue-50/70 rounded-2xl border border-blue-100 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-extrabold text-blue-900 flex items-center gap-1.5">
