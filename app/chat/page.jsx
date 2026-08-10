@@ -23,9 +23,9 @@ export default function RealtimeChatPage() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState('seller');
 
-  // 대화방 목록 및 선택 상태 (대화방별 courier 및 tracking_no 내장)
+  // 대화방 목록 및 선택 상태 (요청반영: 기본적으로 모두 닫혀있도록 activeRoomId = null 지정)
   const [rooms, setRooms] = useState([]);
-  const [activeRoomId, setActiveRoomId] = useState(1);
+  const [activeRoomId, setActiveRoomId] = useState(null);
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
   const [newMessage, setNewMessage] = useState('');
 
@@ -60,18 +60,11 @@ export default function RealtimeChatPage() {
   useEffect(() => {
     setMounted(true);
     initChatSession();
-    clearUnreadChatBadge();
   }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [roomMessagesMap, activeRoomId, attachedFile]);
-
-  // 채팅 페이지 접속 시 안읽은 뱃지 0으로 즉시 동기화
-  const clearUnreadChatBadge = () => {
-    localStorage.setItem('klick_unread_chat_count', '0');
-    window.dispatchEvent(new Event('klick_unread_chat_updated'));
-  };
 
   const initChatSession = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -95,7 +88,8 @@ export default function RealtimeChatPage() {
         last_message: 'Can you send us a formal FOB quote for 500 units?',
         updated_at: '10:24 AM',
         courier: 'DHL Express',
-        tracking_no: 'DHL-8829-4019-KR'
+        tracking_no: 'DHL-8829-4019-KR',
+        unread_count: 1
       },
       {
         id: 2,
@@ -105,7 +99,8 @@ export default function RealtimeChatPage() {
         last_message: 'Is OEM private labeling available for this serum?',
         updated_at: 'Yesterday',
         courier: 'FedEx Express',
-        tracking_no: 'FDX-9901-2048-KR'
+        tracking_no: 'FDX-9901-2048-KR',
+        unread_count: 1
       }
     ];
 
@@ -164,8 +159,8 @@ export default function RealtimeChatPage() {
     };
 
     setRooms(mockRooms);
-    setActiveRoomId(1);
     setRoomMessagesMap(initialMessages);
+    syncTotalUnreadCount(mockRooms);
   };
 
   const fetchChatRooms = async (userId) => {
@@ -177,7 +172,6 @@ export default function RealtimeChatPage() {
 
       if (data && data.length > 0) {
         setRooms(data);
-        setActiveRoomId(data[0].id);
         fetchMessagesForRooms(data);
       } else {
         initMockMultiRooms();
@@ -206,6 +200,25 @@ export default function RealtimeChatPage() {
     } catch (error) {
       console.error('Failed to fetch messages:', error);
     }
+  };
+
+  // 대화방 토글 클릭 시 읽음 처리 및 뱃지 수 동기화
+  const handleToggleRoom = (roomId) => {
+    if (activeRoomId === roomId) {
+      setActiveRoomId(null);
+    } else {
+      setActiveRoomId(roomId);
+      const updatedRooms = rooms.map(r => r.id === roomId ? { ...r, unread_count: 0 } : r);
+      setRooms(updatedRooms);
+      syncTotalUnreadCount(updatedRooms);
+    }
+  };
+
+  // 총 안읽은 수치 로컬 스토리지 및 이벤트 브로드캐스트
+  const syncTotalUnreadCount = (roomList) => {
+    const total = roomList.reduce((acc, curr) => acc + (curr.unread_count || 0), 0);
+    localStorage.setItem('klick_unread_chat_count', total.toString());
+    window.dispatchEvent(new Event('klick_unread_chat_updated'));
   };
 
   const handleFileSelect = (e) => {
@@ -403,7 +416,7 @@ export default function RealtimeChatPage() {
               isOpen={activeRoomId === room.id}
               userRole={userRole}
               messages={roomMessagesMap[room.id] || []}
-              onToggle={() => setActiveRoomId(activeRoomId === room.id ? null : room.id)}
+              onToggle={() => handleToggleRoom(room.id)}
               onOpenQuoteModal={() => setIsQuoteModalOpen(true)}
               onOpenDocModal={handleOpenDocModal}
               onOpenPaymentModal={handleOpenPaymentModal}
@@ -415,7 +428,7 @@ export default function RealtimeChatPage() {
 
         {/* 대화방 내부 입력 하단 폼 */}
         {activeRoomId && (
-          <div className="bg-white rounded-3xl border border-slate-200 p-4 space-y-2 shadow-sm">
+          <div className="bg-white rounded-3xl border border-slate-200 p-4 space-y-2 shadow-sm animate-fadeIn">
             {attachedFile && (
               <div className="px-4 py-2 bg-blue-50 border border-blue-100 flex items-center justify-between text-xs rounded-xl">
                 <div className="flex items-center gap-2 text-blue-900 font-bold">

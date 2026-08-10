@@ -26,8 +26,8 @@ export default function Header() {
   const [user, setUser] = useState(null);
   const pathname = usePathname();
 
-  // 실시간 안읽은 채팅 메시지 카운트 상태
-  const [unreadChatCount, setUnreadChatCount] = useState(2);
+  // 실시간 안읽은 채팅 메시지 총 개수 상태 (기본 동기화 수치)
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   const languages = [
     { code: 'en', label: 'EN', name: 'English (US)' },
@@ -61,6 +61,16 @@ export default function Header() {
     setTimeout(triggerGoogleCombo, 300);
   };
 
+  // ★ localStorage에 저장된 안읽은 수치를 읽어와 헤더 뱃지 업데이트
+  const updateUnreadCountFromStorage = () => {
+    const savedCount = localStorage.getItem('klick_unread_chat_count');
+    if (savedCount !== null) {
+      setUnreadChatCount(parseInt(savedCount, 10));
+    } else {
+      setUnreadChatCount(2); // 초기 첫 로딩 시에만 기본 세팅
+    }
+  };
+
   useEffect(() => {
     // 1. Supabase 세션 초기 조회 및 이중 재검증
     const fetchUserSession = async () => {
@@ -86,7 +96,15 @@ export default function Header() {
     const savedLabel = localStorage.getItem('klick_lang_label') || 'EN';
     setCurrentLang(savedLabel);
 
-    // 4. 구글 번역 스크립트 동적 주입 및 리스너 등록
+    // 4. ★ 안읽은 메시지 수 초기화 및 실시간 변경 이벤트 리스너 등록
+    updateUnreadCountFromStorage();
+
+    const handleUnreadUpdate = () => {
+      updateUnreadCountFromStorage();
+    };
+    window.addEventListener('klick_unread_chat_updated', handleUnreadUpdate);
+
+    // 5. 구글 번역 스크립트 동적 주입 및 리스너 등록
     if (!document.getElementById('google-translate-script')) {
       const addScript = document.createElement('script');
       addScript.id = 'google-translate-script';
@@ -120,15 +138,14 @@ export default function Header() {
 
     return () => {
       authListener?.subscription?.unsubscribe();
+      window.removeEventListener('klick_unread_chat_updated', handleUnreadUpdate);
     };
   }, []);
 
-  // 5. 채팅 페이지(`/chat`) 진입 시 안읽은 채팅 수 자동으로 0 초기화 처리
+  // 6. 페이지 이동(pathname 변경) 감지 시 번역 쿠키 유지 및 재스캔
   useEffect(() => {
-    if (pathname === '/chat') {
-      setUnreadChatCount(0);
-    }
-    
+    updateUnreadCountFromStorage();
+
     const savedCode = localStorage.getItem('klick_lang_code');
     if (savedCode && savedCode !== 'en') {
       const timer = setTimeout(() => {
@@ -193,7 +210,7 @@ export default function Header() {
             <span className="sr-only">Home</span>
           </Link>
 
-          {/* 2. 공개 RFQ 게시판 버튼 (모바일 아이콘 중심, PC 텍스트 노출) */}
+          {/* 2. 공개 RFQ 게시판 버튼 */}
           <Link
             href="/rfq"
             className="p-2 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition cursor-pointer flex items-center gap-1.5"
@@ -202,7 +219,7 @@ export default function Header() {
             <span className="hidden sm:inline">RFQ Board</span>
           </Link>
 
-          {/* 3. 로그인 상태 분기 UI (모바일에서는 아이콘만 노출, PC에서는 [Seller Hub] / [Buyer Hub] 텍스트 표기) */}
+          {/* 3. 로그인 상태 분기 UI (안읽은 메시지 수 unreadChatCount 실시간 동기화) */}
           {user ? (
             <div className="relative">
               <button
@@ -215,7 +232,7 @@ export default function Header() {
               >
                 <div className="relative">
                   <User className="w-4 h-4 text-blue-400" />
-                  {/* 안읽은 메시지 뱃지 (아이콘 상단) */}
+                  {/* ★ 안읽은 메시지 수 뱃지 (0보다 클 때만 노출) */}
                   {unreadChatCount > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-extrabold rounded-full flex items-center justify-center shadow-md animate-pulse">
                       {unreadChatCount}
@@ -223,7 +240,6 @@ export default function Header() {
                   )}
                 </div>
 
-                {/* 스마트폰 화면(sm 미만)에서는 글자를 숨기고 PC에서만 노출 */}
                 <span className="font-extrabold hidden sm:inline">
                   {userRole === 'seller' ? 'Seller Hub' : 'Buyer Hub'}
                 </span>
@@ -260,13 +276,10 @@ export default function Header() {
                         <span>Product Dashboard</span>
                       </Link>
 
-                      {/* 3. Live Chat Hub (안읽은 메시지 수 뱃지 연결) */}
+                      {/* 3. Live Chat Hub (안읽은 메시지 수 뱃지 실시간 노출) */}
                       <Link
                         href="/chat"
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          setUnreadChatCount(0);
-                        }}
+                        onClick={() => setIsUserMenuOpen(false)}
                         className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2">
@@ -293,10 +306,7 @@ export default function Header() {
 
                       <Link
                         href="/chat"
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          setUnreadChatCount(0);
-                        }}
+                        onClick={() => setIsUserMenuOpen(false)}
                         className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2">
