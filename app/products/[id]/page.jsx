@@ -17,8 +17,6 @@ export default function ProductDetailPage() {
   const productId = params?.id;
 
   const [mounted, setMounted] = useState(false);
-  
-  // 작성자 셀러 소유권 상태
   const [isOwner, setIsOwner] = useState(false);
   
   const [product, setProduct] = useState(null);
@@ -61,7 +59,7 @@ export default function ProductDetailPage() {
 
       setProduct(foundProduct);
 
-      // 소유권 판단 로직
+      // 소유권 판단
       const userRole = user?.user_metadata?.role || 'seller';
       if (user && userRole === 'seller' && foundProduct?.user_id) {
         if (user.id === foundProduct.user_id) {
@@ -78,7 +76,6 @@ export default function ProductDetailPage() {
       console.error('Failed to load product detail:', error);
       setIsOwner(false);
     } finally {
-      // 오타 정정 완료: fontally -> finally
       setLoading(false);
     }
   };

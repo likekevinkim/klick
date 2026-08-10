@@ -7,7 +7,7 @@ import ProductMediaUploader from './ProductMediaUploader';
 import RichSpecEditor from './RichSpecEditor';
 
 export default function ProductFormModal({ isOpen, onClose, isEditMode, initialData, onSubmit }) {
-  // 기본 인포메이션 상태
+  // 기본 정보 상태
   const [titleKo, setTitleKo] = useState(initialData?.title_ko || initialData?.title_en || '');
   const [titleEn, setTitleEn] = useState(initialData?.title_en || '');
   const [category, setCategory] = useState(initialData?.category || 'Industrial Machinery');
@@ -22,15 +22,15 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
   const [factoryLocation, setFactoryLocation] = useState(initialData?.factory_location || 'Incheon, South Korea 🇰🇷');
   const [certifications, setCertifications] = useState(initialData?.certifications || 'ISO 9001, CE Certified');
 
-  // 미디어 인포메이션 상태
+  // 미디어 정보 상태
   const [mainImageUrl, setMainImageUrl] = useState(initialData?.image_url || '');
   const [galleryImages, setGalleryImages] = useState(initialData?.gallery_images || []);
   const [videoUrl, setVideoUrl] = useState(initialData?.video_url || '');
 
   // 수량별 구간 단가 (Tiered Pricing)
   const [tieredPricing, setTieredPricing] = useState(
-    initialData?.tiered_pricing
-      ? initialData.tiered_pricing.map(t => ({ min_qty: t.range || '100 Units', price: (t.price || '145.00').replace(/[^0-9.]/g, '') }))
+    initialData?.tiered_pricing && initialData.tiered_pricing.length > 0
+      ? initialData.tiered_pricing.map(t => ({ min_qty: t.range || t.min_qty || '100 Units', price: (t.price || '145.00').toString().replace(/[^0-9.]/g, '') }))
       : [
           { min_qty: '100 - 499 Units', price: '145.00' },
           { min_qty: '500 - 1,999 Units', price: '132.00' },
@@ -59,7 +59,7 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
 
   const handleGenerateAi = () => {
     if (!titleKo) {
-      alert('제품 한글 명칭을 입력해 주세요.');
+      alert('제품 한글 명칭을 먼저 입력해 주세요.');
       return;
     }
 
@@ -80,7 +80,7 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
 2. 100% factory pressure tested before shipment.
 3. Custom OEM logo branding and export packaging available.`);
       setIsAiGenerating(false);
-    }, 1000);
+    }, 800);
   };
 
   const handleSubmitForm = async (e) => {
@@ -108,7 +108,6 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
 
     await onSubmit(payload);
     setSaving(false);
-    onClose();
   };
 
   return (
@@ -121,7 +120,7 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
               {isEditMode ? 'Edit Product Specifications & Factory Info' : 'Register New Export Product Specification'}
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Upload pictures, video, factory info, tiered pricing, and manage rich specification content.
+              Upload pictures, video, factory info, tiered pricing, and manage rich specification content directly in Database.
             </p>
           </div>
 
@@ -136,7 +135,7 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
 
         <form onSubmit={handleSubmitForm} className="space-y-6">
           
-          {/* 1. 기본 제품 인포메이션 */}
+          {/* 1. 기본 제품 정보 */}
           <div className="space-y-4">
             <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider block border-b pb-1">
               1. Basic Product Information
@@ -272,7 +271,7 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
               <button
                 type="button"
                 onClick={handleAddPriceTier}
-                className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1"
+                className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3 h-3" /> Add Tier Range
               </button>
@@ -300,7 +299,7 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
                     <button
                       type="button"
                       onClick={() => handleRemovePriceTier(idx)}
-                      className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition"
+                      className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -343,7 +342,7 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
               className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>{saving ? 'Saving...' : 'Publish Specifications'}</span>
+              <span>{saving ? 'Saving to DB...' : 'Publish Specifications'}</span>
             </button>
           </div>
         </form>
