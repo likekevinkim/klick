@@ -23,8 +23,6 @@ function ChatContent() {
   const [userRole, setUserRole] = useState('seller');
 
   const [rooms, setRooms] = useState([]);
-  
-  // ★ 요청사항 반영: 대화방 기본값을 닫아놓기 위해 activeRoomId 기본값을 null로 보장
   const [activeRoomId, setActiveRoomId] = useState(null);
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
   const [loading, setLoading] = useState(true);
@@ -49,9 +47,10 @@ function ChatContent() {
 
   useEffect(() => {
     setMounted(true);
+
     initChatSession();
 
-    // ★ 실시간 메시지 수신 연동
+    // 실시간 DB 메시지 수신 채널 구독
     const msgChannel = supabase
       .channel('public:chat_messages_page_realtime')
       .on(
@@ -98,7 +97,7 @@ function ChatContent() {
       const role = currentUserObj?.user_metadata?.role || 'seller';
       setUserRole(role);
 
-      await fetchChatRoomsAndInit(currentUserObj);
+      await fetchChatRoomsAndInit(currentUserObj, role);
     } catch (error) {
       console.error('Failed to init chat session:', error);
     } finally {
@@ -106,8 +105,8 @@ function ChatContent() {
     }
   };
 
-  // Supabase DB 대화방 조회 및 직통 대화방 연동
-  const fetchChatRoomsAndInit = async (currentUserObj) => {
+  // 대화방 목록 조회 및 안읽은 개수 계산
+  const fetchChatRoomsAndInit = async (currentUserObj, currentRole) => {
     try {
       const { data: existingRooms } = await supabase
         .from('chat_rooms')
@@ -116,7 +115,41 @@ function ChatContent() {
 
       let currentRoomsList = existingRooms || [];
 
-      // 상세페이지에서 "Chat with Representative" 버튼을 직접 클릭해서 이동한 경우
+      // 대화방별 메시지를 조회하여 안읽은 수치(unread_count) 계산
+      if (currentRoomsList.length > 0) {
+        const roomIds = currentRoomsList.map((r) => r.id);
+        const { data: msgData } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .in('room_id', roomIds)
+          .order('created_at', { ascending: true });
+
+        if (msgData) {
+          const map = {};
+          const unreadMap = {};
+
+          msgData.forEach((msg) => {
+            if (!map[msg.room_id]) map[msg.room_id] = [];
+            map[msg.room_id].push(msg);
+
+            // 상대방이 보낸 메시지인 경우 안읽은 수 카운트
+            const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
+            if (msg.sender_role === opponentRole) {
+              unreadMap[msg.room_id] = (unreadMap[msg.room_id] || 0) + 1;
+            }
+          });
+
+          setRoomMessagesMap(map);
+
+          // 안읽은 개수를 대화방 객체에 부여
+          currentRoomsList = currentRoomsList.map((r) => ({
+            ...r,
+            unread_count: unreadMap[r.id] || 0
+          }));
+        }
+      }
+
+      // 상세페이지에서 직통 문의 버튼으로 접근 시 대화방 생성 및 연결
       if (paramCompany || paramTitle) {
         const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product';
         const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Hankook Precision Co., Ltd.';
@@ -143,76 +176,57 @@ function ChatContent() {
             .select();
 
           if (!createError && createdRoomData && createdRoomData.length > 0) {
-            matchedRoom = createdRoomData[0];
+            matchedRoom = { ...createdRoomData[0], unread_count: 0 };
             currentRoomsList = [matchedRoom, ...currentRoomsList];
 
-            await supabase.from('chat_messages').insert([
-              {
-                room_id: matchedRoom.id,
-                sender_id: currentUserObj?.id ? currentUserObj.id.toString() : 'guest_buyer',
-                sender_role: 'buyer',
-                message: `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`,
-                translated_message: `안녕하세요! ${companySeller}의 [${companyTitle}] 상품에 대해 문의드립니다. FOB 단가 및 공식 카탈로그를 전달해 주실 수 있나요?`,
-                is_quote: false
-              }
-            ]);
+            const initialMsg = {
+              room_id: matchedRoom.id,
+              sender_id: currentUserObj?.id ? currentUserObj.id.toString() : 'guest_buyer',
+              sender_role: 'buyer',
+              message: `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`,
+              translated_message: `안녕하세요! ${companySeller}의 [${companyTitle}] 상품에 대해 문의드립니다. FOB 단가 및 공식 카탈로그를 전달해 주실 수 있나요?`,
+              is_quote: false,
+              created_at: new Date().toISOString()
+            };
+
+            await supabase.from('chat_messages').insert([initialMsg]);
+            setRoomMessagesMap((prev) => ({
+              ...prev,
+              [matchedRoom.id]: [initialMsg]
+            }));
           }
         }
 
-        // 특정 상품 클릭 진입 시 해당 방만 세팅 (아코디언 클릭 시 오픈)
         if (matchedRoom) {
           setActiveRoomId(matchedRoom.id);
         }
       } else {
-        // ★ 단순 대화목록 진입 시에는 기본값으로 모든 대화방을 '닫아놓음'
         setActiveRoomId(null);
       }
 
       setRooms(currentRoomsList);
-
-      if (currentRoomsList.length > 0) {
-        await fetchMessagesForRooms(currentRoomsList);
-      }
     } catch (err) {
       console.error('Error fetching chat rooms:', err);
     }
   };
 
-  const fetchMessagesForRooms = async (roomList) => {
-    try {
-      const roomIds = roomList.map((r) => r.id);
-      const { data: msgData } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .in('room_id', roomIds)
-        .order('created_at', { ascending: true });
-
-      if (msgData) {
-        const map = {};
-        msgData.forEach((msg) => {
-          if (!map[msg.room_id]) map[msg.room_id] = [];
-          map[msg.room_id].push(msg);
-        });
-        setRoomMessagesMap(map);
-      }
-    } catch (err) {
-      console.error('Error fetching chat messages:', err);
-    }
-  };
-
-  // ★ 사용자가 클릭할 때만 해당 대화방을 펼치고/닫음 + 뱃지 차감
   const handleToggleRoom = (roomId) => {
     if (activeRoomId === roomId) {
       setActiveRoomId(null);
     } else {
       setActiveRoomId(roomId);
-      
-      // 대화방 확인 시 안읽은 개수 차감 후 알림 연동
+
+      // 열어본 방은 unread_count를 0으로 차감 처리
+      setRooms((prevRooms) =>
+        prevRooms.map((r) => (r.id === roomId ? { ...r, unread_count: 0 } : r))
+      );
+
       localStorage.setItem('klick_unread_chat_count', '0');
       window.dispatchEvent(new Event('klick_unread_chat_updated'));
     }
   };
 
+  // 메시지 보내는 순간 UI에 즉각 렌더링(Optimistic Render)
   const handleSendMessage = async (targetRoomId, text, attachedFile) => {
     let autoTranslation = '';
     if (text) {
@@ -234,6 +248,7 @@ function ChatContent() {
     }
 
     const newMsgObj = {
+      id: Date.now(),
       room_id: targetRoomId,
       sender_id: user?.id ? user.id.toString() : 'guest_user',
       sender_role: userRole,
@@ -244,12 +259,36 @@ function ChatContent() {
       created_at: new Date().toISOString()
     };
 
+    // 1. UI 화면 대화창 목록에 바로 추가
+    setRoomMessagesMap((prevMap) => ({
+      ...prevMap,
+      [targetRoomId]: [...(prevMap[targetRoomId] || []), newMsgObj],
+    }));
+
+    // 2. 대화방 카드 최근 메시지 갱신
+    setRooms((prevRooms) =>
+      prevRooms.map((r) =>
+        r.id === targetRoomId
+          ? { ...r, last_message: text || attachedFile?.name || 'File sent', updated_at: new Date().toISOString() }
+          : r
+      )
+    );
+
+    // 3. 비동기 DB 레코드 삽입
     try {
-      const { error: msgInsertError } = await supabase.from('chat_messages').insert([newMsgObj]);
+      const { error: msgInsertError } = await supabase.from('chat_messages').insert([{
+        room_id: targetRoomId,
+        sender_id: newMsgObj.sender_id,
+        sender_role: newMsgObj.sender_role,
+        message: newMsgObj.message,
+        translated_message: newMsgObj.translated_message,
+        is_quote: false,
+        file: newMsgObj.file,
+        created_at: newMsgObj.created_at
+      }]);
+
       if (msgInsertError) {
         console.error('Failed to insert message to Supabase:', msgInsertError);
-        alert('메시지 DB 저장 실패: ' + msgInsertError.message);
-        return;
       }
 
       await supabase
@@ -264,34 +303,11 @@ function ChatContent() {
     }
   };
 
-  const handleSendSampleCoupon = async (targetRoomId) => {
-    const couponMsgObj = {
-      room_id: targetRoomId,
-      sender_id: user?.id ? user.id.toString() : 'guest_seller',
-      sender_role: 'seller',
-      message: '[B2B Special Offer] Exclusive Sample Discount Voucher Issued! ($20 Off Air Freight)',
-      translated_message: '[B2B 전용 혜택] 바이어 전용 샘플 항공 배송 $20 할인 쿠폰이 발급되었습니다!',
-      is_quote: false,
-      created_at: new Date().toISOString()
-    };
-
-    try {
-      const { error } = await supabase.from('chat_messages').insert([couponMsgObj]);
-      if (error) {
-        console.error('Coupon DB Error:', error);
-        alert('쿠폰 전송 실패: ' + error.message);
-        return;
-      }
-      alert('Sample $20 Discount Voucher sent directly to buyer!');
-    } catch (err) {
-      console.error('Coupon DB error:', err);
-    }
-  };
-
   const handleSendQuote = async () => {
     if (!activeRoomId) return;
 
     const quoteMsgObj = {
+      id: Date.now(),
       room_id: activeRoomId,
       sender_id: user?.id ? user.id.toString() : 'guest_seller',
       sender_role: 'seller',
@@ -303,15 +319,25 @@ function ChatContent() {
       created_at: new Date().toISOString()
     };
 
+    setRoomMessagesMap((prevMap) => ({
+      ...prevMap,
+      [activeRoomId]: [...(prevMap[activeRoomId] || []), quoteMsgObj],
+    }));
+
     setIsQuoteModalOpen(false);
 
     try {
-      const { error } = await supabase.from('chat_messages').insert([quoteMsgObj]);
-      if (error) {
-        console.error('Quote DB error:', error);
-        alert('견적서 전송 실패: ' + error.message);
-        return;
-      }
+      await supabase.from('chat_messages').insert([{
+        room_id: activeRoomId,
+        sender_id: quoteMsgObj.sender_id,
+        sender_role: 'seller',
+        message: quoteMsgObj.message,
+        translated_message: quoteMsgObj.translated_message,
+        is_quote: true,
+        quote_price: quoteMsgObj.quote_price,
+        quote_moq: quoteMsgObj.quote_moq,
+        created_at: quoteMsgObj.created_at
+      }]);
 
       await supabase
         .from('chat_rooms')
@@ -413,7 +439,6 @@ function ChatContent() {
                 onOpenPaymentModal={handleOpenPaymentModal}
                 onOpenSampleModal={handleOpenSampleModal}
                 onSendMessage={handleSendMessage}
-                onSendSampleCoupon={handleSendSampleCoupon}
                 messagesEndRef={messagesEndRef}
               />
             ))}

@@ -11,7 +11,6 @@ import {
   Paperclip, 
   Image as ImageIcon, 
   X, 
-  Tag, 
   CreditCard, 
   Truck 
 } from 'lucide-react';
@@ -27,7 +26,6 @@ export default function ChatRoomItem({
   onOpenPaymentModal,
   onOpenSampleModal,
   onSendMessage,
-  onSendSampleCoupon,
   messagesEndRef
 }) {
   const [inputText, setInputText] = useState('');
@@ -36,6 +34,7 @@ export default function ChatRoomItem({
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
 
+  // 메시지 목록이 갱신되거나 첨부파일 추가 시 스크롤 최하단 이동
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -80,6 +79,7 @@ export default function ChatRoomItem({
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
+  // 폼 제출 및 엔터 키 입력 시 메시지 즉시 전송
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!inputText.trim() && !attachedFile) return;
@@ -91,8 +91,17 @@ export default function ChatRoomItem({
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
+  // 엔터 키 누름 감지
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
   return (
     <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm transition hover:border-blue-400">
+      {/* 1. 대화방 아코디언 헤더 (안읽은 메시지 개수 뱃지 수치 표출) */}
       <div
         onClick={onToggle}
         className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/80 transition select-none"
@@ -103,6 +112,13 @@ export default function ChatRoomItem({
               <Building2 className="w-3 h-3" />
               {room.seller_name}
             </span>
+
+            {/* 각 대화방 카드별 안읽은 메시지 수 알림 뱃지 */}
+            {room.unread_count > 0 && (
+              <span className="bg-rose-500 text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full animate-pulse shadow-sm">
+                {room.unread_count} New
+              </span>
+            )}
           </div>
 
           <h3 className="text-sm font-extrabold text-slate-900 line-clamp-1">
@@ -124,6 +140,7 @@ export default function ChatRoomItem({
         </div>
       </div>
 
+      {/* 2. 대화방 아코디언 내용 구역 */}
       {isOpen && (
         <div className="border-t border-slate-100 bg-slate-50/50 p-5 space-y-4 animate-fadeIn">
           <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200/60">
@@ -154,18 +171,19 @@ export default function ChatRoomItem({
             </span>
           </div>
 
+          {/* 대화 메시지 내역 스크롤 박스 */}
           <div className="max-h-[380px] overflow-y-auto space-y-3.5 pr-2">
             {messages.length === 0 ? (
               <div className="text-center py-8 text-xs text-slate-400 font-medium">
                 아직 오간 메시지가 없습니다. 메시지를 보내 첫 대화를 시작해보세요!
               </div>
             ) : (
-              messages.map((msg) => {
+              messages.map((msg, index) => {
                 const isMine = msg.sender_role === userRole;
 
                 return (
                   <div
-                    key={msg.id}
+                    key={msg.id || index}
                     className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} space-y-1`}
                   >
                     <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold px-1">
@@ -261,6 +279,7 @@ export default function ChatRoomItem({
             <div ref={messagesEndRef} />
           </div>
 
+          {/* 대화방 내부 독점 하단 입력창 */}
           <div className="bg-white rounded-2xl border border-slate-200 p-3 space-y-2 shadow-sm pt-2">
             {attachedFile && (
               <div className="px-3.5 py-1.5 bg-blue-50 border border-blue-100 flex items-center justify-between text-xs rounded-xl">
@@ -320,22 +339,11 @@ export default function ChatRoomItem({
                 <ImageIcon className="w-4 h-4" />
               </button>
 
-              {userRole === 'seller' && (
-                <button
-                  type="button"
-                  onClick={() => onSendSampleCoupon(room.id)}
-                  className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl transition cursor-pointer border border-amber-200 font-extrabold text-xs flex items-center gap-1"
-                  title="Issue Sample $20 Discount Voucher"
-                >
-                  <Tag className="w-4 h-4 text-amber-600" />
-                  <span className="hidden sm:inline text-[10px]">$20 Off</span>
-                </button>
-              )}
-
               <input
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder={`Message ${userRole === 'seller' ? room.buyer_name : room.seller_name}...`}
                 className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
               />
