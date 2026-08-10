@@ -23,7 +23,9 @@ import {
   Phone,
   Video,
   Image as ImageIcon,
-  Edit3
+  Edit3,
+  Play,
+  X
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -37,8 +39,30 @@ export default function CompanyShowroomLandingPage() {
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false); // 셀러 자신인지 판단 유무
 
-  // 대표님 요청: Factory Overview & Certifications 탭을 기본(First)으로 설정!
+  // Factory Overview & Certifications 탭을 기본(First)으로 설정
   const [activeTab, setActiveTab] = useState('about'); // 'about' (First) or 'products'
+
+  // 5단계: 공장 실사 동영상 팝업 모달 상태
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [selectedVideoUrl, setSelectedVideoUrl] = useState('');
+
+  // 5단계: 공장 실사 동영상 & 360도 검증 투어 갤러리 데이터
+  const factoryVideos = [
+    {
+      id: 1,
+      title: 'CNC Precision Machining & Valve Assembly Line Tour',
+      duration: '02:15',
+      thumbnail: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+      video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    },
+    {
+      id: 2,
+      title: 'Zero-Defect Quality Control (QC) Pressure Testing Process',
+      duration: '01:45',
+      thumbnail: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=800&q=80',
+      video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    }
+  ];
 
   useEffect(() => {
     setMounted(true);
@@ -82,7 +106,6 @@ export default function CompanyShowroomLandingPage() {
           employees_count: '50 - 100 Employees',
           factory_size: '5,000 sq. meters',
           certifications: ['ISO 9001', 'CE Certified', 'IATF 16949', 'KOTRA Verified'],
-          video_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
           gallery_images: [
             'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80',
             'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
@@ -127,6 +150,11 @@ export default function CompanyShowroomLandingPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenVideo = (url) => {
+    setSelectedVideoUrl(url);
+    setIsVideoModalOpen(true);
   };
 
   if (!mounted) return null;
@@ -225,7 +253,7 @@ export default function CompanyShowroomLandingPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* ★ 셀러 자신일 때만 노출되는 [Edit Factory Profile] 정보 수정 버튼 */}
+            {/* 셀러 자신일 때만 노출되는 [Edit Factory Profile] 정보 수정 버튼 */}
             {isOwner && (
               <Link
                 href="/seller/profile"
@@ -250,7 +278,7 @@ export default function CompanyShowroomLandingPage() {
       {/* 3. 탭별 메인 컨텐츠 영역 */}
       <main className="max-w-6xl mx-auto px-6 mt-10">
         {activeTab === 'about' ? (
-          /* [첫번째 기본 탭] 공장 상세 개요, 사진 갤러리, 동영상 & 품질 인증서 */
+          /* [첫번째 기본 탭] 공장 상세 개요, 5단계 비디오 투어 갤러리, 사진 갤러리, 품질 인증서 */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-8 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8">
               <div>
@@ -262,24 +290,50 @@ export default function CompanyShowroomLandingPage() {
                 <p>{company?.description}</p>
               </div>
 
-              {/* 공장 홍보 동영상 카드 */}
-              {company?.video_url && (
-                <div className="space-y-3 border-t border-slate-100 pt-6">
-                  <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                    <Video className="w-4 h-4 text-blue-600" />
-                    Factory Tour & Production Video
-                  </h3>
-                  <div className="w-full aspect-video rounded-2xl overflow-hidden border border-slate-200 bg-slate-900">
-                    <iframe
-                      src={company.video_url}
-                      title="Factory Tour Video"
-                      className="w-full h-full border-0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    ></iframe>
+              {/* 5단계: ★ 검증된 공장 실사 동영상 & 360도 투어 갤러리 */}
+              <div className="border-t border-slate-100 pt-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                      <Video className="w-4 h-4 text-blue-600" />
+                      Verified Factory Production Video Tour (공장 실사 비디오)
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Real-time production facility and automated CNC inspection videos.</p>
                   </div>
                 </div>
-              )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {factoryVideos.map((vid) => (
+                    <div
+                      key={vid.id}
+                      onClick={() => handleOpenVideo(vid.video_url)}
+                      className="bg-slate-900 text-white rounded-2xl overflow-hidden border border-slate-800 shadow-md hover:shadow-xl transition cursor-pointer group space-y-2 relative"
+                    >
+                      <div className="w-full h-44 bg-slate-800 relative overflow-hidden flex items-center justify-center">
+                        <img src={vid.thumbnail} alt={vid.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300 opacity-80" />
+                        
+                        {/* 재생 버튼 아이콘 */}
+                        <div className="w-12 h-12 bg-blue-600/90 rounded-full flex items-center justify-center shadow-2xl group-hover:bg-blue-500 group-hover:scale-110 transition">
+                          <Play className="w-5 h-5 text-white ml-0.5 fill-white" />
+                        </div>
+
+                        <span className="absolute bottom-2.5 right-2.5 bg-black/80 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md">
+                          {vid.duration}
+                        </span>
+                      </div>
+
+                      <div className="p-3.5 space-y-1">
+                        <h4 className="text-xs font-extrabold text-slate-100 group-hover:text-blue-400 transition line-clamp-1">
+                          {vid.title}
+                        </h4>
+                        <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                          <ShieldCheck className="w-3 h-3" /> Verified Audit Video
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               {/* 공장 전경 및 생산 현장 사진 갤러리 */}
               {company?.gallery_images && Array.isArray(company.gallery_images) && company.gallery_images.length > 0 && (
@@ -447,6 +501,31 @@ export default function CompanyShowroomLandingPage() {
           </div>
         )}
       </main>
+
+      {/* 5단계: ★ 동영상 재생 모달 팝업 */}
+      {isVideoModalOpen && (
+        <div className="fixed inset-0 z-[999999] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 text-white rounded-3xl p-6 max-w-3xl w-full border border-slate-800 shadow-2xl space-y-4 animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <span className="text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4" /> Verified Factory Video Stream
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setIsVideoModalOpen(false)}
+                className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="w-full h-80 md:h-96 rounded-2xl overflow-hidden bg-black flex items-center justify-center">
+              <video src={selectedVideoUrl} controls autoPlay className="w-full h-full object-contain" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

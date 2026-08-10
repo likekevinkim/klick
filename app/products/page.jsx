@@ -12,7 +12,14 @@ import {
   ExternalLink, 
   Loader2, 
   Layers,
-  ShieldCheck
+  ShieldCheck,
+  Sparkles,
+  Bot,
+  Send,
+  CheckCircle2,
+  X,
+  TrendingUp,
+  ArrowRight
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -28,6 +35,11 @@ export default function SellerProductsDashboardPage() {
     tagline: 'Leading Manufacturer of High-Precision Hydraulic Valves & Industrial Automation Parts',
     businessType: 'Direct Manufacturer'
   });
+
+  // 4단계: AI 무역 오퍼상 매칭 상태
+  const [isAiMatching, setIsAiMatching] = useState(false);
+  const [aiMatches, setAiMatches] = useState([]);
+  const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -121,6 +133,32 @@ export default function SellerProductsDashboardPage() {
     }
   };
 
+  // 4단계: AI 무역 오퍼상 실행 핸들러
+  const handleRunAiMatchmaker = async () => {
+    setIsAiMatching(true);
+    try {
+      const res = await fetch('/api/ai/matchmaker', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sellerCategory: 'Industrial Machinery',
+          productTitle: products[0]?.title_en || 'Hydraulic Valve HV-300',
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setAiMatches(data.matches);
+        setIsMatchModalOpen(true);
+      }
+    } catch (error) {
+      console.error('AI Matchmaker failed:', error);
+      alert('Failed to connect to AI Trade Agent.');
+    } finally {
+      setIsAiMatching(false);
+    }
+  };
+
   // DB 상품 삭제 처리 핸들러
   const handleDeleteProduct = async (id) => {
     if (!confirm('Are you sure you want to delete this product from the global catalog?')) return;
@@ -178,6 +216,42 @@ export default function SellerProductsDashboardPage() {
               <span>Register Product</span>
             </Link>
           </div>
+        </div>
+
+        {/* 4단계: AI 무역 오퍼상 (AI Trade Agent & RFQ Matchmaker) 배너 카드 */}
+        <div className="bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-900 text-white p-6 md:p-8 rounded-3xl border border-blue-800/80 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-2xl">
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs font-extrabold border border-blue-400/30 flex items-center gap-1.5">
+                <Bot className="w-4 h-4 text-blue-400" /> AI Trade Agent
+              </span>
+              <span className="text-xs text-emerald-400 font-bold flex items-center gap-1">
+                <TrendingUp className="w-3.5 h-3.5" /> Live Matchmaking Engine Active
+              </span>
+            </div>
+
+            <h2 className="text-xl md:text-2xl font-extrabold tracking-tight">
+              AI Automated Buyer RFQ Matchmaker
+            </h2>
+
+            <p className="text-xs md:text-sm text-slate-300 leading-relaxed">
+              AI analyzes global buyer RFQs in real-time and recommends buyers with over 90% matching compatibility for your factory items.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleRunAiMatchmaker}
+            disabled={isAiMatching}
+            className="px-6 py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs md:text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer flex-shrink-0 disabled:opacity-50"
+          >
+            {isAiMatching ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Sparkles className="w-5 h-5" />
+            )}
+            <span>{isAiMatching ? 'Scanning Global RFQs...' : 'Run AI Buyer Matchmaker'}</span>
+          </button>
         </div>
 
         {/* DB에서 조회된 등록 상품 리스트 영역 */}
@@ -285,6 +359,75 @@ export default function SellerProductsDashboardPage() {
           )}
         </div>
       </main>
+
+      {/* 4단계: AI 무역 오퍼상 매칭 결과 팝업 모달 */}
+      {isMatchModalOpen && (
+        <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-2xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-fadeIn">
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                  <Bot className="w-5 h-5 text-blue-600" />
+                  AI Trade Agent - Recommended Buyer RFQs
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">High compatibility buyer demands analyzed by AI.</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsMatchModalOpen(false)}
+                className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {aiMatches.map((match) => (
+                <div key={match.rfq_id} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                      {match.buyer_company}
+                    </span>
+
+                    <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-500" /> {match.match_score}% AI Match
+                    </span>
+                  </div>
+
+                  <h4 className="text-sm font-extrabold text-slate-900">{match.title}</h4>
+
+                  <p className="text-xs text-slate-600 bg-white p-3 rounded-xl border border-slate-100 leading-relaxed">
+                    💡 <strong>AI Analysis:</strong> {match.ai_recommendation_reason}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-100">
+                      <span className="text-[10px] text-slate-400 block font-bold">Target Quantity</span>
+                      <span className="font-extrabold text-slate-800">{match.target_quantity}</span>
+                    </div>
+
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-100">
+                      <span className="text-[10px] text-slate-400 block font-bold">Target Budget</span>
+                      <span className="font-extrabold text-emerald-600">{match.target_budget}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <Link
+                      href="/chat"
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Send One-Click Offer to {match.buyer_name}</span>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
