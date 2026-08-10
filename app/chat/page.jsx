@@ -23,6 +23,8 @@ function ChatContent() {
   const [userRole, setUserRole] = useState('seller');
 
   const [rooms, setRooms] = useState([]);
+  
+  // ★ 요청사항 반영: 대화방 기본값을 닫아놓기 위해 activeRoomId 기본값을 null로 보장
   const [activeRoomId, setActiveRoomId] = useState(null);
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
   const [loading, setLoading] = useState(true);
@@ -47,16 +49,11 @@ function ChatContent() {
 
   useEffect(() => {
     setMounted(true);
-    
-    // ★ 채팅 페이지 접속 시 안읽은 뱃지 수 0으로 초기화 및 커스텀 이벤트 발송
-    localStorage.setItem('klick_unread_chat_count', '0');
-    window.dispatchEvent(new Event('klick_unread_chat_updated'));
-
     initChatSession();
 
-    // ★ 실시간 메시지 수신 구독
+    // ★ 실시간 메시지 수신 연동
     const msgChannel = supabase
-      .channel('public:chat_messages_realtime')
+      .channel('public:chat_messages_page_realtime')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
@@ -74,7 +71,6 @@ function ChatContent() {
   const handleRealtimeMessageReceived = (newMsg) => {
     setRoomMessagesMap((prevMap) => {
       const roomMsgs = prevMap[newMsg.room_id] || [];
-      // 중복 수신 방지
       if (roomMsgs.some((m) => m.id === newMsg.id)) return prevMap;
       return {
         ...prevMap,
@@ -110,7 +106,7 @@ function ChatContent() {
     }
   };
 
-  // Supabase DB 대화방 생성 및 해당 셀러와의 직통 채팅 실시간 연결
+  // Supabase DB 대화방 조회 및 직통 대화방 연동
   const fetchChatRoomsAndInit = async (currentUserObj) => {
     try {
       const { data: existingRooms } = await supabase
@@ -120,7 +116,7 @@ function ChatContent() {
 
       let currentRoomsList = existingRooms || [];
 
-      // 상세페이지에서 채팅 문의 버튼을 눌러 들어온 경우 (URL 파라미터 감지)
+      // 상세페이지에서 "Chat with Representative" 버튼을 직접 클릭해서 이동한 경우
       if (paramCompany || paramTitle) {
         const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product';
         const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Hankook Precision Co., Ltd.';
@@ -163,11 +159,13 @@ function ChatContent() {
           }
         }
 
+        // 특정 상품 클릭 진입 시 해당 방만 세팅 (아코디언 클릭 시 오픈)
         if (matchedRoom) {
           setActiveRoomId(matchedRoom.id);
         }
-      } else if (currentRoomsList.length > 0) {
-        setActiveRoomId(currentRoomsList[0].id);
+      } else {
+        // ★ 단순 대화목록 진입 시에는 기본값으로 모든 대화방을 '닫아놓음'
+        setActiveRoomId(null);
       }
 
       setRooms(currentRoomsList);
@@ -202,11 +200,16 @@ function ChatContent() {
     }
   };
 
+  // ★ 사용자가 클릭할 때만 해당 대화방을 펼치고/닫음 + 뱃지 차감
   const handleToggleRoom = (roomId) => {
     if (activeRoomId === roomId) {
       setActiveRoomId(null);
     } else {
       setActiveRoomId(roomId);
+      
+      // 대화방 확인 시 안읽은 개수 차감 후 알림 연동
+      localStorage.setItem('klick_unread_chat_count', '0');
+      window.dispatchEvent(new Event('klick_unread_chat_updated'));
     }
   };
 
