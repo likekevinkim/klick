@@ -18,7 +18,8 @@ import {
   Factory, 
   Send,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  MessageSquare
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -28,6 +29,9 @@ export default function HomePage() {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+
+  // 실시간 읽음 상태 동기화 안읽은 채팅 수 상태
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const categories = [
     'All',
@@ -41,7 +45,28 @@ export default function HomePage() {
   useEffect(() => {
     setMounted(true);
     fetchFeaturedProducts();
+    updateUnreadCount();
+
+    // ★ localStorage 및 커스텀 이벤트 기반 실시간 안읽은 뱃지 연동 리스너
+    const handleUnreadUpdate = () => {
+      updateUnreadCount();
+    };
+    window.addEventListener('klick_unread_chat_updated', handleUnreadUpdate);
+
+    return () => {
+      window.removeEventListener('klick_unread_chat_updated', handleUnreadUpdate);
+    };
   }, []);
+
+  // ★ localStorage 읽음 상태 동기화 로직 (채팅창 방문 시 0으로 동기화)
+  const updateUnreadCount = () => {
+    const savedCount = localStorage.getItem('klick_unread_chat_count');
+    if (savedCount !== null) {
+      setUnreadCount(parseInt(savedCount, 10));
+    } else {
+      setUnreadCount(0); // 기본값 0 설정으로 고정 무한 뱃지 방지
+    }
+  };
 
   // Supabase DB에서 실제 셀러가 업로드한 최신 상품 목록 조회
   const fetchFeaturedProducts = async () => {
@@ -111,14 +136,27 @@ export default function HomePage() {
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 antialiased">
       <Header />
 
-      {/* 1. 히어로 비주얼 대형 세션 */}
+      {/* 1. 히어로 비주얼 대형 섹션 */}
       <section className="bg-slate-900 text-white relative overflow-hidden border-b border-slate-800 py-16 md:py-24 px-6">
         <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-6xl mx-auto space-y-8 relative z-10 text-center md:text-left">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 text-blue-400 text-xs font-extrabold border border-blue-500/20">
-            <Globe className="w-4 h-4" />
-            <span>Direct B2B Gateway to South Korean Manufacturers</span>
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 text-blue-400 text-xs font-extrabold border border-blue-500/20">
+              <Globe className="w-4 h-4" />
+              <span>Direct B2B Gateway to South Korean Manufacturers</span>
+            </div>
+
+            {/* ★ 실시간 안읽은 채팅 메시지 뱃지 (0개보다 많을 때만 노출) */}
+            {unreadCount > 0 && (
+              <Link
+                href="/chat"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-rose-500 text-white text-xs font-extrabold shadow-lg animate-pulse"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>{unreadCount} Unread Trade Messages</span>
+              </Link>
+            )}
           </div>
 
           <div className="space-y-4 max-w-3xl">
@@ -173,7 +211,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 2. ★ 핵심 섹션: 셀러가 업로드한 실제 상품이 보이고 노출되는 Featured Products */}
+      {/* 2. 셀러가 업로드한 실제 상품이 보이고 노출되는 Featured Products */}
       <main className="max-w-6xl mx-auto px-6 mt-12 space-y-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 pb-6">
           <div className="space-y-1">

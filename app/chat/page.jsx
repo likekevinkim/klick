@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import B2bPaymentModal from '@/components/B2bPaymentModal';
 import ChatRoomItem from '@/components/chat/ChatRoomItem';
 import TradeDocModal from '@/components/chat/TradeDocModal';
+import SampleTrackingModal from '@/components/chat/SampleTrackingModal';
 import { 
   Send, 
   Sparkles, 
@@ -13,9 +14,7 @@ import {
   Loader2,
   Paperclip,
   Image as ImageIcon,
-  X,
-  Truck,
-  PackageCheck
+  X
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -24,7 +23,7 @@ export default function RealtimeChatPage() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState('seller');
 
-  // 대화방 목록 및 선택 상태
+  // 대화방 목록 및 선택 상태 (대화방별 courier 및 tracking_no 내장)
   const [rooms, setRooms] = useState([]);
   const [activeRoomId, setActiveRoomId] = useState(1);
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
@@ -45,10 +44,9 @@ export default function RealtimeChatPage() {
   const [selectedMsgForDoc, setSelectedMsgForDoc] = useState(null);
   const [selectedRoomForDoc, setSelectedRoomForDoc] = useState(null);
 
-  // 샘플 주문 및 트래킹 모달 상태
+  // 선택된 대화방 전용 샘플 배송 모달 상태
   const [isSampleModalOpen, setIsSampleModalOpen] = useState(false);
-  const [sampleTrackingNo, setSampleTrackingNo] = useState('DHL-8829-4019-KR');
-  const [courierCompany, setCourierCompany] = useState('DHL Express');
+  const [selectedRoomForSample, setSelectedRoomForSample] = useState(null);
 
   // 결제 모달 상태
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -62,11 +60,18 @@ export default function RealtimeChatPage() {
   useEffect(() => {
     setMounted(true);
     initChatSession();
+    clearUnreadChatBadge();
   }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [roomMessagesMap, activeRoomId, attachedFile]);
+
+  // 채팅 페이지 접속 시 안읽은 뱃지 0으로 즉시 동기화
+  const clearUnreadChatBadge = () => {
+    localStorage.setItem('klick_unread_chat_count', '0');
+    window.dispatchEvent(new Event('klick_unread_chat_updated'));
+  };
 
   const initChatSession = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -89,6 +94,8 @@ export default function RealtimeChatPage() {
         seller_name: 'Hankook Precision Co., Ltd.',
         last_message: 'Can you send us a formal FOB quote for 500 units?',
         updated_at: '10:24 AM',
+        courier: 'DHL Express',
+        tracking_no: 'DHL-8829-4019-KR'
       },
       {
         id: 2,
@@ -97,6 +104,8 @@ export default function RealtimeChatPage() {
         seller_name: 'Hankook Precision Co., Ltd.',
         last_message: 'Is OEM private labeling available for this serum?',
         updated_at: 'Yesterday',
+        courier: 'FedEx Express',
+        tracking_no: 'FDX-9901-2048-KR'
       }
     ];
 
@@ -341,6 +350,17 @@ export default function RealtimeChatPage() {
     setIsQuoteDocModalOpen(true);
   };
 
+  const handleOpenSampleModal = (room) => {
+    setSelectedRoomForSample(room);
+    setIsSampleModalOpen(true);
+  };
+
+  const handleUpdateTracking = (roomId, courier, trackingNo) => {
+    setRooms(prevRooms =>
+      prevRooms.map(r => r.id === roomId ? { ...r, courier, tracking_no: trackingNo } : r)
+    );
+  };
+
   const handleOpenPaymentModal = (msg, room) => {
     setPaymentQuoteData({
       amount: msg.quote_price ? msg.quote_price.split(' ')[0] : '145.00',
@@ -370,19 +390,8 @@ export default function RealtimeChatPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsSampleModalOpen(true)}
-              className="px-3.5 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-extrabold text-xs rounded-xl border border-amber-500/30 transition flex items-center gap-1.5 cursor-pointer"
-            >
-              <Truck className="w-3.5 h-3.5 text-amber-400" />
-              <span>Sample Order & Shipping</span>
-            </button>
-
-            <div className="text-xs text-slate-300 bg-slate-800/80 px-4 py-2 rounded-xl border border-slate-700">
-              Account Role: <span className="font-extrabold text-blue-400">{userRole === 'seller' ? 'Korean Seller' : 'Global Buyer'}</span>
-            </div>
+          <div className="text-xs text-slate-300 bg-slate-800/80 px-4 py-2 rounded-xl border border-slate-700">
+            Account Role: <span className="font-extrabold text-blue-400">{userRole === 'seller' ? 'Korean Seller' : 'Global Buyer'}</span>
           </div>
         </div>
 
@@ -398,6 +407,7 @@ export default function RealtimeChatPage() {
               onOpenQuoteModal={() => setIsQuoteModalOpen(true)}
               onOpenDocModal={handleOpenDocModal}
               onOpenPaymentModal={handleOpenPaymentModal}
+              onOpenSampleModal={handleOpenSampleModal}
               messagesEndRef={messagesEndRef}
             />
           ))}
@@ -568,90 +578,14 @@ export default function RealtimeChatPage() {
         room={selectedRoomForDoc}
       />
 
-      {/* 3. 샘플 주문 & 글로벌 배송 트래킹 모달 */}
-      {isSampleModalOpen && (
-        <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 animate-fadeIn">
-            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-                  <Truck className="w-5 h-5 text-amber-500" />
-                  Sample Order & Express Shipping
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">Order evaluation sample or track DHL/FedEx shipping.</p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsSampleModalOpen(false)}
-                className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4 text-xs">
-              <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 space-y-2">
-                <span className="font-extrabold text-amber-900 flex items-center gap-1.5 text-xs">
-                  <PackageCheck className="w-4 h-4 text-amber-600" /> Express Air Sample Shipping Status
-                </span>
-                
-                <div className="grid grid-cols-2 gap-2 text-slate-700 pt-1">
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Courier</span>
-                    <span className="font-bold text-slate-900">{courierCompany}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Tracking Number</span>
-                    <span className="font-bold text-blue-600">{sampleTrackingNo}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-700">Update Tracking Information (Seller):</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={courierCompany}
-                    onChange={(e) => setCourierCompany(e.target.value)}
-                    placeholder="Courier (e.g., DHL, FedEx)"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                  <input
-                    type="text"
-                    value={sampleTrackingNo}
-                    onChange={(e) => setSampleTrackingNo(e.target.value)}
-                    placeholder="Tracking Number"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
-              <button
-                type="button"
-                onClick={() => setIsSampleModalOpen(false)}
-                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
-              >
-                Close
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  alert(`Tracking info updated: ${courierCompany} [${sampleTrackingNo}]`);
-                  setIsSampleModalOpen(false);
-                }}
-                className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer"
-              >
-                Save Tracking Info
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 3. 각 대화방 전용 샘플 주문 & 글로벌 배송 트래킹 모달 */}
+      <SampleTrackingModal
+        isOpen={isSampleModalOpen}
+        onClose={() => setIsSampleModalOpen(false)}
+        room={selectedRoomForSample}
+        userRole={userRole}
+        onUpdateTracking={handleUpdateTracking}
+      />
 
       {/* 4. B2B 3가지 통합 결제 팝업 모달 */}
       {isPaymentModalOpen && (

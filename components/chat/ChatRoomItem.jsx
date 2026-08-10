@@ -1,7 +1,7 @@
 // components/chat/ChatRoomItem.jsx
 'use client';
 
-import { User, Clock, ChevronDown, ChevronUp, MessageSquare, FileText } from 'lucide-react';
+import { User, Clock, ChevronDown, ChevronUp, MessageSquare, FileText, Truck } from 'lucide-react';
 import ChatMessageBubble from './ChatMessageBubble';
 
 export default function ChatRoomItem({ 
@@ -13,6 +13,7 @@ export default function ChatRoomItem({
   onOpenQuoteModal, 
   onOpenDocModal, 
   onOpenPaymentModal, 
+  onOpenSampleModal,
   messagesEndRef 
 }) {
   const targetName = userRole === 'seller' ? room.buyer_name : room.seller_name;
@@ -60,21 +61,34 @@ export default function ChatRoomItem({
 
       {isOpen && (
         <div className="border-t border-slate-100 bg-slate-50/50 flex flex-col">
-          <div className="px-6 py-3 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between text-xs">
+          <div className="px-6 py-3 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between text-xs flex-wrap gap-2">
             <span className="font-bold text-slate-600 flex items-center gap-1.5">
               <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
               Direct Discussion Stream
             </span>
 
-            {userRole === 'seller' && (
+            <div className="flex items-center gap-2">
+              {/* 대화방 전용 샘플 배송 조회 버튼 */}
               <button
-                onClick={onOpenQuoteModal}
-                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                type="button"
+                onClick={() => onOpenSampleModal(room)}
+                className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 border border-amber-300 font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
               >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Send Official Quote (RFQ)</span>
+                <Truck className="w-3.5 h-3.5 text-amber-600" />
+                <span>Sample Status ({room.courier || 'DHL'})</span>
               </button>
-            )}
+
+              {userRole === 'seller' && (
+                <button
+                  type="button"
+                  onClick={onOpenQuoteModal}
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Send Official Quote (RFQ)</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="p-6 space-y-4 max-h-[520px] overflow-y-auto bg-white">
