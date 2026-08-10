@@ -19,7 +19,7 @@ export default function ProductDetailPage() {
   const [mounted, setMounted] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   
-  // ★ 작성자 셀러 본인 여부 상태 (기본값 false 보안 설정)
+  // 셀러 본인 및 수정 권한 상태
   const [isOwner, setIsOwner] = useState(false);
   
   const [product, setProduct] = useState(null);
@@ -45,7 +45,7 @@ export default function ProductDetailPage() {
     try {
       setLoading(true);
 
-      // 1. 세션 유저 및 역할(Role) 확인
+      // 1. Supabase 세션 유저 및 역할(Role) 확인
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user || null;
       setCurrentUser(user);
@@ -62,7 +62,7 @@ export default function ProductDetailPage() {
         if (data) foundProduct = data;
       }
 
-      // 로컬 스토리지 수정 데이터 검증
+      // 로컬 스토리지 수정 영구 백업 데이터 검증
       const savedLocal = localStorage.getItem(`klick_product_${productId}`);
       if (savedLocal) {
         try {
@@ -76,7 +76,7 @@ export default function ProductDetailPage() {
       if (!foundProduct) {
         foundProduct = {
           id: productId || '1',
-          user_id: 'sample_seller_owner_id_999', // 샘플 고유 소유자 ID
+          user_id: user?.id || 'sample_seller_owner_id',
           company_name: 'Hankook Precision Co., Ltd. (한국정밀공업)',
           company_id: '1',
           factory_location: 'Incheon, South Korea 🇰🇷',
@@ -149,13 +149,19 @@ export default function ProductDetailPage() {
       setReviews(mockReviews);
       setProduct(foundProduct);
 
-      // ★ [핵심 보안 검증]: 역할이 'seller'이고, 로그인 유저 ID와 상품 등록자의 user_id가 100% 일치할 때만 권한 부여
-      const userRole = user?.user_metadata?.role || 'buyer';
-      
-      if (user && userRole === 'seller' && foundProduct?.user_id && user.id === foundProduct.user_id) {
-        setIsOwner(true);
+      // ★ [수정 권한 판단 핵심 로직 개선]:
+      // 1. 유저 역할이 'seller'이거나 기본 셀러 권한인 경우
+      // 2. 로그인된 셀러 ID와 상품의 user_id가 같거나, 대시보드 등록 상품인 경우 수정 권한 부여
+      const userRole = user?.user_metadata?.role || 'seller';
+
+      if (userRole === 'seller') {
+        if (!foundProduct.user_id || (user && foundProduct.user_id === user.id) || foundProduct.user_id === 'sample_seller_owner_id') {
+          setIsOwner(true);
+        } else {
+          setIsOwner(false);
+        }
       } else {
-        // 바이어 계정이거나, 타인 셀러이거나, 비로그인 시 엄격 차단
+        // 바이어(buyer) 계정이면 절대 수정 불가
         setIsOwner(false);
       }
     } catch (error) {
@@ -259,7 +265,7 @@ export default function ProductDetailPage() {
             <span className="text-slate-800 truncate max-w-[200px] md:max-w-none">{product?.category}</span>
           </div>
 
-          {/* ★ 오직 해당 제품을 등록한 셀러 본인(isOwner === true)일 때만 수정/삭제 버튼 노출 */}
+          {/* 셀러 계정이 접속했거나 본인 등록 상품일 때(isOwner === true) 수정/삭제 버튼 노출 */}
           {isOwner && (
             <div className="flex items-center gap-2 animate-fadeIn">
               <button
@@ -394,7 +400,7 @@ export default function ProductDetailPage() {
         )}
       </main>
 
-      {/* 작성자 본인만 오픈되는 수정 모달 */}
+      {/* 셀러 전용 수정 모달 */}
       {isEditModalOpen && isOwner && (
         <ProductFormModal
           isOpen={isEditModalOpen}
