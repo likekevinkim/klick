@@ -81,7 +81,7 @@ export default function ChatRoomItem({
 
   // 폼 제출 및 엔터 키 입력 시 메시지 즉시 전송
   const handleSubmit = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!inputText.trim() && !attachedFile) return;
 
     onSendMessage(room.id, inputText.trim(), attachedFile);
@@ -91,9 +91,12 @@ export default function ChatRoomItem({
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
-  // 엔터 키 누름 감지
+  // ★ 핵심 해결책: 한글 IME 조합 중(isComposing)일 때는 엔터 키 전송을 방지
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.nativeEvent.isComposing) {
+        return; // 한글 조합 진행 중이면 중복 실행 막음
+      }
       e.preventDefault();
       handleSubmit(e);
     }
