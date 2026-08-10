@@ -69,17 +69,22 @@ function ChatContent() {
     }
   };
 
-  // ★ Supabase DB 대화방 생성 및 해당 셀러와의 직통 채팅 즉시 연결
+  // Supabase DB 대화방 생성 및 해당 셀러와의 직통 채팅 실시간 연결
   const fetchChatRoomsAndInit = async (currentUserObj) => {
     try {
-      const { data: existingRooms } = await supabase
+      // 1. 기존 DB 대화방 조회
+      const { data: existingRooms, error: roomFetchError } = await supabase
         .from('chat_rooms')
         .select('*')
         .order('updated_at', { ascending: false });
 
+      if (roomFetchError) {
+        console.error('Room fetch error from Supabase:', roomFetchError);
+      }
+
       let currentRoomsList = existingRooms || [];
 
-      // 상세페이지에서 채팅 문의 버튼을 눌러 들어온 경우
+      // 2. 상세페이지에서 채팅 문의 버튼을 눌러 들어온 경우
       if (paramCompany || paramTitle) {
         const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product';
         const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Hankook Precision Co., Ltd.';
@@ -91,11 +96,11 @@ function ChatContent() {
         // 해당 셀러 대화방이 없으면 DB에 즉시 생성(INSERT)
         if (!matchedRoom) {
           const newRoomPayload = {
-            product_id: paramProductId || null,
+            product_id: paramProductId ? paramProductId.toString() : null,
             product_title: companyTitle,
-            buyer_id: currentUserObj?.id || null,
-            buyer_name: currentUserObj?.email?.split('@')[0] || 'Global Buyer',
-            seller_id: paramSellerId || null,
+            buyer_id: currentUserObj?.id ? currentUserObj.id.toString() : 'guest_buyer',
+            buyer_name: currentUserObj?.email ? currentUserObj.email.split('@')[0] : 'Global Buyer',
+            seller_id: paramSellerId ? paramSellerId.toString() : null,
             seller_name: companySeller,
             last_message: `Hello! I am inquiring about [${companyTitle}].`,
             updated_at: new Date().toISOString()
@@ -106,7 +111,9 @@ function ChatContent() {
             .insert([newRoomPayload])
             .select();
 
-          if (!createError && createdRoomData && createdRoomData.length > 0) {
+          if (createError) {
+            console.error('Failed to create chat room in DB:', createError);
+          } else if (createdRoomData && createdRoomData.length > 0) {
             matchedRoom = createdRoomData[0];
             currentRoomsList = [matchedRoom, ...currentRoomsList];
 
@@ -114,7 +121,7 @@ function ChatContent() {
             await supabase.from('chat_messages').insert([
               {
                 room_id: matchedRoom.id,
-                sender_id: currentUserObj?.id || null,
+                sender_id: currentUserObj?.id ? currentUserObj.id.toString() : 'guest_buyer',
                 sender_role: 'buyer',
                 message: `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`,
                 translated_message: `안녕하세요! ${companySeller}의 [${companyTitle}] 상품에 대해 문의드립니다. FOB 단가 및 공식 카탈로그를 전달해 주실 수 있나요?`,
@@ -133,6 +140,7 @@ function ChatContent() {
       }
 
       setRooms(currentRoomsList);
+
       if (currentRoomsList.length > 0) {
         await fetchMessagesForRooms(currentRoomsList);
       }
@@ -141,14 +149,20 @@ function ChatContent() {
     }
   };
 
+  // DB에서 대화 메시지 전체 불러오기
   const fetchMessagesForRooms = async (roomList) => {
     try {
       const roomIds = roomList.map((r) => r.id);
-      const { data: msgData } = await supabase
+      const { data: msgData, error } = await supabase
         .from('chat_messages')
         .select('*')
         .in('room_id', roomIds)
         .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Failed to fetch messages:', error);
+        return;
+      }
 
       if (msgData) {
         const map = {};
@@ -171,6 +185,7 @@ function ChatContent() {
     }
   };
 
+  // 특정 대화방 메시지 DB 저장 및 실시간 전송
   const handleSendMessage = async (targetRoomId, text, attachedFile) => {
     let autoTranslation = '';
     if (text) {
@@ -193,7 +208,7 @@ function ChatContent() {
 
     const newMsgObj = {
       room_id: targetRoomId,
-      sender_id: user?.id || null,
+      sender_id: user?.id ? user.id.toString() : 'guest_user',
       sender_role: userRole,
       message: text,
       translated_message: autoTranslation,
@@ -202,6 +217,7 @@ function ChatContent() {
       created_at: new Date().toISOString()
     };
 
+    // UI 화면에 먼저 즉시 반영
     setRoomMessagesMap((prevMap) => ({
       ...prevMap,
       [targetRoomId]: [...(prevMap[targetRoomId] || []), newMsgObj],
@@ -216,7 +232,13 @@ function ChatContent() {
     );
 
     try {
-      await supabase.from('chat_messages').insert([newMsgObj]);
+      const { error: msgInsertError } = await supabase.from('chat_messages').insert([newMsgObj]);
+      if (msgInsertError) {
+        console.error('Failed to insert message to Supabase:', msgInsertError);
+        alert('메시지 DB 저장 실패: ' + msgInsertError.message + '\n\nSupabase SQL Editor에서 RLS 해제 스크립트를 실행했는지 확인해주세요.');
+        return;
+      }
+
       await supabase
         .from('chat_rooms')
         .update({
@@ -232,7 +254,7 @@ function ChatContent() {
   const handleSendSampleCoupon = async (targetRoomId) => {
     const couponMsgObj = {
       room_id: targetRoomId,
-      sender_id: user?.id || null,
+      sender_id: user?.id ? user.id.toString() : 'guest_seller',
       sender_role: 'seller',
       message: '[B2B Special Offer] Exclusive Sample Discount Voucher Issued! ($20 Off Air Freight)',
       translated_message: '[B2B 전용 혜택] 바이어 전용 샘플 항공 배송 $20 할인 쿠폰이 발급되었습니다!',
@@ -246,7 +268,12 @@ function ChatContent() {
     }));
 
     try {
-      await supabase.from('chat_messages').insert([couponMsgObj]);
+      const { error } = await supabase.from('chat_messages').insert([couponMsgObj]);
+      if (error) {
+        console.error('Coupon DB Error:', error);
+        alert('쿠폰 전송 실패: ' + error.message);
+        return;
+      }
       alert('Sample $20 Discount Voucher sent directly to buyer!');
     } catch (err) {
       console.error('Coupon DB error:', err);
@@ -258,7 +285,7 @@ function ChatContent() {
 
     const quoteMsgObj = {
       room_id: activeRoomId,
-      sender_id: user?.id || null,
+      sender_id: user?.id ? user.id.toString() : 'guest_seller',
       sender_role: 'seller',
       message: `[Official B2B Quote Sent] ${quoteNote}`,
       translated_message: `[공식 B2B 견적서 발송] ${quoteNote}`,
@@ -276,7 +303,13 @@ function ChatContent() {
     setIsQuoteModalOpen(false);
 
     try {
-      await supabase.from('chat_messages').insert([quoteMsgObj]);
+      const { error } = await supabase.from('chat_messages').insert([quoteMsgObj]);
+      if (error) {
+        console.error('Quote DB error:', error);
+        alert('견적서 전송 실패: ' + error.message);
+        return;
+      }
+
       await supabase
         .from('chat_rooms')
         .update({
