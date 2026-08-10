@@ -59,7 +59,9 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     setMounted(true);
-    initProductDetail();
+    if (productId) {
+      initProductDetail();
+    }
   }, [productId]);
 
   const initProductDetail = async () => {
