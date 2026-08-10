@@ -16,6 +16,7 @@ function ChatContent() {
   const paramProductId = searchParams.get('productId');
   const paramCompany = searchParams.get('company');
   const paramTitle = searchParams.get('title');
+  const paramSellerId = searchParams.get('sellerId');
 
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
@@ -47,7 +48,7 @@ function ChatContent() {
   useEffect(() => {
     setMounted(true);
     initChatSession();
-  }, [paramProductId, paramCompany]);
+  }, [paramProductId, paramCompany, paramSellerId]);
 
   const initChatSession = async () => {
     try {
@@ -68,17 +69,17 @@ function ChatContent() {
     }
   };
 
-  // ★ Supabase DB에서 대화방 조회 및 직통 대화방 자동 생성
+  // ★ Supabase DB 대화방 생성 및 해당 셀러와의 직통 채팅 즉시 연결
   const fetchChatRoomsAndInit = async (currentUserObj) => {
     try {
-      const { data: existingRooms, error } = await supabase
+      const { data: existingRooms } = await supabase
         .from('chat_rooms')
         .select('*')
         .order('updated_at', { ascending: false });
 
       let currentRoomsList = existingRooms || [];
 
-      // 상세페이지에서 직통 문의 버튼으로 접근 시 대화방 자동 생성 또는 기존 방 매칭
+      // 상세페이지에서 채팅 문의 버튼을 눌러 들어온 경우
       if (paramCompany || paramTitle) {
         const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product';
         const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Hankook Precision Co., Ltd.';
@@ -87,13 +88,14 @@ function ChatContent() {
           (r) => r.product_title === companyTitle && r.seller_name === companySeller
         );
 
+        // 해당 셀러 대화방이 없으면 DB에 즉시 생성(INSERT)
         if (!matchedRoom) {
           const newRoomPayload = {
             product_id: paramProductId || null,
             product_title: companyTitle,
             buyer_id: currentUserObj?.id || null,
             buyer_name: currentUserObj?.email?.split('@')[0] || 'Global Buyer',
-            seller_id: null,
+            seller_id: paramSellerId || null,
             seller_name: companySeller,
             last_message: `Hello! I am inquiring about [${companyTitle}].`,
             updated_at: new Date().toISOString()
@@ -108,7 +110,7 @@ function ChatContent() {
             matchedRoom = createdRoomData[0];
             currentRoomsList = [matchedRoom, ...currentRoomsList];
 
-            // 대화방 시작 메시지 자동 생성
+            // 대화방 첫 문의 메시지 자동 발송
             await supabase.from('chat_messages').insert([
               {
                 room_id: matchedRoom.id,
@@ -122,6 +124,7 @@ function ChatContent() {
           }
         }
 
+        // 해당 대화방을 바로 펼침(활성화)
         if (matchedRoom) {
           setActiveRoomId(matchedRoom.id);
         }
@@ -138,11 +141,10 @@ function ChatContent() {
     }
   };
 
-  // DB에서 대화 메시지 전체 불러오기
   const fetchMessagesForRooms = async (roomList) => {
     try {
       const roomIds = roomList.map((r) => r.id);
-      const { data: msgData, error } = await supabase
+      const { data: msgData } = await supabase
         .from('chat_messages')
         .select('*')
         .in('room_id', roomIds)
@@ -169,7 +171,6 @@ function ChatContent() {
     }
   };
 
-  // ★ 특정 대화방 메시지 DB 저장 및 실시간 전송
   const handleSendMessage = async (targetRoomId, text, attachedFile) => {
     let autoTranslation = '';
     if (text) {
@@ -201,7 +202,6 @@ function ChatContent() {
       created_at: new Date().toISOString()
     };
 
-    // UI 즉시 반영
     setRoomMessagesMap((prevMap) => ({
       ...prevMap,
       [targetRoomId]: [...(prevMap[targetRoomId] || []), newMsgObj],
@@ -359,7 +359,7 @@ function ChatContent() {
             <MessageSquare className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
             <h3 className="text-base font-bold text-slate-800">No Chat Inquiries Yet</h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              When a buyer clicks "Chat with Representative" on a product detail page, a direct real-time chat room will be created here!
+              When a buyer clicks "Chat with Representative" on a product detail page, a direct real-time chat room with the seller will be created here!
             </p>
           </div>
         ) : (

@@ -20,50 +20,67 @@ import {
 export default function ProductDetailVisual({ product }) {
   const router = useRouter();
   
-  // 메인 비주얼 이미지 및 비디오 활성화 상태
   const [selectedImage, setSelectedImage] = useState('');
   const [isVideoActive, setIsVideoActive] = useState(false);
 
-  // ★ 핵심: product 데이터가 DB에서 로드되는 순간 대표 이미지(image_url)를 실시간 반영
+  // ★ product 데이터 변경 시 대표 사진 실시간 동기화
   useEffect(() => {
-    if (product?.image_url) {
-      setSelectedImage(product.image_url);
-    } else if (product?.gallery_images && product.gallery_images.length > 0) {
-      setSelectedImage(product.gallery_images[0]);
+    let mainImg = product?.image_url || '';
+    if (!mainImg && product?.gallery_images) {
+      if (Array.isArray(product.gallery_images) && product.gallery_images.length > 0) {
+        mainImg = product.gallery_images[0];
+      } else if (typeof product.gallery_images === 'string') {
+        try {
+          const parsed = JSON.parse(product.gallery_images);
+          if (Array.isArray(parsed) && parsed.length > 0) mainImg = parsed[0];
+        } catch (e) {
+          mainImg = product.gallery_images;
+        }
+      }
     }
+    setSelectedImage(mainImg);
   }, [product]);
 
-  // 대표 사진(image_url)과 갤러리 사진(gallery_images)을 중복 없이 병합
+  // 대표 사진과 추가 갤러리 이미지 중복 없는 배열 병합
   const displayGallery = [];
-  if (product?.image_url) {
-    displayGallery.push(product.image_url);
-  }
-  if (product?.gallery_images && Array.isArray(product.gallery_images)) {
-    product.gallery_images.forEach((img) => {
-      if (img && !displayGallery.includes(img)) {
+  if (product?.image_url) displayGallery.push(product.image_url);
+
+  if (product?.gallery_images) {
+    let list = [];
+    if (Array.isArray(product.gallery_images)) list = product.gallery_images;
+    else if (typeof product.gallery_images === 'string') {
+      try {
+        const parsed = JSON.parse(product.gallery_images);
+        if (Array.isArray(parsed)) list = parsed;
+      } catch (e) {
+        list = [product.gallery_images];
+      }
+    }
+    list.forEach((img) => {
+      if (img && typeof img === 'string' && !displayGallery.includes(img)) {
         displayGallery.push(img);
       }
     });
   }
 
-  // [Chat with Representative] 버튼 클릭 시 해당 상품/회사 정보를 가지고 채팅방 이동
+  // ★ [Chat with Representative] 클릭 시 셀러와 1:1 직통 대화방 자동 생성 파라미터 전달
   const handleStartChat = () => {
-    const pId = product?.id || '1';
+    const pId = product?.id || '';
     const compName = encodeURIComponent(product?.company_name || 'Hankook Precision Co., Ltd.');
-    const pTitle = encodeURIComponent(product?.title_en || product?.title_ko || 'High-Precision Product');
+    const pTitle = encodeURIComponent(product?.title_en || product?.title_ko || product?.product_name || 'Export Product');
+    const sellerId = product?.user_id || '';
     
-    router.push(`/chat?productId=${pId}&company=${compName}&title=${pTitle}`);
+    router.push(`/chat?productId=${pId}&company=${compName}&title=${pTitle}&sellerId=${sellerId}`);
   };
 
-  // [Send Email Inquiry] 버튼 클릭 시 영문 문의 템플릿 메일창 실행
   const handleSendEmail = () => {
     const targetEmail = product?.company_email || 'export@hankookprecision.co.kr';
     const subject = encodeURIComponent(`[KLICK B2B Inquiry] Quote Request for ${product?.title_en || product?.title_ko || 'Product'}`);
     const body = encodeURIComponent(
       `Dear Sales Manager at ${product?.company_name || 'Hankook Precision Co., Ltd.'},\n\n` +
-      `I found your product "${product?.title_en || product?.title_ko}" on the KLICK B2B Trade Platform.\n` +
+      `I found your product "${product?.title_en || product?.title_ko || product?.product_name}" on the KLICK B2B Trade Platform.\n` +
       `We are interested in sourcing this item and would like to request official pricing, MOQ terms, and delivery lead time.\n\n` +
-      `Product Item: ${product?.title_en || product?.title_ko}\n` +
+      `Product Item: ${product?.title_en || product?.title_ko || product?.product_name}\n` +
       `Category: ${product?.category || 'Industrial'}\n` +
       `Target Order Quantity: ${product?.moq || '100 Units'}\n\n` +
       `Please provide us with your official Proforma Invoice (PI) or quotation catalog.\n\n` +
@@ -76,7 +93,7 @@ export default function ProductDetailVisual({ product }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-      {/* [좌측 7열]: 메인 커버 고화질 비주얼 갤러리 */}
+      {/* [좌측 7열]: 고화질 대표 비주얼 갤러리 */}
       <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
         <div className="w-full h-80 md:h-[420px] bg-slate-100 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center relative group">
           {isVideoActive && product?.video_url ? (
@@ -84,8 +101,8 @@ export default function ProductDetailVisual({ product }) {
           ) : selectedImage ? (
             <img 
               src={selectedImage} 
-              alt={product?.title_en || product?.title_ko || 'Product Main Visual'} 
-              className="w-full h-full object-cover group-hover:scale-105 transition duration-300" 
+              alt={product?.title_en || product?.title_ko || 'Product Visual'} 
+              className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
             />
           ) : (
             <Package className="w-16 h-16 text-slate-300" />
@@ -129,7 +146,7 @@ export default function ProductDetailVisual({ product }) {
         </div>
       </div>
 
-      {/* [우측 5열]: 공급업체 프로필 카너 및 소통 버튼 */}
+      {/* [우측 5열]: 제조 공장 프로필 & 소통 버튼 */}
       <div className="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5 flex flex-col justify-between">
         <div className="space-y-4">
           <div className="border-b border-slate-100 pb-3 space-y-1">
@@ -172,7 +189,7 @@ export default function ProductDetailVisual({ product }) {
           </div>
         </div>
 
-        {/* 하단 담당자 소통 버튼 구역 */}
+        {/* 하단 담당자 채팅하기 및 이메일 버튼 */}
         <div className="space-y-2 pt-2 border-t border-slate-100">
           <button
             type="button"
@@ -186,7 +203,7 @@ export default function ProductDetailVisual({ product }) {
           <button
             type="button"
             onClick={handleSendEmail}
-            className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3.5 bg-[#0F172A] hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <Mail className="w-4 h-4 text-emerald-400" />
             <span>Send Email Inquiry</span>

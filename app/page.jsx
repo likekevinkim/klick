@@ -76,12 +76,30 @@ export default function HomePage() {
         console.error('Supabase fetch error on homepage:', error);
         setProducts([]);
       } else if (data) {
-        // product_name 호환성 매핑
-        const formattedData = data.map(item => ({
-          ...item,
-          title_en: item.title_en || item.product_name || '',
-          title_ko: item.title_ko || item.product_name || ''
-        }));
+        // 이미지 유효성 및 필드 호환성 매핑
+        const formattedData = data.map(item => {
+          let mainImg = item.image_url || '';
+          if (!mainImg && item.gallery_images) {
+            if (Array.isArray(item.gallery_images) && item.gallery_images.length > 0) {
+              mainImg = item.gallery_images[0];
+            } else if (typeof item.gallery_images === 'string') {
+              try {
+                const parsed = JSON.parse(item.gallery_images);
+                if (Array.isArray(parsed) && parsed.length > 0) mainImg = parsed[0];
+              } catch (e) {
+                mainImg = item.gallery_images;
+              }
+            }
+          }
+
+          return {
+            ...item,
+            image_url: mainImg,
+            title_en: item.title_en || item.product_name || item.title_ko || '',
+            title_ko: item.title_ko || item.product_name || item.title_en || ''
+          };
+        });
+
         setProducts(formattedData);
       } else {
         setProducts([]);
@@ -242,23 +260,26 @@ export default function HomePage() {
                         src={item.image_url}
                         alt={item.title_en || item.title_ko || item.product_name}
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
                       />
                     ) : (
                       <Package className="w-8 h-8 text-slate-300" />
                     )}
 
                     <span className="absolute top-2 left-2 bg-[#0F172A]/80 backdrop-blur-sm text-white text-[9px] font-extrabold px-2 py-0.5 rounded-md">
-                      {item.category}
+                      {item.category || 'Manufacturing'}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 truncate">
-                    <Building2 className="w-3 h-3 text-blue-600 flex-shrink-0" />
+                    <Building2 className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
                     <span className="truncate">{item.company_name || 'Verified Factory'}</span>
                   </div>
 
                   <h3 className="text-xs font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition min-h-[32px]">
-                    {item.title_en || item.title_ko || item.product_name}
+                    {item.title_en || item.title_ko || item.product_name || 'Verified B2B Product'}
                   </h3>
 
                   <div className="pt-1 border-t border-slate-100 space-y-0.5">
