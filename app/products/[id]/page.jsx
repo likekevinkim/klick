@@ -55,11 +55,11 @@ export default function ProductDetailPage() {
           .single();
 
         if (data) {
-          // product_name 컬럼 값과 title_en/title_ko 간 호환 보장
           foundProduct = {
             ...data,
             title_en: data.title_en || data.product_name || '',
-            title_ko: data.title_ko || data.product_name || ''
+            title_ko: data.title_ko || data.product_name || '',
+            image_url: data.image_url || (data.gallery_images && data.gallery_images[0]) || ''
           };
         }
       }
@@ -128,7 +128,7 @@ export default function ProductDetailPage() {
       if (product?.id) {
         const updatePayload = {
           ...payload,
-          product_name: payload.title_en || payload.title_ko || 'Export Product' // product_name 동시 갱신
+          product_name: payload.title_en || payload.title_ko || 'Export Product'
         };
 
         const { error } = await supabase

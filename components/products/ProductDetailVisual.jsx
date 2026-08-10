@@ -1,7 +1,7 @@
 // components/products/ProductDetailVisual.jsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -19,27 +19,51 @@ import {
 
 export default function ProductDetailVisual({ product }) {
   const router = useRouter();
-  const [selectedImage, setSelectedImage] = useState(product?.image_url || '');
+  
+  // 메인 비주얼 이미지 및 비디오 활성화 상태
+  const [selectedImage, setSelectedImage] = useState('');
   const [isVideoActive, setIsVideoActive] = useState(false);
 
-  // ★ [Chat with Representative] 버튼 클릭 시 해당 상품/회사 정보를 들고 /chat 으로 즉시 이동
+  // ★ 핵심: product 데이터가 DB에서 로드되는 순간 대표 이미지(image_url)를 실시간 반영
+  useEffect(() => {
+    if (product?.image_url) {
+      setSelectedImage(product.image_url);
+    } else if (product?.gallery_images && product.gallery_images.length > 0) {
+      setSelectedImage(product.gallery_images[0]);
+    }
+  }, [product]);
+
+  // 대표 사진(image_url)과 갤러리 사진(gallery_images)을 중복 없이 병합
+  const displayGallery = [];
+  if (product?.image_url) {
+    displayGallery.push(product.image_url);
+  }
+  if (product?.gallery_images && Array.isArray(product.gallery_images)) {
+    product.gallery_images.forEach((img) => {
+      if (img && !displayGallery.includes(img)) {
+        displayGallery.push(img);
+      }
+    });
+  }
+
+  // [Chat with Representative] 버튼 클릭 시 해당 상품/회사 정보를 가지고 채팅방 이동
   const handleStartChat = () => {
     const pId = product?.id || '1';
     const compName = encodeURIComponent(product?.company_name || 'Hankook Precision Co., Ltd.');
-    const pTitle = encodeURIComponent(product?.title_en || 'High-Precision Product');
+    const pTitle = encodeURIComponent(product?.title_en || product?.title_ko || 'High-Precision Product');
     
     router.push(`/chat?productId=${pId}&company=${compName}&title=${pTitle}`);
   };
 
-  // [Send Email Inquiry] 버튼 동작: 미리 작성된 영문 문의 템플릿 실행
+  // [Send Email Inquiry] 버튼 클릭 시 영문 문의 템플릿 메일창 실행
   const handleSendEmail = () => {
     const targetEmail = product?.company_email || 'export@hankookprecision.co.kr';
-    const subject = encodeURIComponent(`[KLICK B2B Inquiry] Quote Request for ${product?.title_en || 'Product'}`);
+    const subject = encodeURIComponent(`[KLICK B2B Inquiry] Quote Request for ${product?.title_en || product?.title_ko || 'Product'}`);
     const body = encodeURIComponent(
       `Dear Sales Manager at ${product?.company_name || 'Hankook Precision Co., Ltd.'},\n\n` +
-      `I found your product "${product?.title_en}" on the KLICK B2B Trade Platform.\n` +
+      `I found your product "${product?.title_en || product?.title_ko}" on the KLICK B2B Trade Platform.\n` +
       `We are interested in sourcing this item and would like to request official pricing, MOQ terms, and delivery lead time.\n\n` +
-      `Product Item: ${product?.title_en}\n` +
+      `Product Item: ${product?.title_en || product?.title_ko}\n` +
       `Category: ${product?.category || 'Industrial'}\n` +
       `Target Order Quantity: ${product?.moq || '100 Units'}\n\n` +
       `Please provide us with your official Proforma Invoice (PI) or quotation catalog.\n\n` +
@@ -52,23 +76,27 @@ export default function ProductDetailVisual({ product }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-      {/* [좌측 7열]: 대표 미디어 갤러리 */}
+      {/* [좌측 7열]: 메인 커버 고화질 비주얼 갤러리 */}
       <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
         <div className="w-full h-80 md:h-[420px] bg-slate-100 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center relative group">
           {isVideoActive && product?.video_url ? (
             <video src={product.video_url} controls autoPlay className="w-full h-full object-contain bg-black" />
           ) : selectedImage ? (
-            <img src={selectedImage} alt={product?.title_en} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+            <img 
+              src={selectedImage} 
+              alt={product?.title_en || product?.title_ko || 'Product Main Visual'} 
+              className="w-full h-full object-cover group-hover:scale-105 transition duration-300" 
+            />
           ) : (
             <Package className="w-16 h-16 text-slate-300" />
           )}
 
-          <span className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md text-emerald-400 text-[10px] font-extrabold px-3 py-1 rounded-full border border-slate-700 flex items-center gap-1">
+          <span className="absolute top-4 left-4 bg-[#0F172A]/80 backdrop-blur-md text-emerald-400 text-[10px] font-extrabold px-3 py-1 rounded-full border border-slate-700 flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Verified Factory Direct
           </span>
         </div>
 
-        {/* 미디어 썸네일 바 */}
+        {/* 미디어 썸네일 선택 바 */}
         <div className="flex items-center gap-3 overflow-x-auto pb-1">
           {product?.video_url && (
             <button
@@ -83,7 +111,7 @@ export default function ProductDetailVisual({ product }) {
             </button>
           )}
 
-          {(product?.gallery_images || [product?.image_url]).map((img, idx) => (
+          {displayGallery.map((img, idx) => (
             <button
               key={idx}
               type="button"
@@ -101,7 +129,7 @@ export default function ProductDetailVisual({ product }) {
         </div>
       </div>
 
-      {/* [우측 5열]: 공급업체 프로필 및 소통 버튼 */}
+      {/* [우측 5열]: 공급업체 프로필 카너 및 소통 버튼 */}
       <div className="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5 flex flex-col justify-between">
         <div className="space-y-4">
           <div className="border-b border-slate-100 pb-3 space-y-1">
@@ -144,7 +172,7 @@ export default function ProductDetailVisual({ product }) {
           </div>
         </div>
 
-        {/* 담당자 채팅하기 및 이메일 문의 버튼 */}
+        {/* 하단 담당자 소통 버튼 구역 */}
         <div className="space-y-2 pt-2 border-t border-slate-100">
           <button
             type="button"
