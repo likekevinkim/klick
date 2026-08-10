@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Package, ShieldCheck, Play, Building2, ExternalLink } from 'lucide-react';
+import { Package, ShieldCheck, Play, Building2, ExternalLink, MapPin, Award } from 'lucide-react';
 
 export default function ProductDetailVisual({ product }) {
   const [selectedImage, setSelectedImage] = useState(product?.image_url || '');
@@ -60,7 +60,7 @@ export default function ProductDetailVisual({ product }) {
         </div>
       </div>
 
-      {/* [우측 2열]: 검증된 한국 제조 공장(Factory) 프로필 카너 */}
+      {/* [우측 2열]: 모달에서 입력된 공장명/위치/인증 정보가 실시간 연동 표시되는 우측 프로필 카드 */}
       <div className="lg:col-span-6 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5 h-fit">
         <div className="border-b border-slate-100 pb-3 space-y-1">
           <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-100">
@@ -68,24 +68,32 @@ export default function ProductDetailVisual({ product }) {
           </span>
           <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-1.5 pt-1">
             <Building2 className="w-4 h-4 text-blue-600" />
-            {product?.company_name}
+            {product?.company_name || 'Hankook Precision Co., Ltd.'}
           </h3>
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-xs">
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-0.5">
             <span className="text-slate-400 block text-[10px] font-bold">Business</span>
             <span className="font-extrabold text-slate-800">Manufacturer</span>
           </div>
 
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-            <span className="text-slate-400 block text-[10px] font-bold">Location</span>
-            <span className="font-bold text-slate-800">South Korea 🇰🇷</span>
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-0.5">
+            <span className="text-slate-400 block text-[10px] font-bold flex items-center gap-1">
+              <MapPin className="w-3 h-3 text-blue-600" /> Location
+            </span>
+            <span className="font-bold text-slate-800 truncate block">
+              {product?.factory_location || 'Incheon, S.Korea 🇰🇷'}
+            </span>
           </div>
 
-          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-            <span className="text-slate-400 block text-[10px] font-bold">Certifications</span>
-            <span className="font-extrabold text-blue-600">ISO 9001, CE</span>
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-0.5">
+            <span className="text-slate-400 block text-[10px] font-bold flex items-center gap-1">
+              <Award className="w-3 h-3 text-amber-500" /> Certifications
+            </span>
+            <span className="font-extrabold text-blue-600 truncate block">
+              {product?.certifications || 'ISO 9001, CE'}
+            </span>
           </div>
         </div>
 

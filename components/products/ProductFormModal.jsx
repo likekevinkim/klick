@@ -2,11 +2,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Edit3, X, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
+import { Plus, Edit3, X, CheckCircle2, Loader2, Sparkles, Building2, MapPin, Award } from 'lucide-react';
 import ProductMediaUploader from './ProductMediaUploader';
 import RichSpecEditor from './RichSpecEditor';
 
 export default function ProductFormModal({ isOpen, onClose, isEditMode, initialData, onSubmit }) {
+  // 기본 인포메이션 상태
   const [titleKo, setTitleKo] = useState(initialData?.title_ko || initialData?.title_en || '');
   const [titleEn, setTitleEn] = useState(initialData?.title_en || '');
   const [category, setCategory] = useState(initialData?.category || 'Industrial Machinery');
@@ -16,10 +17,17 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
   const [taglineEn, setTaglineEn] = useState(initialData?.tagline || '');
   const [editorContent, setEditorContent] = useState(initialData?.description_en || '');
 
+  // ★ 상세페이지 우측 사이드바 표시용 제조 공장 정보 및 인증 상태
+  const [companyName, setCompanyName] = useState(initialData?.company_name || 'Hankook Precision Co., Ltd. (한국정밀공업)');
+  const [factoryLocation, setFactoryLocation] = useState(initialData?.factory_location || 'Incheon, South Korea 🇰🇷');
+  const [certifications, setCertifications] = useState(initialData?.certifications || 'ISO 9001, CE Certified');
+
+  // 미디어 인포메이션 상태
   const [mainImageUrl, setMainImageUrl] = useState(initialData?.image_url || '');
   const [galleryImages, setGalleryImages] = useState(initialData?.gallery_images || []);
   const [videoUrl, setVideoUrl] = useState(initialData?.video_url || '');
 
+  // 수량별 구간 단가 (Tiered Pricing)
   const [tieredPricing, setTieredPricing] = useState(
     initialData?.tiered_pricing
       ? initialData.tiered_pricing.map(t => ({ min_qty: t.range || '100 Units', price: (t.price || '145.00').replace(/[^0-9.]/g, '') }))
@@ -62,12 +70,15 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
       setEditorContent(`### Official Verified Export Specification Sheet
 - **Product Name**: ${titleKo}
 - **Category**: ${category}
-- **Quality Standard**: ISO 9001:2015, CE Certified
+- **Manufacturer**: ${companyName}
+- **Factory Location**: ${factoryLocation}
+- **Quality Standard**: ${certifications}
 - **Lead Time**: ${leadTime}
 
-### Key Features
+### Key Industrial Features
 1. High durability material engineered for long-term industrial reliability.
-2. 100% factory pressure tested before shipment.`);
+2. 100% factory pressure tested before shipment.
+3. Custom OEM logo branding and export packaging available.`);
       setIsAiGenerating(false);
     }, 1000);
   };
@@ -84,6 +95,9 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
       moq,
       lead_time: leadTime,
       product_size: productSize,
+      company_name: companyName,
+      factory_location: factoryLocation,
+      certifications: certifications,
       tagline: taglineEn || `${titleKo} Export Model`,
       description_en: editorContent,
       image_url: mainImageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
@@ -104,10 +118,10 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
           <div>
             <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
               {isEditMode ? <Edit3 className="w-5 h-5 text-blue-600" /> : <Plus className="w-5 h-5 text-blue-600" />}
-              {isEditMode ? 'Edit Product Specifications & Rich Media' : 'Register New Export Product Specification'}
+              {isEditMode ? 'Edit Product Specifications & Factory Info' : 'Register New Export Product Specification'}
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Upload pictures, video, tiered pricing, and manage rich specification content.
+              Upload pictures, video, factory info, tiered pricing, and manage rich specification content.
             </p>
           </div>
 
@@ -121,7 +135,8 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
         </div>
 
         <form onSubmit={handleSubmitForm} className="space-y-6">
-          {/* 1. 기본 인포메이션 */}
+          
+          {/* 1. 기본 제품 인포메이션 */}
           <div className="space-y-4">
             <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider block border-b pb-1">
               1. Basic Product Information
@@ -190,13 +205,69 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
                 />
               </div>
             </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Dimensions & Weight Specification</label>
+              <input
+                type="text"
+                value={productSize}
+                onChange={(e) => setProductSize(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+              />
+            </div>
           </div>
 
-          {/* 2. 수량별 구간 단가 */}
+          {/* ★ 2. 제조 공장 프로필 & 수출 규격 인증 정보 입력 섹션 (신규 추가) */}
+          <div className="space-y-4">
+            <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider block border-b pb-1 flex items-center gap-1.5">
+              <Building2 className="w-4 h-4 text-blue-600" />
+              2. Manufacturer Profile & Compliance Certifications
+            </span>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Company / Factory Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="예: Hankook Precision Co., Ltd."
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Factory Location *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="예: Incheon, South Korea 🇰🇷"
+                  value={factoryLocation}
+                  onChange={(e) => setFactoryLocation(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Certifications *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="예: ISO 9001, CE, CPNP"
+                  value={certifications}
+                  onChange={(e) => setCertifications(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none text-blue-600 font-bold"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 3. 수량별 구간 단가 */}
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b pb-1">
               <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider">
-                2. Wholesale Tiered FOB Pricing ($ USD)
+                3. Wholesale Tiered FOB Pricing ($ USD)
               </span>
               <button
                 type="button"
@@ -239,7 +310,7 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
             </div>
           </div>
 
-          {/* 3. 미디어 업로더 컴포넌트 (비디오 및 사진 개별제어 지원) */}
+          {/* 4. 미디어 업로더 컴포넌트 */}
           <ProductMediaUploader
             mainImageUrl={mainImageUrl}
             setMainImageUrl={setMainImageUrl}
@@ -249,7 +320,7 @@ export default function ProductFormModal({ isOpen, onClose, isEditMode, initialD
             setVideoUrl={setVideoUrl}
           />
 
-          {/* 4. 리치 에디터 컴포넌트 */}
+          {/* 5. 리치 에디터 컴포넌트 */}
           <RichSpecEditor
             content={editorContent}
             setContent={setEditorContent}
