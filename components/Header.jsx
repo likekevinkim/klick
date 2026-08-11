@@ -255,7 +255,7 @@ export default function Header() {
             <span className="sr-only">Home</span>
           </Link>
 
-          {/* ★ 2. 카테고리별 공장 디렉토리 바로가기 버튼 */}
+          {/* 2. 카테고리별 공장 디렉토리 바로가기 버튼 */}
           <Link
             href="/factories"
             className={`p-2 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
@@ -314,14 +314,14 @@ export default function Header() {
 
                   {userRole === 'seller' ? (
                     <>
-                      {/* ★ 1. 로그인된 셀러 자신의 고유 공장 프로필/쇼룸 주소 연결 */}
+                      {/* ★ 1. 드롭다운 메뉴 라벨 변경: My Factory & Showroom */}
                       <Link
                         href={myCompanyShowroomUrl}
                         onClick={() => setIsUserMenuOpen(false)}
                         className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
                       >
                         <Building2 className="w-4 h-4 text-blue-500" />
-                        <span>Factory Profile & Showroom</span>
+                        <span>My Factory & Showroom</span>
                       </Link>
 
                       {/* 2. Product Dashboard */}
