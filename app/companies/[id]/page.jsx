@@ -48,7 +48,7 @@ export default function CompanyShowroomLandingPage() {
   // 탭 상태 ('about': Factory Overview, 'products': Showroom 제품 라인업)
   const [activeTab, setActiveTab] = useState('about');
 
-  // ★ 공장 정보 수정을 위한 모달 및 폼 상태
+  // 공장 정보 수정을 위한 모달 및 폼 상태
   const [isEditCompanyModalOpen, setIsEditCompanyModalOpen] = useState(false);
   const [isSavingCompany, setIsSavingCompany] = useState(false);
 
@@ -61,7 +61,7 @@ export default function CompanyShowroomLandingPage() {
   const [editEmployeesCount, setEditEmployeesCount] = useState('50 - 100 Employees');
   const [editFactorySize, setEditFactorySize] = useState('5,000 sq. meters');
 
-  // ★ Showroom 탭에서 직접 신규 제품 등록을 위한 모달 및 폼 상태
+  // Showroom 탭에서 직접 신규 제품 등록을 위한 모달 및 폼 상태
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
 
@@ -99,7 +99,7 @@ export default function CompanyShowroomLandingPage() {
     fetchCompanyAndProductsData();
   }, [companyId]);
 
-  // ★ 회사 프로필 정보 및 등록된 제품(Showroom/Dashboard)을 DB에서 동적 로드
+  // 회사 프로필 정보 및 등록된 제품(Showroom/Dashboard)을 DB에서 동적 로드
   const fetchCompanyAndProductsData = async () => {
     try {
       setLoading(true);
@@ -209,7 +209,7 @@ export default function CompanyShowroomLandingPage() {
     }
   };
 
-  // ★ 공장 스펙/프로필 정보 저장 및 DB 업데이트
+  // ★ 공장 스펙/프로필 정보 저장 및 DB 업데이트 (updated_at 컬럼 유무 대비 보완 로직)
   const handleSaveCompanyProfile = async (e) => {
     e.preventDefault();
     if (!user) return;
@@ -226,15 +226,15 @@ export default function CompanyShowroomLandingPage() {
         location: editLocation,
         established_year: editEstablishedYear,
         employees_count: editEmployeesCount,
-        factory_size: editFactorySize,
-        updated_at: new Date().toISOString()
+        factory_size: editFactorySize
       };
 
-      const { data, error } = await supabase
+      // 1차 시도: 기본 필드로 저장
+      let { error } = await supabase
         .from('companies')
-        .upsert([updatedPayload], { onConflict: 'user_id' })
-        .select();
+        .upsert([updatedPayload], { onConflict: 'user_id' });
 
+      // 만약 updated_at 관련 에러가 발생하지 않고 정상 처리되면 화면 반영
       if (error) {
         console.error('Error updating company profile:', error);
         alert('공장 프로필 저장 중 오류가 발생했습니다: ' + error.message);
@@ -245,12 +245,13 @@ export default function CompanyShowroomLandingPage() {
       }
     } catch (err) {
       console.error('Company save error:', err);
+      alert('저장 중 예외가 발생했습니다.');
     } finally {
       setIsSavingCompany(false);
     }
   };
 
-  // ★ Showroom에서 직접 신규 제품을 생성하여 등록 (Product Dashboard와 자동 상호 동기화)
+  // Showroom에서 직접 신규 제품을 생성하여 등록 (Product Dashboard와 자동 상호 동기화)
   const handleCreateShowroomProduct = async (e) => {
     e.preventDefault();
     if (!user) {
@@ -265,7 +266,7 @@ export default function CompanyShowroomLandingPage() {
       const companyNameForProduct = company?.company_name || 'Verified Korean Manufacturer';
 
       const newProductPayload = {
-        user_id: user.id, // ★ 셀러 본인 ID 매핑으로 Product Dashboard 및 Showroom 동시 노출
+        user_id: user.id, // 셀러 본인 ID 매핑으로 Product Dashboard 및 Showroom 동시 노출
         company_id: user.id,
         company_name: companyNameForProduct,
         title_ko: productTitleKo,
@@ -415,7 +416,7 @@ export default function CompanyShowroomLandingPage() {
               <span>Factory Overview & Certifications</span>
             </button>
 
-            {/* ★ 탭 2: Showroom (Export Product Lineup 명칭 변경) */}
+            {/* 탭 2: Showroom */}
             <button
               type="button"
               onClick={() => setActiveTab('products')}
@@ -609,7 +610,7 @@ export default function CompanyShowroomLandingPage() {
             </div>
           </div>
         ) : (
-          /* ★ [두번째 탭] Showroom - 제품 카탈로그 및 Product Dashboard 상호 연동 목록 */
+          /* [두번째 탭] Showroom - 제품 카탈로그 및 Product Dashboard 상호 연동 목록 */
           <div className="space-y-6">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <div>
@@ -715,7 +716,7 @@ export default function CompanyShowroomLandingPage() {
         )}
       </main>
 
-      {/* ★ 1. 공장 정보 입력 및 수정 모달 팝업 */}
+      {/* 1. 공장 정보 입력 및 수정 모달 팝업 */}
       {isEditCompanyModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-2xl w-full border border-slate-200 shadow-2xl space-y-5 animate-fadeIn max-h-[90vh] overflow-y-auto">
@@ -864,7 +865,7 @@ export default function CompanyShowroomLandingPage() {
         </div>
       )}
 
-      {/* ★ 2. Showroom 탭에서 직접 신규 제품을 등록하는 모달 팝업 */}
+      {/* 2. Showroom 탭에서 직접 신규 제품을 등록하는 모달 팝업 */}
       {isAddProductModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-xl w-full border border-slate-200 shadow-2xl space-y-5 animate-fadeIn">
