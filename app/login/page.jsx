@@ -367,7 +367,7 @@ export default function AuthPage() {
                         />
                       </div>
 
-                      {/* ★ 바이어용 영문 회사명 필드 추가 */}
+                      {/* 바이어용 영문 회사명 필드 */}
                       <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1.5">Company Name (English) *</label>
                         <input
