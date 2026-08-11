@@ -3,7 +3,19 @@
 
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
-import { Building2, Globe, ArrowRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { 
+  Building2, 
+  Globe, 
+  ArrowRight, 
+  CheckCircle2, 
+  AlertCircle, 
+  Loader2, 
+  Mail, 
+  Lock, 
+  UserCheck, 
+  KeyRound, 
+  X 
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -31,11 +43,43 @@ export default function AuthPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  // 비밀번호 찾기 모달 상태
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetStatus, setResetStatus] = useState('');
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted) return null;
+  // 비밀번호 재설정 이메일 발송 핸들러
+  const handleSendPasswordReset = async (e) => {
+    e.preventDefault();
+    if (!resetEmail) return;
+
+    try {
+      setResetLoading(true);
+      setResetStatus('');
+
+      const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://klick-six.vercel.app';
+
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${siteUrl}/reset-password`
+      });
+
+      if (error) {
+        setResetStatus('Error: ' + error.message);
+      } else {
+        setResetStatus('Password reset link has been sent to your email. Please check your inbox!');
+      }
+    } catch (err) {
+      console.error('Reset password error:', err);
+      setResetStatus('Failed to send reset email.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   // Supabase Auth submit handler
   const handleAuthSubmit = async (e) => {
@@ -46,11 +90,14 @@ export default function AuthPage() {
 
     try {
       if (isSignUp) {
-        // 1. Supabase Auth Sign Up
+        const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://klick-six.vercel.app';
+
+        // 1. Supabase Auth Sign Up (이메일 인증 링크 포함)
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
+            emailRedirectTo: `${siteUrl}/login`,
             data: {
               role: userRole,
               company_name: companyNameEn || companyNameKo || 'Hankook Precision Co., Ltd.',
@@ -69,6 +116,7 @@ export default function AuthPage() {
             if (userRole === 'seller') {
               await supabase.from('companies').insert([
                 {
+                  user_id: data.user.id,
                   company_name: companyNameEn || companyNameKo || 'Hankook Precision Co., Ltd.',
                   company_name_ko: companyNameKo,
                   company_name_en: companyNameEn,
@@ -93,11 +141,15 @@ export default function AuthPage() {
           }
         }
 
-        setSuccessMessage(`Registration completed for ${userRole === 'seller' ? 'Korean Manufacturer (Seller)' : 'Global Buyer'}. Switch to Sign In mode.`);
-        setTimeout(() => {
-          setIsSignUp(false);
-          setSuccessMessage('');
-        }, 1200);
+        if (data?.user && data?.session === null) {
+          setSuccessMessage(`A verification link has been sent to ${email}. Please check your inbox and click the link to activate your account.`);
+        } else {
+          setSuccessMessage(`Registration completed for ${userRole === 'seller' ? 'Korean Manufacturer (Seller)' : 'Global Buyer'}. Switching to Sign In mode.`);
+          setTimeout(() => {
+            setIsSignUp(false);
+            setSuccessMessage('');
+          }, 1500);
+        }
       } else {
         // 2. Supabase Auth Sign In
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -128,6 +180,8 @@ export default function AuthPage() {
         msg = 'Connection to Supabase server failed. Please check your Supabase URL & Anon Key in Vercel Environment Variables.';
       } else if (msg.includes('Invalid login credentials')) {
         msg = 'Invalid email or password. Please check your credentials.';
+      } else if (msg.includes('Email not confirmed')) {
+        msg = 'Your email address has not been confirmed yet. Please check your inbox for the verification link.';
       } else if (msg.includes('User already registered')) {
         msg = 'This email is already registered. Please switch to Sign In mode.';
       } else if (msg.includes('Password should be at least')) {
@@ -139,6 +193,8 @@ export default function AuthPage() {
       setIsLoading(false);
     }
   };
+
+  if (!mounted) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 antialiased">
@@ -346,7 +402,18 @@ export default function AuthPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Password (at least 6 characters)</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">Password (at least 6 characters)</label>
+                {!isSignUp && (
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPasswordOpen(true)}
+                    className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
+                  >
+                    Forgot Password?
+                  </button>
+                )}
+              </div>
               <input
                 type="password"
                 required
@@ -412,6 +479,67 @@ export default function AuthPage() {
           </div>
         </div>
       </main>
+
+      {/* 비밀번호 찾기 모달 팝업 */}
+      {isForgotPasswordOpen && (
+        <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-slate-200 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <span className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-blue-600" /> Reset Your Password
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsForgotPasswordOpen(false)}
+                className="p-1 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-lg transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Enter your registered email address below. We will send you a verification link to reset your password.
+            </p>
+
+            {resetStatus && (
+              <div className="p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-xl text-xs font-bold">
+                {resetStatus}
+              </div>
+            )}
+
+            <form onSubmit={handleSendPasswordReset} className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Your Registered Email</label>
+                <input
+                  type="email"
+                  required
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  placeholder="seller@company.co.kr"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsForgotPasswordOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetLoading}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer disabled:opacity-50"
+                >
+                  {resetLoading ? 'Sending...' : 'Send Verification Email'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

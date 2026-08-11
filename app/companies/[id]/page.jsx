@@ -124,49 +124,69 @@ export default function CompanyShowroomLandingPage() {
     }
   }, [companyId]);
 
+  // 로그인 유저의 user.id 및 companyId 매핑 조회
   const fetchCompanyData = async () => {
     try {
       setLoading(true);
 
-      // 세션 유저 및 권한 파악 (셀러일 경우 수정 버튼 노출)
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const role = session.user.user_metadata?.role || 'seller';
-        if (role === 'seller') {
-          setIsOwner(true);
-        }
-      }
+      const currentUser = session?.user || null;
 
-      // 1. 제조 공장 회사 데이터 조회
       let companyData = null;
+
+      // 1. URL ID 또는 user.id 기반 조회
       if (companyId) {
         const { data } = await supabase
           .from('companies')
           .select('*')
-          .eq('id', companyId)
+          .or(`id.eq.${companyId},user_id.eq.${companyId}`)
           .single();
         if (data) companyData = data;
       }
 
+      // 소유권 검증
+      if (currentUser && companyData && companyData.user_id === currentUser.id) {
+        setIsOwner(true);
+      } else if (currentUser && currentUser.user_metadata?.role === 'seller') {
+        setIsOwner(true);
+      }
+
       if (!companyData) {
         // 매핑 사전 또는 기본 템플릿 반환
-        companyData = mockCompaniesMaster[companyId] || mockCompaniesMaster['1'];
+        companyData = mockCompaniesMaster[companyId] || {
+          id: companyId || '1',
+          user_id: currentUser?.id || null,
+          company_name: currentUser?.user_metadata?.company_name || 'Hankook Precision Co., Ltd.',
+          tagline: 'Leading Manufacturer of High-Precision Hydraulic Valves & Industrial Automation Parts',
+          description: 'Established in 1998, Hankook Precision specializes in manufacturing ultra-durable hydraulic control valves, industrial automation components, and customized machinery parts. With state-of-the-art CNC production facilities and strict ISO 9001 quality assurance, we export premium Korean manufacturing goods to over 35 countries worldwide.',
+          business_type: 'Direct Manufacturer',
+          location: 'Incheon, South Korea 🇰🇷',
+          established_year: '1998',
+          employees_count: '50 - 100 Employees',
+          factory_size: '5,000 sq. meters',
+          certifications: ['ISO 9001', 'CE Certified', 'IATF 16949', 'KOTRA Verified'],
+          gallery_images: [
+            'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80',
+            'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+            'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=800&q=80'
+          ]
+        };
       }
+
       setCompany(companyData);
 
-      // 2. 해당 공장이 등록한 전체 수출 상품 조회 (Supabase DB 연동)
+      // 2. 해당 공장에 등록된 상품만 조회 (user_id 기반 필터링)
       const { data: productList } = await supabase
         .from('products')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (productList && productList.length > 0) {
-        // 회사 이름이나 ID로 필터링 (없으면 전체 노출 fallback)
-        const matched = productList.filter(
-          p => (p.company_name || '').toLowerCase().includes((companyData.company_name || '').toLowerCase().slice(0, 5)) ||
-               p.company_id === companyId
-        );
-        setProducts(matched.length > 0 ? matched : productList);
+        const userProducts = currentUser?.id 
+          ? productList.filter(p => p.user_id === currentUser.id || p.company_id === companyId)
+          : productList;
+        
+        setProducts(userProducts.length > 0 ? userProducts : productList);
       } else {
         // 백업 보장 샘플 상품 데이터
         setProducts([

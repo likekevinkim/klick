@@ -219,6 +219,8 @@ export default function Header() {
   };
 
   const userRole = user?.user_metadata?.role || 'seller';
+  // 셀러 본인의 고유 ID에 기반한 공장 쇼룸 주소
+  const myCompanyShowroomUrl = user?.id ? `/companies/${user.id}` : '/companies/1';
 
   return (
     <header className="sticky top-0 z-[99999] bg-slate-900 text-white border-b border-slate-800 shadow-md">
@@ -312,9 +314,9 @@ export default function Header() {
 
                   {userRole === 'seller' ? (
                     <>
-                      {/* 1. Factory Profile & Showroom */}
+                      {/* ★ 1. 로그인된 셀러 자신의 고유 공장 프로필/쇼룸 주소 연결 */}
                       <Link
-                        href="/companies/1"
+                        href={myCompanyShowroomUrl}
                         onClick={() => setIsUserMenuOpen(false)}
                         className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
                       >
