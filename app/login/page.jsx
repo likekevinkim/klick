@@ -17,8 +17,7 @@ import {
   Send,
   ShieldCheck,
   Key,
-  RefreshCw,
-  Terminal
+  RefreshCw
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
@@ -40,7 +39,7 @@ function AuthPageContent() {
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
-  // 셀러 전용 입력 상태 (한글/영문 상호명 분리 수집)
+  // 셀러 전용 입력 상태 (한글/영문 상호명 수집)
   const [companyNameKo, setCompanyNameKo] = useState('');
   const [companyNameEn, setCompanyNameEn] = useState('');
   const [sellerPhone, setSellerPhone] = useState('');
@@ -54,7 +53,6 @@ function AuthPageContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [rawDebugLog, setRawDebugLog] = useState('');
 
   // 비밀번호 찾기 모달 상태
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
@@ -94,7 +92,7 @@ function AuthPageContent() {
     }
   };
 
-  // 1단계: 6자리 OTP 인증번호 발송 요청 (SMTP 500 연결 장애 발생 시 가입이 막히지 않는 자동 우회 지원)
+  // 1단계: Next.js API Route(Resend Direct)를 통한 6자리 OTP 인증번호 발송 요청
   const handleSendOtpCode = async () => {
     if (!email || !email.includes('@')) {
       setErrorMessage('올바른 이메일 주소를 입력해 주세요.');
@@ -105,70 +103,30 @@ function AuthPageContent() {
       setIsSendingOtp(true);
       setErrorMessage('');
       setSuccessMessage('');
-      setRawDebugLog('');
 
-      console.log('Sending OTP request to email:', email);
-
-      // Supabase OTP 메일 발송 시도
-      let { data, error } = await supabase.auth.signInWithOtp({
-        email: email,
-        options: {
-          shouldCreateUser: true
-        }
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
       });
 
-      // 예외 폴백: signUp 방식으로 재시도
-      if (error) {
-        console.warn('signInWithOtp failed. Retrying with signUp fallback...', error);
-        const fallbackResult = await supabase.auth.signUp({
-          email: email,
-          password: 'TemporaryAuthPassword123!',
-        });
-        error = fallbackResult.error;
-        data = fallbackResult.data;
-      }
+      const data = await res.json();
 
-      // SMTP 백엔드 500 에러 및 통신 오류 발생 시 개발 및 가입 흐름이 중단되지 않도록 자동 우회 통과
-      if (error && (error.status === 500 || error.name === 'AuthRetryableFetchError' || error.message.includes('FetchError') || error.code === 'smtp_connection_failed')) {
-        console.warn('SMTP 500 error bypassed safely. Triggering auto-verification for smooth onboarding.');
-        setIsEmailVerified(true);
-        setIsOtpSent(true);
-        setSuccessMessage('이메일 인증 단계가 확인되었습니다! 아래 회사 상호명과 비밀번호를 입력해 회원가입을 완료해 주세요.');
-      } else if (error) {
-        console.error('Supabase Email Error Dump:', error);
-        
-        const logDetail = JSON.stringify({
-          message: error.message || 'Internal Server Error',
-          status: error.status || 500,
-          name: error.name || 'AuthRetryableFetchError',
-          code: error.code || 'smtp_connection_failed'
-        }, null, 2);
-        setRawDebugLog(logDetail);
-
-        if (error.message.includes('resend.dev domain') || error.message.includes('testing')) {
-          setErrorMessage('Resend 테스트 제약: Resend 가입 이메일 주소로만 테스트 메일 수신이 가능합니다.');
-        } else if (error.message.includes('rate limit')) {
-          setErrorMessage('이메일 발송 단기 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.');
-        } else {
-          setErrorMessage(`인증 메일 발송 실패 [오류: ${error.message}]`);
-        }
+      if (!res.ok) {
+        setErrorMessage(data.error || '인증번호 발송에 실패했습니다.');
       } else {
-        console.log('Supabase Email OTP Sent Success:', data);
         setIsOtpSent(true);
         setSuccessMessage(`[${email}] 메일함으로 6자리 인증번호가 발송되었습니다. 수신함 및 스팸함을 확인해 주세요!`);
       }
     } catch (err) {
-      console.error('Send OTP Exception Dump:', err);
-      // 예외 시에도 개발 및 회원가입 진행
-      setIsEmailVerified(true);
-      setIsOtpSent(true);
-      setSuccessMessage('이메일 인증 단계가 확인되었습니다! 아래 회사 상호명과 비밀번호를 입력해 회원가입을 완료해 주세요.');
+      console.error('Send OTP Exception:', err);
+      setErrorMessage('인증번호 발송 처리 중 오류가 발생했습니다.');
     } finally {
       setIsSendingOtp(false);
     }
   };
 
-  // 2단계: 6자리 OTP 인증번호 확인
+  // 2단계: 6자리 OTP 인증번호 서버 검증
   const handleVerifyOtpCode = async () => {
     if (!otpCode || otpCode.length < 6) {
       setErrorMessage('메일로 받으신 6자리 숫자 인증번호를 올바르게 입력해 주세요.');
@@ -179,33 +137,25 @@ function AuthPageContent() {
       setIsVerifyingOtp(true);
       setErrorMessage('');
 
-      let { error } = await supabase.auth.verifyOtp({
-        email: email,
-        token: otpCode,
-        type: 'signup'
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code: otpCode })
       });
 
-      if (error) {
-        const { error: retryError } = await supabase.auth.verifyOtp({
-          email: email,
-          token: otpCode,
-          type: 'email'
-        });
+      const data = await res.json();
 
-        if (retryError) {
-          // 스마트 통과 처리: 6자리 숫자가 정상 입력되어 있으면 인증 완료 처리
-          setIsEmailVerified(true);
-          setSuccessMessage('이메일 인증이 완료되었습니다! 비밀번호와 상호명 정보를 입력해 주세요.');
-          return;
-        }
+      if (!res.ok) {
+        setErrorMessage(data.error || '인증번호가 일치하지 않습니다.');
+        setIsEmailVerified(false);
+      } else {
+        setIsEmailVerified(true);
+        setSuccessMessage('이메일 인증이 완벽하게 확인되었습니다! 아래 회사 정보와 비밀번호를 입력해 주십시오.');
       }
-
-      setIsEmailVerified(true);
-      setSuccessMessage('이메일 인증이 완벽하게 완료되었습니다! 비밀번호와 상호명 정보를 입력해 주세요.');
     } catch (err) {
       console.error('Verify OTP Error:', err);
-      setIsEmailVerified(true);
-      setSuccessMessage('이메일 인증이 완료되었습니다! 비밀번호와 상호명 정보를 입력해 주세요.');
+      setErrorMessage('인증번호 확인 중 오류가 발생했습니다.');
+      setIsEmailVerified(false);
     } finally {
       setIsVerifyingOtp(false);
     }
@@ -221,7 +171,7 @@ function AuthPageContent() {
     try {
       if (isSignUp) {
         if (!isEmailVerified) {
-          setErrorMessage('가입을 진행하려면 먼저 이메일 인증을 완료해야 합니다.');
+          setErrorMessage('보안 정책상 이메일 6자리 인증을 완벽히 완료하셔야 회원가입이 가능합니다.');
           setIsLoading(false);
           return;
         }
@@ -232,20 +182,25 @@ function AuthPageContent() {
           return;
         }
 
-        // 비밀번호 및 유저 프로필 메타데이터 업데이트
-        const { data: updateData, error: updateError } = await supabase.auth.updateUser({
+        // Supabase 계정 생성
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: email,
           password: password,
-          data: {
-            role: userRole,
-            company_name: userRole === 'seller' ? (companyNameEn || companyNameKo) : buyerCompanyNameEn,
-            company_name_ko: companyNameKo,
-            company_name_en: userRole === 'seller' ? companyNameEn : buyerCompanyNameEn,
-            buyer_name: userRole === 'buyer' ? buyerName : '',
-            is_new_user: true
+          options: {
+            data: {
+              role: userRole,
+              company_name: userRole === 'seller' ? (companyNameEn || companyNameKo) : buyerCompanyNameEn,
+              company_name_ko: companyNameKo,
+              company_name_en: userRole === 'seller' ? companyNameEn : buyerCompanyNameEn,
+              buyer_name: userRole === 'buyer' ? buyerName : '',
+              is_new_user: true
+            }
           }
         });
 
-        const activeUserId = updateData?.user?.id || (await supabase.auth.getUser())?.data?.user?.id;
+        if (signUpError) throw signUpError;
+
+        const activeUserId = signUpData?.user?.id;
 
         if (activeUserId) {
           try {
@@ -279,7 +234,7 @@ function AuthPageContent() {
         }
 
         localStorage.setItem('klick_show_onboarding', 'true');
-        setSuccessMessage('회원가입이 완료되었습니다! 홈 화면으로 이동합니다...');
+        setSuccessMessage('회원가입이 정상 완료되었습니다! 홈 화면으로 이동합니다...');
 
         setTimeout(() => {
           router.push('/');
@@ -304,9 +259,11 @@ function AuthPageContent() {
       let msg = error.message || '인증 처리에 실패했습니다.';
 
       if (msg.includes('Failed to fetch') || msg.includes('fetch')) {
-        msg = '서버 연결에 실패했습니다. 인터넷 연결이나 Vercel 환경변수를 확인해 주세요.';
+        msg = '서버 연결에 실패했습니다. 인터넷 연결 상태를 확인해 주세요.';
       } else if (msg.includes('Invalid login credentials')) {
         msg = '이메일 또는 비밀번호가 올바르지 않습니다.';
+      } else if (msg.includes('User already registered')) {
+        msg = '이미 가입된 이메일 주소입니다. 로그인 모드로 전환해 주세요.';
       }
 
       setErrorMessage(msg);
@@ -373,7 +330,6 @@ function AuthPageContent() {
               onClick={() => {
                 setUserRole('seller');
                 setErrorMessage('');
-                setRawDebugLog('');
               }}
               className={`py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                 userRole === 'seller'
@@ -390,7 +346,6 @@ function AuthPageContent() {
               onClick={() => {
                 setUserRole('buyer');
                 setErrorMessage('');
-                setRawDebugLog('');
               }}
               className={`py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                 userRole === 'buyer'
@@ -500,7 +455,7 @@ function AuthPageContent() {
             {isEmailVerified && isSignUp && (
               <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2">
                 <ShieldCheck className="w-4.5 h-4.5 text-emerald-600 flex-shrink-0" />
-                <span>이메일 인증이 확인되었습니다! 아래 세부 회사 정보와 비밀번호를 입력해 주세요.</span>
+                <span>이메일 6자리 인증이 완벽히 확인되었습니다! 아래 세부 정보를 입력해 주세요.</span>
               </div>
             )}
 
@@ -641,22 +596,9 @@ function AuthPageContent() {
             </div>
 
             {errorMessage && (
-              <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs space-y-2">
-                <div className="flex items-center gap-2 font-bold">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span>{errorMessage}</span>
-                </div>
-              </div>
-            )}
-
-            {/* 디버깅용 Raw Error Log 출력 박스 */}
-            {rawDebugLog && (
-              <div className="p-3 bg-slate-900 text-slate-200 rounded-xl text-[10px] font-mono overflow-x-auto space-y-1">
-                <div className="flex items-center gap-1.5 text-amber-400 font-bold">
-                  <Terminal className="w-3.5 h-3.5" />
-                  <span>Supabase Raw Error Response Log:</span>
-                </div>
-                <pre>{rawDebugLog}</pre>
+              <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span className="leading-relaxed">{errorMessage}</span>
               </div>
             )}
 
@@ -699,7 +641,6 @@ function AuthPageContent() {
                 setIsSignUp(!isSignUp);
                 setErrorMessage('');
                 setSuccessMessage('');
-                setRawDebugLog('');
               }}
               className="font-bold text-blue-600 hover:underline cursor-pointer"
             >
