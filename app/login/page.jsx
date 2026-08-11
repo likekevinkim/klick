@@ -12,7 +12,6 @@ import {
   Loader2, 
   Mail, 
   Lock, 
-  UserCheck, 
   KeyRound, 
   X,
   Send,
@@ -27,10 +26,10 @@ import { useRouter } from 'next/navigation';
 function AuthPageContent() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false); // false: 로그인, true: 회원가입
+  const [isSignUp, setIsSignUp] = useState(false); // false: Sign In, true: Sign Up
   const [userRole, setUserRole] = useState('seller'); // 'seller' or 'buyer'
 
-  // 공통 입력 상태
+  // 공통 입력 필드
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -41,13 +40,13 @@ function AuthPageContent() {
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
-  // 셀러 전용 입력 상태 (한글/영문 상호명 수집)
+  // 셀러 전용 입력 상태 (한글/영문 상호명 분리 수집)
   const [companyNameKo, setCompanyNameKo] = useState('');
   const [companyNameEn, setCompanyNameEn] = useState('');
   const [sellerPhone, setSellerPhone] = useState('');
   const [category, setCategory] = useState('Industrial Machinery');
 
-  // 바이어 전용 입력 상태
+  // 바이어 전용 입력 상태 (담당자명, 영문 회사명, 국가)
   const [buyerName, setBuyerName] = useState('');
   const [buyerCompanyNameEn, setBuyerCompanyNameEn] = useState('');
   const [country, setCountry] = useState('United States');
@@ -141,7 +140,7 @@ function AuthPageContent() {
         setRawDebugLog(logDetail);
 
         if (error.status === 500 || error.name === 'AuthRetryableFetchError') {
-          setErrorMessage('Supabase 백엔드에서 Resend 메일 서버 연결 시 500 오류가 발생했습니다. Supabase 대시보드의 Port를 587로 설정해 주세요.');
+          setErrorMessage('Supabase 백엔드에서 Resend 메일 서버 연결 오류가 발생했습니다. Resend 대시보드에서 Full Access API Key를 새로 발급받아 Supabase Password에 재입력해 주세요.');
         } else if (error.message.includes('rate limit')) {
           setErrorMessage('이메일 발송 단기 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.');
         } else {
@@ -186,13 +185,13 @@ function AuthPageContent() {
         });
 
         if (retryError) {
-          setErrorMessage('인증번호가 일치하지 않거나 만료되었습니다. 다시 확인해 주세요.');
+          setErrorMessage('인증번호가 일치하지 않거나 만료되었습니다. 메일함의 최신 6자리 번호를 확인해 주세요.');
           return;
         }
       }
 
       setIsEmailVerified(true);
-      setSuccessMessage('이메일 인증이 완벽하게 완료되었습니다! 비밀번호와 상호명 정보를 입력해 주세요.');
+      setSuccessMessage('이메일 인증이 완벽하게 완료되었습니다! 아래 비밀번호와 상호명 정보를 입력해 주세요.');
     } catch (err) {
       console.error('Verify OTP Error:', err);
       setErrorMessage('인증번호 확인 중 오류가 발생했습니다.');
