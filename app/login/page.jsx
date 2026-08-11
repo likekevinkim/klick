@@ -105,6 +105,7 @@ function AuthPageContent() {
       setErrorMessage('');
       setSuccessMessage('');
 
+      // Supabase OTP 메일 발송 시도
       let { error } = await supabase.auth.signInWithOtp({
         email: email,
         options: {
@@ -112,8 +113,9 @@ function AuthPageContent() {
         }
       });
 
+      // 예외 폴백: signUp 방식으로 재시도
       if (error) {
-        console.warn('signInWithOtp failed, retrying signUp fallback:', error.message);
+        console.warn('signInWithOtp failed, trying signUp fallback:', error.message);
         const { error: signUpError } = await supabase.auth.signUp({
           email: email,
           password: 'TemporaryAuthPassword123!',
@@ -124,13 +126,13 @@ function AuthPageContent() {
       if (error) {
         console.error('Supabase OTP Error details:', error);
         if (error.message.includes('rate limit')) {
-          setErrorMessage('이메일 발송 단기 한도를 초과했습니다. Resend 대시보드에 커스텀 도메인을 연결하시면 즉시 해결됩니다.');
+          setErrorMessage('이메일 발송 단기 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.');
         } else {
           setErrorMessage(`인증 메일 발송 실패: ${error.message}`);
         }
       } else {
         setIsOtpSent(true);
-        setSuccessMessage(`[${email}] 메일함으로 6자리 인증번호가 발송되었습니다. 메일함 및 스팸함을 확인해 주세요!`);
+        setSuccessMessage(`[${email}] 메일함으로 6자리 인증번호가 발송되었습니다. 스팸 메일함도 함께 확인해 주세요!`);
       }
     } catch (err) {
       console.error('Send OTP Exception:', err);
@@ -165,13 +167,13 @@ function AuthPageContent() {
         });
 
         if (retryError) {
-          setErrorMessage('인증번호가 일치하지 않거나 만료되었습니다. 다시 확인해 주세요.');
+          setErrorMessage('인증번호가 일치하지 않거나 만료되었습니다. 메일함의 최신 번호를 확인해 주세요.');
           return;
         }
       }
 
       setIsEmailVerified(true);
-      setSuccessMessage('이메일 인증이 완벽하게 완료되었습니다! 아래 비밀번호와 상호명 정보를 입력해 주세요.');
+      setSuccessMessage('이메일 인증이 완벽하게 완료되었습니다! 비밀번호와 상호명 정보를 입력해 주세요.');
     } catch (err) {
       console.error('Verify OTP Error:', err);
       setErrorMessage('인증번호 확인 중 오류가 발생했습니다.');
