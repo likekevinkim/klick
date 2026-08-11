@@ -18,7 +18,8 @@ import {
   Send,
   ShieldCheck,
   Key,
-  RefreshCw
+  RefreshCw,
+  Terminal
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
@@ -54,6 +55,7 @@ function AuthPageContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [rawDebugLog, setRawDebugLog] = useState(''); // 상세 디버깅 로그 상태
 
   // 비밀번호 찾기 모달 상태
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
@@ -93,7 +95,7 @@ function AuthPageContent() {
     }
   };
 
-  // 1단계: 6자리 OTP 인증번호 발송 요청
+  // 1단계: 6자리 OTP 인증번호 발송 요청 (500 에러 포획 및 상세 예외 처리)
   const handleSendOtpCode = async () => {
     if (!email || !email.includes('@')) {
       setErrorMessage('올바른 이메일 주소를 입력해 주세요.');
@@ -104,9 +106,12 @@ function AuthPageContent() {
       setIsSendingOtp(true);
       setErrorMessage('');
       setSuccessMessage('');
+      setRawDebugLog('');
+
+      console.log('Sending OTP request to email:', email);
 
       // Supabase OTP 메일 발송 시도
-      let { error } = await supabase.auth.signInWithOtp({
+      let { data, error } = await supabase.auth.signInWithOtp({
         email: email,
         options: {
           shouldCreateUser: true
@@ -115,28 +120,42 @@ function AuthPageContent() {
 
       // 예외 폴백: signUp 방식으로 재시도
       if (error) {
-        console.warn('signInWithOtp failed, trying signUp fallback:', error.message);
-        const { error: signUpError } = await supabase.auth.signUp({
+        console.warn('signInWithOtp failed. Retrying with signUp fallback...', error);
+        const fallbackResult = await supabase.auth.signUp({
           email: email,
           password: 'TemporaryAuthPassword123!',
         });
-        error = signUpError;
+        error = fallbackResult.error;
+        data = fallbackResult.data;
       }
 
       if (error) {
-        console.error('Supabase OTP Error details:', error);
-        if (error.message.includes('rate limit')) {
-          setErrorMessage('이메일 발송 단기 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.');
+        console.error('Supabase Email Error Dump:', error);
+        
+        const logDetail = JSON.stringify({
+          message: error.message,
+          status: error.status,
+          name: error.name,
+          code: error.code
+        }, null, 2);
+        setRawDebugLog(logDetail);
+
+        if (error.status === 500 || error.message.includes('Internal Server Error')) {
+          setErrorMessage('Supabase 백엔드에서 Resend 메일 서버로 연결 중 500 오류가 발생했습니다. Supabase 대시보드의 SMTP Settings (Password/Sender Email) 설정을 재확인해 주세요.');
+        } else if (error.message.includes('rate limit')) {
+          setErrorMessage('이메일 단기 발송 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.');
         } else {
-          setErrorMessage(`인증 메일 발송 실패: ${error.message}`);
+          setErrorMessage(`인증 메일 발송 실패 [오류: ${error.message}]`);
         }
       } else {
+        console.log('Supabase Email OTP Sent Success:', data);
         setIsOtpSent(true);
-        setSuccessMessage(`[${email}] 메일함으로 6자리 인증번호가 발송되었습니다. 스팸 메일함도 함께 확인해 주세요!`);
+        setSuccessMessage(`[${email}] 메일함으로 6자리 인증번호가 발송되었습니다. 수신함 및 스팸함을 확인해 주세요!`);
       }
     } catch (err) {
-      console.error('Send OTP Exception:', err);
-      setErrorMessage('인증번호 발송 처리 중 오류가 발생했습니다.');
+      console.error('Send OTP Exception Dump:', err);
+      setRawDebugLog(String(err));
+      setErrorMessage('인증번호 발송 처리 중 예상치 못한 서버 오류가 발생했습니다.');
     } finally {
       setIsSendingOtp(false);
     }
@@ -167,7 +186,7 @@ function AuthPageContent() {
         });
 
         if (retryError) {
-          setErrorMessage('인증번호가 일치하지 않거나 만료되었습니다. 메일함의 최신 번호를 확인해 주세요.');
+          setErrorMessage('인증번호가 일치하지 않거나 만료되었습니다. 다시 확인해 주세요.');
           return;
         }
       }
@@ -345,6 +364,7 @@ function AuthPageContent() {
               onClick={() => {
                 setUserRole('seller');
                 setErrorMessage('');
+                setRawDebugLog('');
               }}
               className={`py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                 userRole === 'seller'
@@ -361,6 +381,7 @@ function AuthPageContent() {
               onClick={() => {
                 setUserRole('buyer');
                 setErrorMessage('');
+                setRawDebugLog('');
               }}
               className={`py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                 userRole === 'buyer'
@@ -611,9 +632,22 @@ function AuthPageContent() {
             </div>
 
             {errorMessage && (
-              <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                <span className="leading-relaxed">{errorMessage}</span>
+              <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-bold">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              </div>
+            )}
+
+            {/* 디버깅용 Raw Error Log 출력 박스 */}
+            {rawDebugLog && (
+              <div className="p-3 bg-slate-900 text-slate-200 rounded-xl text-[10px] font-mono overflow-x-auto space-y-1">
+                <div className="flex items-center gap-1.5 text-amber-400 font-bold">
+                  <Terminal className="w-3.5 h-3.5" />
+                  <span>Supabase Raw Error Response Log:</span>
+                </div>
+                <pre>{rawDebugLog}</pre>
               </div>
             )}
 
@@ -656,6 +690,7 @@ function AuthPageContent() {
                 setIsSignUp(!isSignUp);
                 setErrorMessage('');
                 setSuccessMessage('');
+                setRawDebugLog('');
               }}
               className="font-bold text-blue-600 hover:underline cursor-pointer"
             >
