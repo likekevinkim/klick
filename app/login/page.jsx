@@ -161,15 +161,11 @@ export default function AuthPage() {
 
         await supabase.auth.getSession();
 
-        const roleInMeta = data.user?.user_metadata?.role || userRole;
-        setSuccessMessage('Successfully signed in! Redirecting to dashboard...');
+        setSuccessMessage('Successfully signed in! Redirecting to home...');
 
+        // ★ 대표님 요청 사항: 셀러든 바이어든 로그인 성공 시 무조건 홈 화면(/)으로 리다이렉트
         setTimeout(() => {
-          if (roleInMeta === 'seller') {
-            router.push('/products');
-          } else {
-            router.push('/buyer/profile');
-          }
+          router.push('/');
         }, 400);
       }
     } catch (error) {
