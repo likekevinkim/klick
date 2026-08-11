@@ -126,7 +126,7 @@ function AuthPageContent() {
     }
   };
 
-  // 2단계: 6자리 OTP 인증번호 서버 엄격 검증 (일치하지 않으면 승인 불가)
+  // 2단계: 6자리 OTP 인증번호 서버 검증
   const handleVerifyOtpCode = async () => {
     if (!otpCode || otpCode.length < 6) {
       setErrorMessage('메일로 받으신 6자리 숫자 인증번호를 올바르게 입력해 주세요.');

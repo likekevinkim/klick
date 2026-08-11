@@ -2,14 +2,24 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 // 메모리 기반 임시 OTP 저장소 (글로벌 싱글톤 저장)
 global.otpStore = global.otpStore || new Map();
 
 export async function POST(request) {
   try {
-    const { email } = await request.json();
+    const apiKey = process.env.RESEND_API_KEY;
+
+    if (!apiKey) {
+      console.error('RESEND_API_KEY is not defined in environment variables.');
+      return NextResponse.json(
+        { error: '서버 환경 변수(RESEND_API_KEY) 설정이 누락되었습니다. .env.local 파일을 확인해 주세요.' },
+        { status: 500 }
+      );
+    }
+
+    const resend = new Resend(apiKey);
+    const body = await request.json();
+    const email = body?.email;
 
     if (!email || !email.includes('@')) {
       return NextResponse.json(
@@ -22,14 +32,14 @@ export async function POST(request) {
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10분 유효기간
 
-    // OTP 저장소에 세션 저장
+    // OTP 저장소에 세션 기록
     global.otpStore.set(email, {
       code: generatedOtp,
       expiresAt: expiresAt,
       verified: false
     });
 
-    // Resend Direct SDK를 통한 직접 발송
+    // Resend Direct SDK 발송 요청
     const { data, error } = await resend.emails.send({
       from: 'KLICK B2B <onboarding@resend.dev>',
       to: [email],
@@ -59,9 +69,9 @@ export async function POST(request) {
       message: '인증번호가 메일함으로 발송되었습니다.'
     });
   } catch (err) {
-    console.error('Send OTP Route Handler Error:', err);
+    console.error('Send OTP Route Handler Exception:', err);
     return NextResponse.json(
-      { error: '서버 처리 중 오류가 발생했습니다.' },
+      { error: `서버 내부 오류: ${err.message || '알 수 없는 에러'}` },
       { status: 500 }
     );
   }

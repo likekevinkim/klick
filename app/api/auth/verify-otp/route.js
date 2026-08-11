@@ -5,7 +5,9 @@ global.otpStore = global.otpStore || new Map();
 
 export async function POST(request) {
   try {
-    const { email, code } = await request.json();
+    const body = await request.json();
+    const email = body?.email;
+    const code = body?.code;
 
     if (!email || !code) {
       return NextResponse.json(
@@ -31,14 +33,14 @@ export async function POST(request) {
       );
     }
 
-    if (storedData.code !== code.trim()) {
+    if (storedData.code !== String(code).trim()) {
       return NextResponse.json(
         { error: '인증번호가 일치하지 않습니다. 메일함의 최신 번호를 확인해 주세요.' },
         { status: 400 }
       );
     }
 
-    // 인증 완료 상태 업데이트
+    // 검증 완벽 완료 처리
     storedData.verified = true;
     global.otpStore.set(email, storedData);
 
@@ -47,7 +49,7 @@ export async function POST(request) {
       message: '이메일 인증이 성공적으로 완료되었습니다.'
     });
   } catch (err) {
-    console.error('Verify OTP Route Handler Error:', err);
+    console.error('Verify OTP Route Handler Exception:', err);
     return NextResponse.json(
       { error: '인증번호 검증 중 오류가 발생했습니다.' },
       { status: 500 }
