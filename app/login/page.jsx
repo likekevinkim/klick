@@ -93,7 +93,7 @@ function AuthPageContent() {
     }
   };
 
-  // 1단계: 6자리 OTP 인증번호 발송 요청 (이중 폴백 방어 로직 탑재)
+  // 1단계: 6자리 OTP 인증번호 발송 요청
   const handleSendOtpCode = async () => {
     if (!email || !email.includes('@')) {
       setErrorMessage('올바른 이메일 주소를 입력해 주세요.');
@@ -105,7 +105,6 @@ function AuthPageContent() {
       setErrorMessage('');
       setSuccessMessage('');
 
-      // 1차 시도: signInWithOtp
       let { error } = await supabase.auth.signInWithOtp({
         email: email,
         options: {
@@ -113,9 +112,8 @@ function AuthPageContent() {
         }
       });
 
-      // 2차 시도: signUp (신규 사용자 계정 생성 및 OTP 전송)
       if (error) {
-        console.warn('signInWithOtp failed, trying signUp fallback:', error.message);
+        console.warn('signInWithOtp failed, retrying signUp fallback:', error.message);
         const { error: signUpError } = await supabase.auth.signUp({
           email: email,
           password: 'TemporaryAuthPassword123!',
@@ -126,17 +124,17 @@ function AuthPageContent() {
       if (error) {
         console.error('Supabase OTP Error details:', error);
         if (error.message.includes('rate limit')) {
-          setErrorMessage('이메일 발송 단기 한도를 초과했습니다. Resend 대시보드의 Logs 탭에서 에러 원인을 확인해 주세요.');
+          setErrorMessage('이메일 발송 단기 한도를 초과했습니다. Resend 대시보드에 커스텀 도메인을 연결하시면 즉시 해결됩니다.');
         } else {
           setErrorMessage(`인증 메일 발송 실패: ${error.message}`);
         }
       } else {
         setIsOtpSent(true);
-        setSuccessMessage(`[${email}] 메일함으로 6자리 인증번호가 발송되었습니다. 스팸 메일함도 함께 확인해 주세요!`);
+        setSuccessMessage(`[${email}] 메일함으로 6자리 인증번호가 발송되었습니다. 메일함 및 스팸함을 확인해 주세요!`);
       }
     } catch (err) {
       console.error('Send OTP Exception:', err);
-      setErrorMessage('인증번호 발송 처리 중 예상치 못한 오류가 발생했습니다.');
+      setErrorMessage('인증번호 발송 처리 중 오류가 발생했습니다.');
     } finally {
       setIsSendingOtp(false);
     }
@@ -167,13 +165,13 @@ function AuthPageContent() {
         });
 
         if (retryError) {
-          setErrorMessage('인증번호가 일치하지 않거나 만료되었습니다. 메일함의 최신 번호를 확인해 주세요.');
+          setErrorMessage('인증번호가 일치하지 않거나 만료되었습니다. 다시 확인해 주세요.');
           return;
         }
       }
 
       setIsEmailVerified(true);
-      setSuccessMessage('이메일 인증이 완벽하게 완료되었습니다! 비밀번호와 상호명 정보를 입력해 주세요.');
+      setSuccessMessage('이메일 인증이 완벽하게 완료되었습니다! 아래 비밀번호와 상호명 정보를 입력해 주세요.');
     } catch (err) {
       console.error('Verify OTP Error:', err);
       setErrorMessage('인증번호 확인 중 오류가 발생했습니다.');
