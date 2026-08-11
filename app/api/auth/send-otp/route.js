@@ -29,7 +29,7 @@ export async function POST(request) {
       verified: false
     });
 
-    // Resend Direct SDK를 통한 직접 발송 (Supabase 백엔드 SMTP 경유 없음)
+    // Resend Direct SDK를 통한 직접 발송
     const { data, error } = await resend.emails.send({
       from: 'KLICK B2B <onboarding@resend.dev>',
       to: [email],
