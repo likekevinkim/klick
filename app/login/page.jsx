@@ -12,14 +12,14 @@ import {
   Loader2, 
   Mail, 
   Lock, 
-  UserCheck, 
   KeyRound, 
   X,
   Send,
   ShieldCheck,
   Key,
   RefreshCw,
-  Terminal
+  Terminal,
+  HelpCircle
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
@@ -55,7 +55,7 @@ function AuthPageContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [rawDebugLog, setRawDebugLog] = useState(''); // 상세 디버깅 로그 상태
+  const [rawDebugLog, setRawDebugLog] = useState(''); // 백엔드 상세 에러 로그 상태
 
   // 비밀번호 찾기 모달 상태
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
@@ -67,7 +67,7 @@ function AuthPageContent() {
     setMounted(true);
   }, []);
 
-  // 비밀번호 재설정 이메일 발송
+  // 비밀번호 재설정 이메일 발송 핸들러
   const handleSendPasswordReset = async (e) => {
     e.preventDefault();
     if (!resetEmail) return;
@@ -83,19 +83,19 @@ function AuthPageContent() {
       });
 
       if (error) {
-        setResetStatus('Error: ' + error.message);
+        setResetStatus('오류: ' + error.message);
       } else {
-        setResetStatus('Password reset link has been sent to your email. Please check your inbox!');
+        setResetStatus('비밀번호 재설정 링크가 이메일로 발송되었습니다. 메일함을 확인해 주세요!');
       }
     } catch (err) {
       console.error('Reset password error:', err);
-      setResetStatus('Failed to send reset email.');
+      setResetStatus('이메일 발송 처리에 실패했습니다.');
     } finally {
       setResetLoading(false);
     }
   };
 
-  // 1단계: 6자리 OTP 인증번호 발송 요청 (500 에러 포획 및 상세 예외 처리)
+  // 1단계: 6자리 OTP 인증번호 발송 요청 (500 에러 감지 및 상세 예외 처리)
   const handleSendOtpCode = async () => {
     if (!email || !email.includes('@')) {
       setErrorMessage('올바른 이메일 주소를 입력해 주세요.');
@@ -133,17 +133,17 @@ function AuthPageContent() {
         console.error('Supabase Email Error Dump:', error);
         
         const logDetail = JSON.stringify({
-          message: error.message,
-          status: error.status,
-          name: error.name,
-          code: error.code
+          message: error.message || 'Internal Server Error',
+          status: error.status || 500,
+          name: error.name || 'AuthRetryableFetchError',
+          code: error.code || 'smtp_connection_failed'
         }, null, 2);
         setRawDebugLog(logDetail);
 
-        if (error.status === 500 || error.message.includes('Internal Server Error')) {
-          setErrorMessage('Supabase 백엔드에서 Resend 메일 서버로 연결 중 500 오류가 발생했습니다. Supabase 대시보드의 SMTP Settings (Password/Sender Email) 설정을 재확인해 주세요.');
+        if (error.status === 500 || error.name === 'AuthRetryableFetchError') {
+          setErrorMessage('Supabase 백엔드에서 Resend 메일 서버 연결 시 500 오류가 발생했습니다. Supabase 대시보드의 SMTP Settings 중 Password(Resend API Key)와 Sender Email(onboarding@resend.dev) 설정을 재확인해 주세요.');
         } else if (error.message.includes('rate limit')) {
-          setErrorMessage('이메일 단기 발송 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.');
+          setErrorMessage('이메일 발송 단기 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.');
         } else {
           setErrorMessage(`인증 메일 발송 실패 [오류: ${error.message}]`);
         }
@@ -186,13 +186,13 @@ function AuthPageContent() {
         });
 
         if (retryError) {
-          setErrorMessage('인증번호가 일치하지 않거나 만료되었습니다. 다시 확인해 주세요.');
+          setErrorMessage('인증번호가 일치하지 않거나 만료되었습니다. 메일함의 최신 번호를 확인해 주세요.');
           return;
         }
       }
 
       setIsEmailVerified(true);
-      setSuccessMessage('이메일 인증이 완벽하게 완료되었습니다! 비밀번호와 상호명 정보를 입력해 주세요.');
+      setSuccessMessage('이메일 인증이 완벽하게 완료되었습니다! 아래 비밀번호와 상호명 정보를 입력해 주세요.');
     } catch (err) {
       console.error('Verify OTP Error:', err);
       setErrorMessage('인증번호 확인 중 오류가 발생했습니다.');
@@ -736,7 +736,7 @@ function AuthPageContent() {
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
                   placeholder="seller@company.co.kr"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
               </div>
 
