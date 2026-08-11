@@ -12,14 +12,14 @@ import {
   Loader2, 
   Mail, 
   Lock, 
+  UserCheck, 
   KeyRound, 
   X,
   Send,
   ShieldCheck,
   Key,
   RefreshCw,
-  Terminal,
-  HelpCircle
+  Terminal
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
@@ -27,7 +27,7 @@ import { useRouter } from 'next/navigation';
 function AuthPageContent() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false); // false: Sign In, true: Sign Up
+  const [isSignUp, setIsSignUp] = useState(false); // false: 로그인, true: 회원가입
   const [userRole, setUserRole] = useState('seller'); // 'seller' or 'buyer'
 
   // 공통 입력 상태
@@ -41,13 +41,13 @@ function AuthPageContent() {
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
-  // 셀러 전용 입력 상태 (한글/영문 상호명 분리 수집)
+  // 셀러 전용 입력 상태 (한글/영문 상호명 수집)
   const [companyNameKo, setCompanyNameKo] = useState('');
   const [companyNameEn, setCompanyNameEn] = useState('');
   const [sellerPhone, setSellerPhone] = useState('');
   const [category, setCategory] = useState('Industrial Machinery');
 
-  // 바이어 전용 입력 상태 (담당자명, 영문 회사명, 국가)
+  // 바이어 전용 입력 상태
   const [buyerName, setBuyerName] = useState('');
   const [buyerCompanyNameEn, setBuyerCompanyNameEn] = useState('');
   const [country, setCountry] = useState('United States');
@@ -55,7 +55,7 @@ function AuthPageContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [rawDebugLog, setRawDebugLog] = useState(''); // 백엔드 상세 에러 로그 상태
+  const [rawDebugLog, setRawDebugLog] = useState('');
 
   // 비밀번호 찾기 모달 상태
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
@@ -67,7 +67,7 @@ function AuthPageContent() {
     setMounted(true);
   }, []);
 
-  // 비밀번호 재설정 이메일 발송 핸들러
+  // 비밀번호 재설정 이메일 발송
   const handleSendPasswordReset = async (e) => {
     e.preventDefault();
     if (!resetEmail) return;
@@ -85,7 +85,7 @@ function AuthPageContent() {
       if (error) {
         setResetStatus('오류: ' + error.message);
       } else {
-        setResetStatus('비밀번호 재설정 링크가 이메일로 발송되었습니다. 메일함을 확인해 주세요!');
+        setResetStatus('비밀번호 재설정 링크가 이메일로 발송되었습니다. 메일함을 확인해 주세요.');
       }
     } catch (err) {
       console.error('Reset password error:', err);
@@ -95,7 +95,7 @@ function AuthPageContent() {
     }
   };
 
-  // 1단계: 6자리 OTP 인증번호 발송 요청 (500 에러 감지 및 상세 예외 처리)
+  // 1단계: 6자리 OTP 인증번호 발송 요청
   const handleSendOtpCode = async () => {
     if (!email || !email.includes('@')) {
       setErrorMessage('올바른 이메일 주소를 입력해 주세요.');
@@ -141,7 +141,7 @@ function AuthPageContent() {
         setRawDebugLog(logDetail);
 
         if (error.status === 500 || error.name === 'AuthRetryableFetchError') {
-          setErrorMessage('Supabase 백엔드에서 Resend 메일 서버 연결 시 500 오류가 발생했습니다. Supabase 대시보드의 SMTP Settings 중 Password(Resend API Key)와 Sender Email(onboarding@resend.dev) 설정을 재확인해 주세요.');
+          setErrorMessage('Supabase 백엔드에서 Resend 메일 서버 연결 시 500 오류가 발생했습니다. Supabase 대시보드의 Port를 587로 설정해 주세요.');
         } else if (error.message.includes('rate limit')) {
           setErrorMessage('이메일 발송 단기 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.');
         } else {
@@ -186,13 +186,13 @@ function AuthPageContent() {
         });
 
         if (retryError) {
-          setErrorMessage('인증번호가 일치하지 않거나 만료되었습니다. 메일함의 최신 번호를 확인해 주세요.');
+          setErrorMessage('인증번호가 일치하지 않거나 만료되었습니다. 다시 확인해 주세요.');
           return;
         }
       }
 
       setIsEmailVerified(true);
-      setSuccessMessage('이메일 인증이 완벽하게 완료되었습니다! 아래 비밀번호와 상호명 정보를 입력해 주세요.');
+      setSuccessMessage('이메일 인증이 완벽하게 완료되었습니다! 비밀번호와 상호명 정보를 입력해 주세요.');
     } catch (err) {
       console.error('Verify OTP Error:', err);
       setErrorMessage('인증번호 확인 중 오류가 발생했습니다.');
