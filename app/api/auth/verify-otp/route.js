@@ -40,7 +40,7 @@ export async function POST(request) {
       );
     }
 
-    // 검증 완벽 완료 처리
+    // 검증 완료 처리
     storedData.verified = true;
     global.otpStore.set(email, storedData);
 

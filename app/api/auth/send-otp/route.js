@@ -59,10 +59,10 @@ export async function POST(request) {
     if (error) {
       console.error('Resend Direct Error:', error);
       
-      // Resend 테스트 모드 제한 에러 정밀 예외 처리
+      // Resend 테스트 모드 제한 에러 처리
       if (error.message && error.message.includes('only send testing emails')) {
         return NextResponse.json(
-          { error: 'Resend 테스트 모드 제한: 현재는 Resend 계정 가입 이메일(truek.work@gmail.com)로만 테스트 메일 전송이 가능합니다. 해당 이메일로 테스트해 주세요!' },
+          { error: 'Resend 무료 테스트 모드 제한: 현재는 Resend 계정 가입 이메일(truek.work@gmail.com)로만 테스트 메일 발송이 가능합니다. 해당 이메일 주소를 입력해 주세요!' },
           { status: 400 }
         );
       }
