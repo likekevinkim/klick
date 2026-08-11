@@ -27,7 +27,7 @@ function SignupProfileContent() {
 
   const [password, setPassword] = useState('');
   
-  // 셀러 정보
+  // 셀러 정보 (한글/영문 상호명 분리)
   const [companyNameKo, setCompanyNameKo] = useState('');
   const [companyNameEn, setCompanyNameEn] = useState('');
   const [sellerPhone, setSellerPhone] = useState('');
@@ -46,6 +46,7 @@ function SignupProfileContent() {
     verifyConfirmedUser();
   }, []);
 
+  // 이메일 링크 클릭 후 자동 세션 검증
   const verifyConfirmedUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
@@ -76,7 +77,7 @@ function SignupProfileContent() {
         return;
       }
 
-      // 1. 비밀번호 및 메타데이터 업데이트
+      // 1. 비밀번호 및 사용자 메타데이터 업데이트
       const { error: updateError } = await supabase.auth.updateUser({
         password: password,
         data: {
@@ -91,7 +92,7 @@ function SignupProfileContent() {
 
       if (updateError) throw updateError;
 
-      // 2. DB 정보 저장
+      // 2. DB 에 정보 저장
       if (userRole === 'seller') {
         await supabase.from('companies').upsert([
           {
@@ -117,7 +118,7 @@ function SignupProfileContent() {
         ], { onConflict: 'auth_user_id' });
       }
 
-      // 온보딩 팝업 플래그 저장 및 홈 페이지 자동 이동
+      // 가입 완료 후 온보딩 팝업 플래그 세팅 및 홈으로 리다이렉트
       localStorage.setItem('klick_show_onboarding', 'true');
       router.push('/');
     } catch (err) {
@@ -263,7 +264,7 @@ function SignupProfileContent() {
 
             {/* 비밀번호 설정 */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Set New Password (at least 6 characters) *</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Set Password (at least 6 characters) *</label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                 <input
