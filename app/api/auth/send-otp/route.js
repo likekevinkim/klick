@@ -9,8 +9,8 @@ export async function POST(request) {
   try {
     const apiKey = process.env.RESEND_API_KEY;
 
-    if (!apiKey) {
-      console.error('RESEND_API_KEY is not defined in environment variables.');
+    if (!apiKey || apiKey.trim() === '') {
+      console.error('RESEND_API_KEY is missing or invalid in environment variables.');
       return NextResponse.json(
         { error: '서버 환경 변수(RESEND_API_KEY) 설정이 누락되었습니다. .env.local 파일을 확인해 주세요.' },
         { status: 500 }
@@ -58,6 +58,15 @@ export async function POST(request) {
 
     if (error) {
       console.error('Resend Direct Error:', error);
+      
+      // Resend 테스트 모드 제한 에러 처리
+      if (error.message && error.message.includes('only send testing emails')) {
+        return NextResponse.json(
+          { error: 'Resend 테스트 모드 제한: 현재는 Resend 계정 가입 이메일(truek.work@gmail.com)로만 테스트 메일 전송이 가능합니다. 해당 이메일로 테스트해 주세요!' },
+          { status: 400 }
+        );
+      }
+
       return NextResponse.json(
         { error: `메일 발송 실패: ${error.message}` },
         { status: 500 }
