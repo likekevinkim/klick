@@ -126,7 +126,7 @@ function AuthPageContent() {
     }
   };
 
-  // 2단계: 6자리 OTP 인증번호 서버 검증
+  // 2단계: 6자리 OTP 인증번호 서버 엄격 검증 (일치하지 않으면 승인 불가)
   const handleVerifyOtpCode = async () => {
     if (!otpCode || otpCode.length < 6) {
       setErrorMessage('메일로 받으신 6자리 숫자 인증번호를 올바르게 입력해 주세요.');
@@ -161,7 +161,7 @@ function AuthPageContent() {
     }
   };
 
-  // 3단계: 가입 완료 및 세부 정보 제출 핸들러
+  // 3단계: 가입 완료 및 세부 정보 제출 핸들러 (인증 미완료 시 절대 진행 불가)
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);

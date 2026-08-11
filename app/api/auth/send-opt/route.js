@@ -29,7 +29,7 @@ export async function POST(request) {
       verified: false
     });
 
-    // Resend Direct SDK를 통한 직접 발송 (Supabase SMTP 경유 없음)
+    // Resend Direct SDK를 통한 직접 발송 (Supabase 백엔드 SMTP 경유 없음)
     const { data, error } = await resend.emails.send({
       from: 'KLICK B2B <onboarding@resend.dev>',
       to: [email],
@@ -37,7 +37,7 @@ export async function POST(request) {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
           <h2 style="color: #0f172a; font-size: 20px; font-weight: bold; margin-bottom: 8px;">KLICK B2B Network</h2>
-          <p style="color: #475569; font-size: 14px; line-height: 1.5;">Welcome to KLICK B2B. Below is your 6-digit email verification code:</p>
+          <p style="color: #475569; font-size: 14px; line-height: 1.5;">Welcome to KLICK B2B Network. Below is your 6-digit email verification code:</p>
           <div style="background-color: #f1f5f9; padding: 20px; border-radius: 12px; text-align: center; margin: 24px 0;">
             <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #2563eb;">${generatedOtp}</span>
           </div>
