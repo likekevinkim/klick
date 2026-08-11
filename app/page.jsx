@@ -17,7 +17,9 @@ import {
   Send,
   Loader2,
   MessageSquare,
-  Plus
+  Plus,
+  X,
+  Edit3
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -29,6 +31,11 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // ★ 회원가입 직후 1회 출력될 온보딩 선택 모달 상태 및 유저 정보
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userRole, setUserRole] = useState('seller');
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
 
   const categories = [
     'All',
@@ -43,6 +50,7 @@ export default function HomePage() {
     setMounted(true);
     fetchHomeProducts();
     updateUnreadCount();
+    checkOnboardingStatus();
 
     const handleUnreadUpdate = () => {
       updateUnreadCount();
@@ -53,6 +61,41 @@ export default function HomePage() {
       window.removeEventListener('klick_unread_chat_updated', handleUnreadUpdate);
     };
   }, []);
+
+  // ★ 회원가입 직후 온보딩 모달 트리거 여부 확인
+  const checkOnboardingStatus = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userObj = session?.user || null;
+    setCurrentUser(userObj);
+
+    if (userObj) {
+      const role = userObj.user_metadata?.role || 'seller';
+      setUserRole(role);
+
+      const isNewFlag = localStorage.getItem('klick_show_onboarding');
+      if (isNewFlag === 'true') {
+        setShowOnboardingModal(true);
+      }
+    }
+  };
+
+  const handleCloseOnboarding = () => {
+    localStorage.removeItem('klick_show_onboarding');
+    setShowOnboardingModal(false);
+  };
+
+  // 온보딩 모달에서 [지금 정보 입력하기] 클릭 시 이동 처리
+  const handleGoToProfileEdit = () => {
+    localStorage.removeItem('klick_show_onboarding');
+    setShowOnboardingModal(false);
+
+    if (userRole === 'seller') {
+      const myId = currentUser?.id || '1';
+      router.push(`/companies/${myId}?edit=true`);
+    } else {
+      router.push('/buyer/profile');
+    }
+  };
 
   const updateUnreadCount = () => {
     const savedCount = localStorage.getItem('klick_unread_chat_count');
@@ -343,6 +386,59 @@ export default function HomePage() {
           </div>
         </section>
       </main>
+
+      {/* ★ 가입 직후 출력되는 온보딩 선택 모달 팝업 */}
+      {showOnboardingModal && (
+        <div className="fixed inset-0 z-[999999] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <span className="text-xs font-extrabold text-blue-600 flex items-center gap-1.5 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                <Sparkles className="w-3.5 h-3.5" /> Welcome to KLICK B2B Network!
+              </span>
+
+              <button
+                type="button"
+                onClick={handleCloseOnboarding}
+                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-xl font-extrabold text-slate-900 leading-snug">
+                {userRole === 'seller'
+                  ? '공장 상세 스펙 및 세부 프로필을 지금 등록하시겠습니까?'
+                  : 'Would you like to complete your buyer sourcing profile now?'}
+              </h2>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                {userRole === 'seller'
+                  ? '공장 위치, 주요 생산 설비, 품질 인증서(ISO/CE)를 사전에 세밀히 입력하시면 해외 바이어들에게 3배 더 많은 견적 문의를 받을 수 있습니다.'
+                  : 'Complete your business profile to receive official wholesale quotations and verified factory discounts.'}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleCloseOnboarding}
+                className="py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+              >
+                나중에 둘러보기 (Explore First)
+              </button>
+
+              <button
+                type="button"
+                onClick={handleGoToProfileEdit}
+                className="py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Edit3 className="w-4 h-4" />
+                <span>지금 정보 입력하기</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { 
   Building2, 
   MapPin, 
@@ -36,23 +36,27 @@ import { supabase } from '@/lib/supabase';
 export default function CompanyShowroomLandingPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
   const companyId = params?.id;
+  const autoEditParam = searchParams.get('edit'); // 온보딩 모달에서 자동 진입 시 'true'
 
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
   const [company, setCompany] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isOwner, setIsOwner] = useState(false); // 셀러 본인 여부
+  const [isOwner, setIsOwner] = useState(false);
 
   // 탭 상태 ('about': Factory Overview, 'products': Showroom 제품 라인업)
   const [activeTab, setActiveTab] = useState('about');
 
-  // 공장 정보 수정을 위한 모달 및 폼 상태
+  // ★ 공장 정보 수정을 위한 모달 및 한글/영문 분리 폼 상태
   const [isEditCompanyModalOpen, setIsEditCompanyModalOpen] = useState(false);
   const [isSavingCompany, setIsSavingCompany] = useState(false);
 
-  const [editCompanyName, setEditCompanyName] = useState('');
+  const [editCompanyNameKo, setEditCompanyNameKo] = useState('');
+  const [editCompanyNameEn, setEditCompanyNameEn] = useState('');
   const [editTagline, setEditTagline] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editBusinessType, setEditBusinessType] = useState('Direct Manufacturer');
@@ -61,7 +65,7 @@ export default function CompanyShowroomLandingPage() {
   const [editEmployeesCount, setEditEmployeesCount] = useState('50 - 100 Employees');
   const [editFactorySize, setEditFactorySize] = useState('5,000 sq. meters');
 
-  // Showroom 탭에서 직접 신규 제품 등록을 위한 모달 및 폼 상태
+  // Showroom 탭 신규 제품 등록 모달
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
 
@@ -73,7 +77,7 @@ export default function CompanyShowroomLandingPage() {
   const [productImageUrl, setProductImageUrl] = useState('');
   const [productDescriptionKo, setProductDescriptionKo] = useState('');
 
-  // 공장 실사 동영상 모달
+  // 비디오 모달
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [selectedVideoUrl, setSelectedVideoUrl] = useState('');
 
@@ -99,7 +103,6 @@ export default function CompanyShowroomLandingPage() {
     fetchCompanyAndProductsData();
   }, [companyId]);
 
-  // 회사 프로필 정보 및 등록된 제품(Showroom/Dashboard)을 DB에서 동적 로드
   const fetchCompanyAndProductsData = async () => {
     try {
       setLoading(true);
@@ -110,7 +113,6 @@ export default function CompanyShowroomLandingPage() {
 
       let fetchedCompany = null;
 
-      // 1. Supabase DB 'companies' 테이블에서 본인 또는 해당 ID 회사 정보 조회
       if (companyId) {
         const { data: dbCompany } = await supabase
           .from('companies')
@@ -123,7 +125,6 @@ export default function CompanyShowroomLandingPage() {
         }
       }
 
-      // 소유권 검증 (로그인 유저 본인 확인)
       if (currentUser) {
         if (fetchedCompany && (fetchedCompany.user_id === currentUser.id || companyId === currentUser.id)) {
           setIsOwner(true);
@@ -132,12 +133,13 @@ export default function CompanyShowroomLandingPage() {
         }
       }
 
-      // DB 데이터가 없는 경우 기본값 세팅 및 폼 초기화 데이터 할당
       if (!fetchedCompany) {
         fetchedCompany = {
           id: companyId || currentUser?.id || '1',
           user_id: currentUser?.id || null,
-          company_name: currentUser?.user_metadata?.company_name_en || currentUser?.user_metadata?.company_name || 'Hankook Precision Co., Ltd. (한국정밀공업)',
+          company_name: currentUser?.user_metadata?.company_name_en || currentUser?.user_metadata?.company_name_ko || 'Hankook Precision Co., Ltd.',
+          company_name_ko: currentUser?.user_metadata?.company_name_ko || '(주)한국정밀공업',
+          company_name_en: currentUser?.user_metadata?.company_name_en || 'Hankook Precision Co., Ltd.',
           tagline: 'Leading Manufacturer of High-Precision Hydraulic Valves & Industrial Automation Parts',
           description: 'Established in 1998, Hankook Precision specializes in manufacturing ultra-durable hydraulic control valves, industrial automation components, and customized machinery parts. With state-of-the-art CNC production facilities and strict ISO 9001 quality assurance, we export premium Korean manufacturing goods to over 35 countries worldwide.',
           business_type: 'Direct Manufacturer',
@@ -156,8 +158,9 @@ export default function CompanyShowroomLandingPage() {
 
       setCompany(fetchedCompany);
 
-      // 수정 폼 상태값 초기 설정
-      setEditCompanyName(fetchedCompany.company_name || '');
+      // ★ 한글 상호명과 영문 상호명을 분리하여 Form 상태값 지정
+      setEditCompanyNameKo(fetchedCompany.company_name_ko || '');
+      setEditCompanyNameEn(fetchedCompany.company_name_en || fetchedCompany.company_name || '');
       setEditTagline(fetchedCompany.tagline || '');
       setEditDescription(fetchedCompany.description || '');
       setEditBusinessType(fetchedCompany.business_type || 'Direct Manufacturer');
@@ -166,17 +169,21 @@ export default function CompanyShowroomLandingPage() {
       setEditEmployeesCount(fetchedCompany.employees_count || '50 - 100 Employees');
       setEditFactorySize(fetchedCompany.factory_size || '5,000 sq. meters');
 
-      // 2. 해당 셀러/공장이 등록한 전체 제품 라인업 조회 (Product Dashboard와 1:1 연동)
+      // 온보딩에서 파라미터로 넘어왔다면 프로필 수정 모달 자동 오픈
+      if (autoEditParam === 'true') {
+        setIsEditCompanyModalOpen(true);
+      }
+
+      // 등록된 제품 목록 조회
       const { data: allProducts } = await supabase
         .from('products')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (allProducts && allProducts.length > 0) {
-        // 셀러 본인의 user_id 또는 company_id와 일치하는 제품 필터링
         const targetUserId = currentUser?.id || companyId;
         const matchedProducts = allProducts.filter(
-          p => p.user_id === targetUserId || p.company_id === companyId || (p.company_name && p.company_name.toLowerCase().includes((fetchedCompany.company_name || '').toLowerCase().slice(0, 5)))
+          p => p.user_id === targetUserId || p.company_id === companyId || (p.company_name && p.company_name.toLowerCase().includes((fetchedCompany.company_name_en || '').toLowerCase().slice(0, 5)))
         );
 
         setProducts(matchedProducts.length > 0 ? matchedProducts : allProducts);
@@ -209,7 +216,7 @@ export default function CompanyShowroomLandingPage() {
     }
   };
 
-  // ★ 공장 스펙/프로필 정보 저장 및 DB 업데이트 (updated_at 컬럼 유무 대비 보완 로직)
+  // ★ 공장 한글/영문 상호명 분리 저장
   const handleSaveCompanyProfile = async (e) => {
     e.preventDefault();
     if (!user) return;
@@ -219,7 +226,9 @@ export default function CompanyShowroomLandingPage() {
 
       const updatedPayload = {
         user_id: user.id,
-        company_name: editCompanyName,
+        company_name: editCompanyNameEn || editCompanyNameKo,
+        company_name_ko: editCompanyNameKo,
+        company_name_en: editCompanyNameEn,
         tagline: editTagline,
         description: editDescription,
         business_type: editBusinessType,
@@ -229,12 +238,10 @@ export default function CompanyShowroomLandingPage() {
         factory_size: editFactorySize
       };
 
-      // 1차 시도: 기본 필드로 저장
-      let { error } = await supabase
+      const { error } = await supabase
         .from('companies')
         .upsert([updatedPayload], { onConflict: 'user_id' });
 
-      // 만약 updated_at 관련 에러가 발생하지 않고 정상 처리되면 화면 반영
       if (error) {
         console.error('Error updating company profile:', error);
         alert('공장 프로필 저장 중 오류가 발생했습니다: ' + error.message);
@@ -245,13 +252,11 @@ export default function CompanyShowroomLandingPage() {
       }
     } catch (err) {
       console.error('Company save error:', err);
-      alert('저장 중 예외가 발생했습니다.');
     } finally {
       setIsSavingCompany(false);
     }
   };
 
-  // Showroom에서 직접 신규 제품을 생성하여 등록 (Product Dashboard와 자동 상호 동기화)
   const handleCreateShowroomProduct = async (e) => {
     e.preventDefault();
     if (!user) {
@@ -263,10 +268,10 @@ export default function CompanyShowroomLandingPage() {
     try {
       setIsSavingProduct(true);
 
-      const companyNameForProduct = company?.company_name || 'Verified Korean Manufacturer';
+      const companyNameForProduct = company?.company_name_en || company?.company_name || 'Verified Korean Manufacturer';
 
       const newProductPayload = {
-        user_id: user.id, // 셀러 본인 ID 매핑으로 Product Dashboard 및 Showroom 동시 노출
+        user_id: user.id,
         company_id: user.id,
         company_name: companyNameForProduct,
         title_ko: productTitleKo,
@@ -281,10 +286,9 @@ export default function CompanyShowroomLandingPage() {
         created_at: new Date().toISOString()
       };
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('products')
-        .insert([newProductPayload])
-        .select();
+        .insert([newProductPayload]);
 
       if (error) {
         console.error('Failed to create showroom product:', error);
@@ -293,13 +297,11 @@ export default function CompanyShowroomLandingPage() {
         alert('신규 제품이 Showroom 및 Product Dashboard에 동시에 등록되었습니다!');
         setIsAddProductModalOpen(false);
 
-        // 입력 폼 리셋
         setProductTitleKo('');
         setProductTitleEn('');
         setProductImageUrl('');
         setProductDescriptionKo('');
 
-        // 제품 목록 새로고침
         fetchCompanyAndProductsData();
       }
     } catch (err) {
@@ -315,7 +317,7 @@ export default function CompanyShowroomLandingPage() {
   };
 
   const handleStartCompanyChat = () => {
-    const compName = encodeURIComponent(company?.company_name || 'Hankook Precision Co., Ltd.');
+    const compName = encodeURIComponent(company?.company_name_en || company?.company_name || 'Hankook Precision Co., Ltd.');
     const title = encodeURIComponent('Factory Partnership & Wholesale Inquiry');
     router.push(`/chat?company=${compName}&title=${title}`);
   };
@@ -326,7 +328,7 @@ export default function CompanyShowroomLandingPage() {
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 antialiased">
       <Header />
 
-      {/* 1. 회사 상단 히어로 배너 & 미니홈피 커버 */}
+      {/* 1. 회사 상단 히어로 배너 */}
       <section className="bg-slate-900 text-white relative overflow-hidden border-b border-slate-800 pt-12 pb-16 px-6">
         <div className="max-w-6xl mx-auto space-y-6 relative z-10">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -339,7 +341,6 @@ export default function CompanyShowroomLandingPage() {
               </span>
             </div>
 
-            {/* 셀러 본인일 때 노출되는 [Edit Factory Info] 상단 버튼 */}
             {isOwner && (
               <button
                 type="button"
@@ -354,14 +355,16 @@ export default function CompanyShowroomLandingPage() {
 
           <div className="space-y-3 max-w-4xl">
             <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-snug">
-              {company?.company_name}
+              {company?.company_name_en || company?.company_name}
             </h1>
+            {company?.company_name_ko && (
+              <p className="text-slate-400 text-sm font-bold">상호명: {company.company_name_ko}</p>
+            )}
             <p className="text-slate-300 text-base md:text-lg leading-relaxed font-medium">
               {company?.tagline || 'Leading Manufacturer in South Korea'}
             </p>
           </div>
 
-          {/* 핵심 공장 스펙 요약 바 */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-slate-800 text-xs text-slate-300">
             <div className="flex items-center gap-2.5">
               <MapPin className="w-4 h-4 text-blue-400 flex-shrink-0" />
@@ -398,11 +401,10 @@ export default function CompanyShowroomLandingPage() {
         </div>
       </section>
 
-      {/* 2. 네비게이션 탭 (탭2 명칭: Showroom) */}
+      {/* 2. 네비게이션 탭 */}
       <section className="bg-white border-b border-slate-200 sticky top-18 z-40 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            {/* 탭 1: Factory Overview & Certifications */}
             <button
               type="button"
               onClick={() => setActiveTab('about')}
@@ -416,7 +418,6 @@ export default function CompanyShowroomLandingPage() {
               <span>Factory Overview & Certifications</span>
             </button>
 
-            {/* 탭 2: Showroom */}
             <button
               type="button"
               onClick={() => setActiveTab('products')}
@@ -432,7 +433,6 @@ export default function CompanyShowroomLandingPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* 셀러 자신일 때 Showroom 탭에서 직접 신규 제품을 추가하는 버튼 */}
             {isOwner && (
               <button
                 type="button"
@@ -459,7 +459,6 @@ export default function CompanyShowroomLandingPage() {
       {/* 3. 탭별 메인 컨텐츠 영역 */}
       <main className="max-w-6xl mx-auto px-6 mt-10">
         {activeTab === 'about' ? (
-          /* [첫번째 탭] 공장 상세 개요, 비디오 투어, 갤러리, 품질 인증서 */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-8 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8">
               <div className="flex items-center justify-between">
@@ -484,7 +483,7 @@ export default function CompanyShowroomLandingPage() {
                 <p>{company?.description}</p>
               </div>
 
-              {/* 검증된 공장 실사 동영상 비디오 투어 */}
+              {/* 비디오 투어 */}
               <div className="border-t border-slate-100 pt-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -528,7 +527,7 @@ export default function CompanyShowroomLandingPage() {
                 </div>
               </div>
 
-              {/* 공장 전경 및 생산 현장 사진 갤러리 */}
+              {/* 사진 갤러리 */}
               {company?.gallery_images && Array.isArray(company.gallery_images) && company.gallery_images.length > 0 && (
                 <div className="space-y-3 border-t border-slate-100 pt-6">
                   <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
@@ -610,7 +609,7 @@ export default function CompanyShowroomLandingPage() {
             </div>
           </div>
         ) : (
-          /* [두번째 탭] Showroom - 제품 카탈로그 및 Product Dashboard 상호 연동 목록 */
+          /* [두번째 탭] Showroom */
           <div className="space-y-6">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <div>
@@ -716,7 +715,7 @@ export default function CompanyShowroomLandingPage() {
         )}
       </main>
 
-      {/* 1. 공장 정보 입력 및 수정 모달 팝업 */}
+      {/* ★ 1. 공장 한글/영문 상호명 분리 입력 및 정보 수정 모달 */}
       {isEditCompanyModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-2xl w-full border border-slate-200 shadow-2xl space-y-5 animate-fadeIn max-h-[90vh] overflow-y-auto">
@@ -741,16 +740,31 @@ export default function CompanyShowroomLandingPage() {
             </div>
 
             <form onSubmit={handleSaveCompanyProfile} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Company / Factory Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={editCompanyName}
-                  onChange={(e) => setEditCompanyName(e.target.value)}
-                  placeholder="e.g. Hankook Precision Co., Ltd."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
+              {/* 한글 / 영문 상호명 분리 수집 필드 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">회사 상호명 (한글) *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editCompanyNameKo}
+                    onChange={(e) => setEditCompanyNameKo(e.target.value)}
+                    placeholder="예: (주)한국정밀공업"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Company Name (English) *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editCompanyNameEn}
+                    onChange={(e) => setEditCompanyNameEn(e.target.value)}
+                    placeholder="e.g. Hankook Precision Co., Ltd."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div>
@@ -865,7 +879,7 @@ export default function CompanyShowroomLandingPage() {
         </div>
       )}
 
-      {/* 2. Showroom 탭에서 직접 신규 제품을 등록하는 모달 팝업 */}
+      {/* 2. Showroom 탭 신규 제품 등록 모달 */}
       {isAddProductModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-xl w-full border border-slate-200 shadow-2xl space-y-5 animate-fadeIn">
@@ -1007,7 +1021,7 @@ export default function CompanyShowroomLandingPage() {
         </div>
       )}
 
-      {/* 동영상 재생 모달 팝업 */}
+      {/* 동영상 모달 */}
       {isVideoModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-slate-900 text-white rounded-3xl p-6 max-w-3xl w-full border border-slate-800 shadow-2xl space-y-4 animate-fadeIn">

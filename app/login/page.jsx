@@ -25,18 +25,19 @@ export default function AuthPage() {
   const [isSignUp, setIsSignUp] = useState(false); // false: Sign In, true: Sign Up
   const [userRole, setUserRole] = useState('seller'); // 'seller' or 'buyer'
 
-  // Common inputs
+  // 공통 입력
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Seller specific inputs (한글/영문 회사명 분리 수집)
+  // 셀러 전용 입력 (한글/영문 상호명 분리 수집)
   const [companyNameKo, setCompanyNameKo] = useState('');
   const [companyNameEn, setCompanyNameEn] = useState('');
   const [sellerPhone, setSellerPhone] = useState('');
   const [category, setCategory] = useState('Industrial Machinery');
 
-  // Buyer specific inputs
+  // 바이어 전용 입력 (담당자명, 영문 회사명, 국가)
   const [buyerName, setBuyerName] = useState('');
+  const [buyerCompanyNameEn, setBuyerCompanyNameEn] = useState('');
   const [country, setCountry] = useState('United States');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -81,7 +82,7 @@ export default function AuthPage() {
     }
   };
 
-  // Supabase Auth submit handler
+  // Supabase Auth 제출 핸들러
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -92,7 +93,7 @@ export default function AuthPage() {
       if (isSignUp) {
         const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://klick-six.vercel.app';
 
-        // 1. Supabase Auth Sign Up (이메일 인증 링크 포함)
+        // 1. Supabase Auth Sign Up (이메일 인증 및 온보딩 플래그 세팅)
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -100,17 +101,18 @@ export default function AuthPage() {
             emailRedirectTo: `${siteUrl}/login`,
             data: {
               role: userRole,
-              company_name: companyNameEn || companyNameKo || 'Hankook Precision Co., Ltd.',
+              company_name: userRole === 'seller' ? (companyNameEn || companyNameKo) : buyerCompanyNameEn,
               company_name_ko: companyNameKo,
-              company_name_en: companyNameEn,
+              company_name_en: userRole === 'seller' ? companyNameEn : buyerCompanyNameEn,
               buyer_name: userRole === 'buyer' ? buyerName : '',
+              is_new_user: true // 온보딩 모달 트리거용 플래그
             },
           },
         });
 
         if (error) throw error;
 
-        // Save metadata according to user role
+        // 역할별 메타데이터 DB 저장
         if (data?.user) {
           try {
             if (userRole === 'seller') {
@@ -130,6 +132,7 @@ export default function AuthPage() {
                 {
                   auth_user_id: data.user.id,
                   buyer_name: buyerName || 'Global Buyer',
+                  company_name_en: buyerCompanyNameEn,
                   buyer_email: email,
                   country: country,
                   interest_category: category,
@@ -144,11 +147,12 @@ export default function AuthPage() {
         if (data?.user && data?.session === null) {
           setSuccessMessage(`A verification link has been sent to ${email}. Please check your inbox and click the link to activate your account.`);
         } else {
-          setSuccessMessage(`Registration completed for ${userRole === 'seller' ? 'Korean Manufacturer (Seller)' : 'Global Buyer'}. Switching to Sign In mode.`);
+          // 회원가입 후 온보딩 안내 플래그 저장 후 홈 이동
+          localStorage.setItem('klick_show_onboarding', 'true');
+          setSuccessMessage(`Registration completed! Redirecting to home...`);
           setTimeout(() => {
-            setIsSignUp(false);
-            setSuccessMessage('');
-          }, 1500);
+            router.push('/');
+          }, 1200);
         }
       } else {
         // 2. Supabase Auth Sign In
@@ -163,7 +167,6 @@ export default function AuthPage() {
 
         setSuccessMessage('Successfully signed in! Redirecting to home...');
 
-        // ★ 대표님 요청 사항: 셀러든 바이어든 로그인 성공 시 무조건 홈 화면(/)으로 리다이렉트
         setTimeout(() => {
           router.push('/');
         }, 400);
@@ -197,7 +200,7 @@ export default function AuthPage() {
       <Header />
 
       <main className="max-w-5xl mx-auto px-6 mt-12 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-        {/* Left Information Section */}
+        {/* 좌측 플랫폼 안내 섹션 */}
         <div className="lg:col-span-6 space-y-6">
           <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
             <Globe className="w-4 h-4" /> KLICK Global B2B Network
@@ -239,9 +242,9 @@ export default function AuthPage() {
           </div>
         </div>
 
-        {/* Right Form Card Section */}
+        {/* 우측 회원가입 / 로그인 폼 카드의 영역 */}
         <div className="lg:col-span-6 bg-white p-8 md:p-10 rounded-3xl shadow-sm border border-slate-200 space-y-6">
-          {/* Role Toggle Tabs */}
+          {/* 역할 선택 탭 (Seller / Buyer) */}
           <div className="bg-slate-100 p-1.5 rounded-2xl grid grid-cols-2 gap-1">
             <button
               type="button"
@@ -290,14 +293,14 @@ export default function AuthPage() {
           </div>
 
           <form onSubmit={handleAuthSubmit} className="space-y-4">
-            {/* 1. Sign Up Specific Inputs */}
+            {/* 1. 회원가입 시 역할별 입력 필드 */}
             {isSignUp && (
               <>
                 {userRole === 'seller' ? (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">회사 상호명 (한글)</label>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">회사 상호명 (한글) *</label>
                         <input
                           type="text"
                           required
@@ -309,7 +312,7 @@ export default function AuthPage() {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Company Name (English)</label>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Company Name (English) *</label>
                         <input
                           type="text"
                           required
@@ -351,16 +354,31 @@ export default function AuthPage() {
                   </>
                 ) : (
                   <>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Full Name / Contact Person</label>
-                      <input
-                        type="text"
-                        required
-                        value={buyerName}
-                        onChange={(e) => setBuyerName(e.target.value)}
-                        placeholder="John Smith"
-                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Full Name / Contact Person *</label>
+                        <input
+                          type="text"
+                          required
+                          value={buyerName}
+                          onChange={(e) => setBuyerName(e.target.value)}
+                          placeholder="e.g. John Smith"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
+                        />
+                      </div>
+
+                      {/* ★ 바이어용 영문 회사명 필드 추가 */}
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Company Name (English) *</label>
+                        <input
+                          type="text"
+                          required
+                          value={buyerCompanyNameEn}
+                          onChange={(e) => setBuyerCompanyNameEn(e.target.value)}
+                          placeholder="e.g. Apex Global Trading LLC"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
+                        />
+                      </div>
                     </div>
 
                     <div>
@@ -384,9 +402,9 @@ export default function AuthPage() {
               </>
             )}
 
-            {/* 2. Common Inputs */}
+            {/* 2. 공통 로그인/가입 입력 */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Email Address</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">Email Address *</label>
               <input
                 type="email"
                 required
@@ -399,7 +417,7 @@ export default function AuthPage() {
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-700">Password (at least 6 characters)</label>
+                <label className="block text-xs font-bold text-slate-700">Password (at least 6 characters) *</label>
                 {!isSignUp && (
                   <button
                     type="button"
@@ -458,7 +476,7 @@ export default function AuthPage() {
             </button>
           </form>
 
-          {/* Toggle between Sign In / Sign Up */}
+          {/* 로그인 / 회원가입 모드 전환 */}
           <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>{isSignUp ? 'Already have an account?' : "Don't have an account yet?"}</span>
             <button
