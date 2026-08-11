@@ -2,9 +2,6 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-// 메모리 기반 임시 OTP 저장소 (글로벌 싱글톤 저장)
-global.otpStore = global.otpStore || new Map();
-
 export async function POST(request) {
   try {
     const apiKey = process.env.RESEND_API_KEY;
@@ -31,13 +28,6 @@ export async function POST(request) {
     // 6자리 랜덤 숫자 OTP 생성
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10분 유효기간
-
-    // OTP 저장소에 세션 기록
-    global.otpStore.set(email, {
-      code: generatedOtp,
-      expiresAt: expiresAt,
-      verified: false
-    });
 
     // Resend Direct SDK 발송 요청
     const { data, error } = await resend.emails.send({
@@ -73,10 +63,26 @@ export async function POST(request) {
       );
     }
 
-    return NextResponse.json({
+    // 서버리스 메모리 소실 방지를 위한 보안 쿠키 생성
+    const response = NextResponse.json({
       success: true,
       message: '인증번호가 메일함으로 발송되었습니다.'
     });
+
+    const sessionPayload = Buffer.from(JSON.stringify({
+      email: email,
+      code: generatedOtp,
+      expiresAt: expiresAt
+    })).toString('base64');
+
+    response.cookies.set('klick_otp_session', sessionPayload, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 600, // 10분
+      path: '/'
+    });
+
+    return response;
   } catch (err) {
     console.error('Send OTP Route Handler Exception:', err);
     return NextResponse.json(
