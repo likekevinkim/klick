@@ -314,7 +314,7 @@ export default function Header() {
 
                   {userRole === 'seller' ? (
                     <>
-                      {/* ★ 1. 드롭다운 메뉴 라벨 변경: My Factory & Showroom */}
+                      {/* My Factory & Showroom */}
                       <Link
                         href={myCompanyShowroomUrl}
                         onClick={() => setIsUserMenuOpen(false)}
@@ -324,7 +324,7 @@ export default function Header() {
                         <span>My Factory & Showroom</span>
                       </Link>
 
-                      {/* 2. Product Dashboard */}
+                      {/* Product Dashboard */}
                       <Link
                         href="/products"
                         onClick={() => setIsUserMenuOpen(false)}
@@ -334,7 +334,7 @@ export default function Header() {
                         <span>Product Dashboard</span>
                       </Link>
 
-                      {/* 3. Live Chat Hub */}
+                      {/* Live Chat Hub */}
                       <Link
                         href="/chat"
                         onClick={() => setIsUserMenuOpen(false)}
@@ -404,7 +404,7 @@ export default function Header() {
             </Link>
           )}
 
-          {/* 5. 다국어 언어 선택 드롭다운 */}
+          {/* 5. 다국어 언어 선택 드롭다운 (반응형: 모바일에서는 지구본 아이콘만, sm 이상에서는 텍스트/화살표 함께 노출) */}
           <div className="relative border-l border-slate-800 pl-1.5 sm:pl-2 ml-0.5 sm:ml-1">
             <button
               type="button"
@@ -413,10 +413,11 @@ export default function Header() {
                 setIsUserMenuOpen(false);
               }}
               className="px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1"
+              aria-label="Select Language"
             >
-              <Globe className="w-4 h-4 text-blue-400" />
-              <span className="notranslate" translate="no">{currentLang}</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
+              <Globe className="w-4 h-4 text-blue-400 flex-shrink-0" />
+              <span className="notranslate hidden sm:inline" translate="no">{currentLang}</span>
+              <ChevronDown className="w-3 h-3 text-slate-400 hidden sm:inline" />
             </button>
 
             {isLangOpen && (
