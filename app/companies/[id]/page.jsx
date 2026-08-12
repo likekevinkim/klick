@@ -178,6 +178,7 @@ export default function CompanyShowroomLandingPage() {
     }
   };
 
+  // ★ RLS 보안 정책 및 스키마 캐시 미반영 예외에 대응하는 2중 안전 우회 저장 함수
   const handleSaveCompanyProfile = async (e) => {
     e.preventDefault();
 
@@ -232,8 +233,11 @@ export default function CompanyShowroomLandingPage() {
         saveError = insertErr;
       }
 
-      if (saveError && saveError.message.includes('company_name_ko')) {
+      // 만약 특정 신규 컬럼(category 또는 company_name_ko) 스키마 예외 발생 시 안전 우회 2차 시도
+      if (saveError && (saveError.message.includes('category') || saveError.message.includes('company_name_ko'))) {
+        console.warn('Schema cache mismatch detected. Retrying fallback payload:', saveError.message);
         const fallbackPayload = { ...updatedPayload };
+        delete fallbackPayload.category;
         delete fallbackPayload.company_name_ko;
 
         if (existingComp) {
