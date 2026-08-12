@@ -1,8 +1,11 @@
 // app/companies/[id]/page.jsx
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
+import EditCompanyModal from '@/components/company/EditCompanyModal';
+import AddProductModal from '@/components/company/AddProductModal';
+import VideoModal from '@/components/company/VideoModal';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { 
@@ -12,7 +15,6 @@ import {
   Users, 
   Award, 
   CheckCircle2, 
-  Globe, 
   Send, 
   Package, 
   ArrowRight, 
@@ -25,11 +27,7 @@ import {
   Image as ImageIcon,
   Edit3,
   Play,
-  X,
-  Plus,
-  Save,
-  Loader2,
-  Sparkles
+  Plus
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -39,7 +37,7 @@ export default function CompanyShowroomLandingPage() {
   const searchParams = useSearchParams();
 
   const companyId = params?.id;
-  const autoEditParam = searchParams.get('edit'); // 온보딩 모달에서 자동 진입 시 'true'
+  const autoEditParam = searchParams.get('edit');
 
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
@@ -48,10 +46,9 @@ export default function CompanyShowroomLandingPage() {
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
 
-  // 탭 상태 ('about': Factory Overview, 'products': Showroom 제품 라인업)
   const [activeTab, setActiveTab] = useState('about');
 
-  // ★ 공장 정보 수정을 위한 모달 및 한글/영문 분리 폼 상태
+  // 모달 토글 및 상태
   const [isEditCompanyModalOpen, setIsEditCompanyModalOpen] = useState(false);
   const [isSavingCompany, setIsSavingCompany] = useState(false);
 
@@ -65,7 +62,6 @@ export default function CompanyShowroomLandingPage() {
   const [editEmployeesCount, setEditEmployeesCount] = useState('50 - 100 Employees');
   const [editFactorySize, setEditFactorySize] = useState('5,000 sq. meters');
 
-  // Showroom 탭 신규 제품 등록 모달
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
 
@@ -77,7 +73,6 @@ export default function CompanyShowroomLandingPage() {
   const [productImageUrl, setProductImageUrl] = useState('');
   const [productDescriptionKo, setProductDescriptionKo] = useState('');
 
-  // 비디오 모달
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [selectedVideoUrl, setSelectedVideoUrl] = useState('');
 
@@ -120,9 +115,7 @@ export default function CompanyShowroomLandingPage() {
           .or(`id.eq.${companyId},user_id.eq.${companyId}`)
           .single();
 
-        if (dbCompany) {
-          fetchedCompany = dbCompany;
-        }
+        if (dbCompany) fetchedCompany = dbCompany;
       }
 
       if (currentUser) {
@@ -141,7 +134,7 @@ export default function CompanyShowroomLandingPage() {
           company_name_ko: currentUser?.user_metadata?.company_name_ko || '(주)한국정밀공업',
           company_name_en: currentUser?.user_metadata?.company_name_en || 'Hankook Precision Co., Ltd.',
           tagline: 'Leading Manufacturer of High-Precision Hydraulic Valves & Industrial Automation Parts',
-          description: 'Established in 1998, Hankook Precision specializes in manufacturing ultra-durable hydraulic control valves, industrial automation components, and customized machinery parts. With state-of-the-art CNC production facilities and strict ISO 9001 quality assurance, we export premium Korean manufacturing goods to over 35 countries worldwide.',
+          description: 'Established in 1998, Hankook Precision specializes in manufacturing ultra-durable hydraulic control valves, industrial automation components, and customized machinery parts.',
           business_type: 'Direct Manufacturer',
           location: 'Incheon, South Korea 🇰🇷',
           established_year: '1998',
@@ -158,7 +151,6 @@ export default function CompanyShowroomLandingPage() {
 
       setCompany(fetchedCompany);
 
-      // 한글 상호명과 영문 상호명을 분리하여 Form 상태값 지정
       setEditCompanyNameKo(fetchedCompany.company_name_ko || '');
       setEditCompanyNameEn(fetchedCompany.company_name_en || fetchedCompany.company_name || '');
       setEditTagline(fetchedCompany.tagline || '');
@@ -169,12 +161,10 @@ export default function CompanyShowroomLandingPage() {
       setEditEmployeesCount(fetchedCompany.employees_count || '50 - 100 Employees');
       setEditFactorySize(fetchedCompany.factory_size || '5,000 sq. meters');
 
-      // 온보딩에서 파라미터로 넘어왔다면 프로필 수정 모달 자동 오픈
       if (autoEditParam === 'true') {
         setIsEditCompanyModalOpen(true);
       }
 
-      // 등록된 제품 목록 조회
       const { data: allProducts } = await supabase
         .from('products')
         .select('*')
@@ -185,7 +175,6 @@ export default function CompanyShowroomLandingPage() {
         const matchedProducts = allProducts.filter(
           p => p.user_id === targetUserId || p.company_id === companyId || (p.company_name && p.company_name.toLowerCase().includes((fetchedCompany.company_name_en || '').toLowerCase().slice(0, 5)))
         );
-
         setProducts(matchedProducts.length > 0 ? matchedProducts : allProducts);
       } else {
         setProducts([
@@ -197,15 +186,6 @@ export default function CompanyShowroomLandingPage() {
             moq: '500 Units',
             tagline: 'ISO 9001 certified industrial solution engineered with Korean precision technology.',
             image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-          },
-          {
-            id: '2',
-            title_en: 'Heavy-Duty Hydraulic Actuator Cylinder AC-500',
-            category: 'Industrial Machinery',
-            price: '320.00',
-            moq: '100 Units',
-            tagline: 'Heavy industrial grade actuator built for zero-leakage durability.',
-            image_url: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=800&q=80',
           }
         ]);
       }
@@ -216,7 +196,6 @@ export default function CompanyShowroomLandingPage() {
     }
   };
 
-  // ★ 공장 한글/영문 상호명 분리 저장 (DB 스키마 캐시 오류 방지 2중 우회 안전 로직 내장)
   const handleSaveCompanyProfile = async (e) => {
     e.preventDefault();
     if (!user) return;
@@ -224,10 +203,8 @@ export default function CompanyShowroomLandingPage() {
     try {
       setIsSavingCompany(true);
 
-      const activeUserId = user.id;
-
       const updatedPayload = {
-        user_id: activeUserId,
+        user_id: user.id,
         company_name: editCompanyNameEn || editCompanyNameKo || 'Korean Manufacturer',
         company_name_ko: editCompanyNameKo,
         company_name_en: editCompanyNameEn,
@@ -241,15 +218,11 @@ export default function CompanyShowroomLandingPage() {
         updated_at: new Date().toISOString()
       };
 
-      // 1차 저장 시도 (모든 컬럼 포함)
       const { error } = await supabase
         .from('companies')
         .upsert([updatedPayload], { onConflict: 'user_id' });
 
       if (error) {
-        console.warn('First upsert attempt warning, trying fallback payload:', error.message);
-        
-        // 만약 DB 스키마에 company_name_ko 컬럼이 아직 준비되지 않았을 경우를 대비한 안전 2차 시도
         const fallbackPayload = { ...updatedPayload };
         delete fallbackPayload.company_name_ko;
 
@@ -257,9 +230,7 @@ export default function CompanyShowroomLandingPage() {
           .from('companies')
           .upsert([fallbackPayload], { onConflict: 'user_id' });
 
-        if (fallbackError) {
-          throw fallbackError;
-        }
+        if (fallbackError) throw fallbackError;
       }
 
       alert('공장 정보가 성공적으로 수정되었습니다!');
@@ -283,7 +254,6 @@ export default function CompanyShowroomLandingPage() {
 
     try {
       setIsSavingProduct(true);
-
       const companyNameForProduct = company?.company_name_en || company?.company_name || 'Verified Korean Manufacturer';
 
       const newProductPayload = {
@@ -302,12 +272,9 @@ export default function CompanyShowroomLandingPage() {
         created_at: new Date().toISOString()
       };
 
-      const { error } = await supabase
-        .from('products')
-        .insert([newProductPayload]);
+      const { error } = await supabase.from('products').insert([newProductPayload]);
 
       if (error) {
-        console.error('Failed to create showroom product:', error);
         alert('제품 등록 중 오류가 발생했습니다: ' + error.message);
       } else {
         alert('신규 제품이 Showroom 및 Product Dashboard에 동시에 등록되었습니다!');
@@ -344,7 +311,7 @@ export default function CompanyShowroomLandingPage() {
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 antialiased">
       <Header />
 
-      {/* 1. 회사 상단 히어로 배너 */}
+      {/* 1. 회사 히어로 배너 */}
       <section className="bg-slate-900 text-white relative overflow-hidden border-b border-slate-800 pt-12 pb-16 px-6">
         <div className="max-w-6xl mx-auto space-y-6 relative z-10">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -472,7 +439,7 @@ export default function CompanyShowroomLandingPage() {
         </div>
       </section>
 
-      {/* 3. 탭별 메인 컨텐츠 영역 */}
+      {/* 3. 탭별 컨텐츠 */}
       <main className="max-w-6xl mx-auto px-6 mt-10">
         {activeTab === 'about' ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -501,15 +468,10 @@ export default function CompanyShowroomLandingPage() {
 
               {/* 비디오 투어 */}
               <div className="border-t border-slate-100 pt-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                      <Video className="w-4 h-4 text-blue-600" />
-                      Verified Factory Production Video Tour (공장 실사 비디오)
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5">Real-time production facility and automated CNC inspection videos.</p>
-                  </div>
-                </div>
+                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                  <Video className="w-4 h-4 text-blue-600" />
+                  Verified Factory Production Video Tour (공장 실사 비디오)
+                </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {factoryVideos.map((vid) => (
@@ -520,11 +482,9 @@ export default function CompanyShowroomLandingPage() {
                     >
                       <div className="w-full h-44 bg-slate-800 relative overflow-hidden flex items-center justify-center">
                         <img src={vid.thumbnail} alt={vid.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300 opacity-80" />
-                        
                         <div className="w-12 h-12 bg-blue-600/90 rounded-full flex items-center justify-center shadow-2xl group-hover:bg-blue-500 group-hover:scale-110 transition">
                           <Play className="w-5 h-5 text-white ml-0.5 fill-white" />
                         </div>
-
                         <span className="absolute bottom-2.5 right-2.5 bg-black/80 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md">
                           {vid.duration}
                         </span>
@@ -543,28 +503,7 @@ export default function CompanyShowroomLandingPage() {
                 </div>
               </div>
 
-              {/* 사진 갤러리 */}
-              {company?.gallery_images && Array.isArray(company.gallery_images) && company.gallery_images.length > 0 && (
-                <div className="space-y-3 border-t border-slate-100 pt-6">
-                  <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                    <ImageIcon className="w-4 h-4 text-emerald-600" />
-                    Factory Facilities & Production Line Gallery
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {company.gallery_images.map((imgUrl, idx) => (
-                      <div key={idx} className="h-44 rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 group">
-                        <img
-                          src={imgUrl}
-                          alt={`Factory Facility ${idx + 1}`}
-                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 품질 인증서 태그 */}
+              {/* 품질 인증서 */}
               <div className="border-t border-slate-100 pt-6 space-y-3">
                 <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                   <Award className="w-4 h-4 text-blue-600" />
@@ -590,7 +529,7 @@ export default function CompanyShowroomLandingPage() {
               </div>
             </div>
 
-            {/* 우측 공장 연락처 카드 */}
+            {/* 우측 인적사항 카드 */}
             <div className="lg:col-span-4 space-y-6">
               <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 space-y-4 shadow-md">
                 <h3 className="text-base font-extrabold flex items-center gap-2">
@@ -625,7 +564,7 @@ export default function CompanyShowroomLandingPage() {
             </div>
           </div>
         ) : (
-          /* [두번째 탭] Showroom */
+          /* [Showroom 탭] */
           <div className="space-y-6">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <div>
@@ -675,9 +614,7 @@ export default function CompanyShowroomLandingPage() {
                             src={item.image_url}
                             alt={item.title_en || item.title_ko || item.product_name}
                             className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
                           />
                         ) : (
                           <Package className="w-10 h-10 text-slate-300" />
@@ -731,336 +668,58 @@ export default function CompanyShowroomLandingPage() {
         )}
       </main>
 
-      {/* 1. 공장 한글/영문 상호명 분리 입력 및 정보 수정 모달 */}
-      {isEditCompanyModalOpen && (
-        <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-2xl w-full border border-slate-200 shadow-2xl space-y-5 animate-fadeIn max-h-[90vh] overflow-y-auto">
-            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-                  <Edit3 className="w-5 h-5 text-blue-600" />
-                  Edit My Factory Profile & Specs
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Update your factory capacity and information displayed to global buyers.
-                </p>
-              </div>
+      {/* 모달 연동 구역 */}
+      <EditCompanyModal
+        isOpen={isEditCompanyModalOpen}
+        onClose={() => setIsEditCompanyModalOpen(false)}
+        onSubmit={handleSaveCompanyProfile}
+        isSaving={isSavingCompany}
+        editCompanyNameKo={editCompanyNameKo}
+        setEditCompanyNameKo={setEditCompanyNameKo}
+        editCompanyNameEn={editCompanyNameEn}
+        setEditCompanyNameEn={setEditCompanyNameEn}
+        editTagline={editTagline}
+        setEditTagline={setEditTagline}
+        editBusinessType={editBusinessType}
+        setEditBusinessType={setEditBusinessType}
+        editLocation={editLocation}
+        setEditLocation={setEditLocation}
+        editEstablishedYear={editEstablishedYear}
+        setEditEstablishedYear={setEditEstablishedYear}
+        editEmployeesCount={editEmployeesCount}
+        setEditEmployeesCount={setEditEmployeesCount}
+        editFactorySize={editFactorySize}
+        setEditFactorySize={setEditFactorySize}
+        editDescription={editDescription}
+        setEditDescription={setEditDescription}
+      />
 
-              <button
-                type="button"
-                onClick={() => setIsEditCompanyModalOpen(false)}
-                className="p-1.5 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-xl transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <AddProductModal
+        isOpen={isAddProductModalOpen}
+        onClose={() => setIsAddProductModalOpen(false)}
+        onSubmit={handleCreateShowroomProduct}
+        isSaving={isSavingProduct}
+        productTitleKo={productTitleKo}
+        setProductTitleKo={setProductTitleKo}
+        productTitleEn={productTitleEn}
+        setProductTitleEn={setProductTitleEn}
+        productCategory={productCategory}
+        setProductCategory={setProductCategory}
+        productPrice={productPrice}
+        setProductPrice={setProductPrice}
+        productMoq={productMoq}
+        setProductMoq={setProductMoq}
+        productImageUrl={productImageUrl}
+        setProductImageUrl={setProductImageUrl}
+        productDescriptionKo={productDescriptionKo}
+        setProductDescriptionKo={setProductDescriptionKo}
+      />
 
-            <form onSubmit={handleSaveCompanyProfile} className="space-y-4 text-xs">
-              {/* 한글 / 영문 상호명 분리 수집 필드 */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">회사 상호명 (한글) *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editCompanyNameKo}
-                    onChange={(e) => setEditCompanyNameKo(e.target.value)}
-                    placeholder="예: (주)한국정밀공업"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Company Name (English) *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editCompanyNameEn}
-                    onChange={(e) => setEditCompanyNameEn(e.target.value)}
-                    placeholder="e.g. Hankook Precision Co., Ltd."
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Tagline (One-line Summary)</label>
-                <input
-                  type="text"
-                  value={editTagline}
-                  onChange={(e) => setEditTagline(e.target.value)}
-                  placeholder="e.g. Leading Manufacturer of High-Precision Hydraulic Valves"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Business Type</label>
-                  <select
-                    value={editBusinessType}
-                    onChange={(e) => setEditBusinessType(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
-                  >
-                    <option value="Direct Manufacturer">Direct Manufacturer</option>
-                    <option value="OEM / ODM Manufacturer">OEM / ODM Manufacturer</option>
-                    <option value="High-Tech Direct Manufacturer">High-Tech Direct Manufacturer</option>
-                    <option value="Export Trading House">Export Trading House</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Factory Location</label>
-                  <input
-                    type="text"
-                    value={editLocation}
-                    onChange={(e) => setEditLocation(e.target.value)}
-                    placeholder="Incheon, South Korea 🇰🇷"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Established Year</label>
-                  <input
-                    type="text"
-                    value={editEstablishedYear}
-                    onChange={(e) => setEditEstablishedYear(e.target.value)}
-                    placeholder="1998"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Employees Count</label>
-                  <input
-                    type="text"
-                    value={editEmployeesCount}
-                    onChange={(e) => setEditEmployeesCount(e.target.value)}
-                    placeholder="50 - 100 Employees"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Factory Area</label>
-                  <input
-                    type="text"
-                    value={editFactorySize}
-                    onChange={(e) => setEditFactorySize(e.target.value)}
-                    placeholder="5,000 sq. meters"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Detailed Overview & Manufacturing Strength</label>
-                <textarea
-                  rows={4}
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  placeholder="Describe your manufacturing facility, production capacity, and export experience..."
-                  className="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsEditCompanyModalOpen(false)}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingCompany}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {isSavingCompany ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      <span>Save Factory Profile</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 2. Showroom 탭 신규 제품 등록 모달 */}
-      {isAddProductModalOpen && (
-        <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-xl w-full border border-slate-200 shadow-2xl space-y-5 animate-fadeIn">
-            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-                  <Plus className="w-5 h-5 text-blue-600" />
-                  Add Showroom Product
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Products created here will automatically appear on the global Product Dashboard!
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsAddProductModalOpen(false)}
-                className="p-1.5 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-xl transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateShowroomProduct} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">제품명 (한글) *</label>
-                <input
-                  type="text"
-                  required
-                  value={productTitleKo}
-                  onChange={(e) => setProductTitleKo(e.target.value)}
-                  placeholder="예: 초정밀 유압 제어 밸브 HV-300"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Product Title (English) *</label>
-                <input
-                  type="text"
-                  required
-                  value={productTitleEn}
-                  onChange={(e) => setProductTitleEn(e.target.value)}
-                  placeholder="e.g. High-Precision Hydraulic Control Valve HV-300"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Category *</label>
-                  <select
-                    value={productCategory}
-                    onChange={(e) => setProductCategory(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
-                  >
-                    <option value="Industrial Machinery">Industrial Machinery & Parts</option>
-                    <option value="K-Beauty & Cosmetics">K-Beauty & Cosmetics</option>
-                    <option value="K-Food & Beverages">K-Food & Beverages</option>
-                    <option value="Electronics & Smart IT">Electronics & Smart IT</option>
-                    <option value="General Manufacturing">General Manufacturing</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">FOB Unit Price ($ USD) *</label>
-                  <input
-                    type="text"
-                    required
-                    value={productPrice}
-                    onChange={(e) => setProductPrice(e.target.value)}
-                    placeholder="145.00"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Minimum Order (MOQ) *</label>
-                  <input
-                    type="text"
-                    required
-                    value={productMoq}
-                    onChange={(e) => setProductMoq(e.target.value)}
-                    placeholder="500 Units"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Product Image URL</label>
-                  <input
-                    type="url"
-                    value={productImageUrl}
-                    onChange={(e) => setProductImageUrl(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">제품 주요 설명 (한글)</label>
-                <textarea
-                  rows={3}
-                  value={productDescriptionKo}
-                  onChange={(e) => setProductDescriptionKo(e.target.value)}
-                  placeholder="공장 특허 기술, 소재 및 품질 검증 스펙을 자유롭게 입력하세요."
-                  className="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsAddProductModalOpen(false)}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingProduct}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {isSavingProduct ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 text-amber-300" />
-                      <span>Publish to Showroom & Dashboard</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 동영상 모달 */}
-      {isVideoModalOpen && (
-        <div className="fixed inset-0 z-[999999] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 text-white rounded-3xl p-6 max-w-3xl w-full border border-slate-800 shadow-2xl space-y-4 animate-fadeIn">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <span className="text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4" /> Verified Factory Video Stream
-              </span>
-
-              <button
-                type="button"
-                onClick={() => setIsVideoModalOpen(false)}
-                className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="w-full h-80 md:h-96 rounded-2xl overflow-hidden bg-black flex items-center justify-center">
-              <video src={selectedVideoUrl} controls autoPlay className="w-full h-full object-contain" />
-            </div>
-          </div>
-        </div>
-      )}
+      <VideoModal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        videoUrl={selectedVideoUrl}
+      />
     </div>
   );
 }
