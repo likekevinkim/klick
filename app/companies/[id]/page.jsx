@@ -22,7 +22,6 @@ import {
   Layers, 
   Factory,
   Mail,
-  Phone,
   Video,
   Image as ImageIcon,
   Edit3,
@@ -30,13 +29,13 @@ import {
   Plus,
   PlusCircle,
   Globe2,
-  Sparkles,
   Briefcase,
+  Info,
   Check
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-// 카테고리별 기본 고화질 커버 및 갤러리 이미지 셋
+// 대표 커버 이미지가 없을 경우 사용할 카테고리별 샘플 비주얼 배경
 const DEFAULT_CATEGORY_IMAGES = {
   'Industrial Machinery': {
     cover: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&auto=format&fit=crop&q=60',
@@ -262,12 +261,8 @@ export default function CompanyShowroomLandingPage() {
 
       const activeUserId = activeUser.id;
 
-      // 대표 커버 이미지 설정 (비어있으면 카테고리별 기본 이미지 사용)
+      // 대표 커버 이미지 설정 (사용자가 커스텀 업로드/입력하지 않았을 경우 빈 값 유지)
       const categoryKey = editCategory || 'Industrial Machinery';
-      const categoryDefaults = DEFAULT_CATEGORY_IMAGES[categoryKey] || DEFAULT_CATEGORY_IMAGES['Industrial Machinery'];
-      const finalCoverImg = editCoverImage && editCoverImage.trim() !== '' 
-        ? editCoverImage 
-        : categoryDefaults.cover;
 
       const updatedPayload = {
         user_id: activeUserId,
@@ -282,7 +277,7 @@ export default function CompanyShowroomLandingPage() {
         established_year: editEstablishedYear,
         employees_count: editEmployeesCount,
         factory_size: editFactorySize,
-        cover_image: finalCoverImg,
+        cover_image: editCoverImage,
         gallery_images: editGalleryImages,
         video_url: editVideoUrl,
         certifications: editCertifications,
@@ -401,18 +396,22 @@ export default function CompanyShowroomLandingPage() {
     router.push(`/chat?company=${compName}&title=${title}`);
   };
 
-  // 대표 커버 이미지 (미등록 시 카테고리 기본 이미지 사용)
+  // 대표 커버 이미지 (실제 입력값 및 샘플 여부 판별)
   const categoryKey = company?.category || 'Industrial Machinery';
   const categoryDefaults = DEFAULT_CATEGORY_IMAGES[categoryKey] || DEFAULT_CATEGORY_IMAGES['Industrial Machinery'];
   
-  const effectiveCoverImage = company?.cover_image && company.cover_image.trim() !== '' 
-    ? company.cover_image 
-    : categoryDefaults.cover;
+  const hasCustomCover = company?.cover_image && company.cover_image.trim() !== '';
+  const effectiveCoverImage = hasCustomCover ? company.cover_image : categoryDefaults.cover;
 
-  // 갤러리 이미지 (미등록 시 카테고리 디폴트 갤러리 배치)
-  const effectiveGalleryImages = company?.gallery_images && Array.isArray(company.gallery_images) && company.gallery_images.length > 0
-    ? company.gallery_images
-    : categoryDefaults.gallery;
+  // 갤러리 이미지 (실제 입력값 및 샘플 여부 판별)
+  const hasCustomGallery = company?.gallery_images && Array.isArray(company.gallery_images) && company.gallery_images.length > 0;
+  const effectiveGalleryImages = hasCustomGallery ? company.gallery_images : categoryDefaults.gallery;
+
+  // 비디오 존재 여부
+  const hasCustomVideo = company?.video_url && company.video_url.trim() !== '';
+
+  // 인증서 실제 존재 여부
+  const hasCustomCertifications = company?.certifications && Array.isArray(company.certifications) && company.certifications.length > 0;
 
   // 회사 소개글 데이터 검증
   const hasDescriptionData = company?.description && company.description.trim() !== '';
@@ -428,6 +427,14 @@ export default function CompanyShowroomLandingPage() {
         <div className="absolute inset-0 opacity-25">
           <img src={effectiveCoverImage} alt="Company Cover Background" className="w-full h-full object-cover" />
         </div>
+
+        {/* 상단 커버 이미지 샘플 여부 표출 워터마크 */}
+        {!hasCustomCover && (
+          <div className="absolute top-4 right-6 bg-slate-900/80 backdrop-blur-md text-amber-400 text-[10px] font-extrabold px-3 py-1 rounded-full border border-amber-500/30 flex items-center gap-1 shadow-lg">
+            <Info className="w-3.5 h-3.5 text-amber-400" />
+            <span>[Sample Cover Image] KLICK B2B Verified</span>
+          </div>
+        )}
 
         <div className="max-w-6xl mx-auto space-y-6 relative z-10">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -482,7 +489,7 @@ export default function CompanyShowroomLandingPage() {
               <Calendar className="w-4 h-4 text-blue-400 flex-shrink-0" />
               <div>
                 <span className="text-slate-400 block text-[10px]">Established</span>
-                <span className="font-bold">{company?.established_year ? `${company.established_year} Year` : 'Verified Entity'}</span>
+                <span className="font-bold">{company?.established_year ? `${company.established_year} Year` : 'Not Specified'}</span>
               </div>
             </div>
 
@@ -490,7 +497,7 @@ export default function CompanyShowroomLandingPage() {
               <Users className="w-4 h-4 text-blue-400 flex-shrink-0" />
               <div>
                 <span className="text-slate-400 block text-[10px]">Employees</span>
-                <span className="font-bold">{company?.employees_count || '10-50 Staff'}</span>
+                <span className="font-bold">{company?.employees_count || 'Not Specified'}</span>
               </div>
             </div>
 
@@ -498,7 +505,7 @@ export default function CompanyShowroomLandingPage() {
               <Layers className="w-4 h-4 text-blue-400 flex-shrink-0" />
               <div>
                 <span className="text-slate-400 block text-[10px]">Factory Area</span>
-                <span className="font-bold">{company?.factory_size || 'Manufacturing Base'}</span>
+                <span className="font-bold">{company?.factory_size || 'Not Specified'}</span>
               </div>
             </div>
           </div>
@@ -585,7 +592,7 @@ export default function CompanyShowroomLandingPage() {
                 )}
               </div>
 
-              {/* [개선 1] 입력하신 기본 스펙 정보들이 주르륵 보이는 비주얼 카드 그리드 */}
+              {/* 입력하신 기본 스펙 정보들이 주르륵 보이는 비주얼 카드 그리드 */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs">
                 <div className="p-3 bg-white rounded-xl border border-slate-100 space-y-1">
                   <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
@@ -642,7 +649,7 @@ export default function CompanyShowroomLandingPage() {
                 </div>
               </div>
 
-              {/* [개선 2] 회사 소개 본문 렌더링 */}
+              {/* 회사 소개 본문 렌더링 */}
               <div className="space-y-3 pt-2">
                 <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                   <Globe2 className="w-4 h-4 text-blue-600" />
@@ -661,16 +668,23 @@ export default function CompanyShowroomLandingPage() {
                 )}
               </div>
 
-              {/* [개선 3] 비디오 투어 Stream (비디오 미등록 시에도 테스트 비디오 기본 매핑되어 멋지게 노출) */}
+              {/* 비디오 투어 Stream (비디오 미등록 시 샘플 표출) */}
               <div className="border-t border-slate-100 pt-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                     <Video className="w-4 h-4 text-purple-600" />
-                    Verified Facility Video Stream (생산 현장 동영상)
+                    Facility Video Stream
                   </h3>
-                  <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 flex items-center gap-1">
-                    <Check className="w-3 h-3" /> Audit Video Active
-                  </span>
+
+                  {!hasCustomVideo ? (
+                    <span className="text-[10px] font-extrabold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 flex items-center gap-1">
+                      <Info className="w-3 h-3" /> [Sample Video] KLICK Verified
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3" /> Verified Video Stream
+                    </span>
+                  )}
                 </div>
 
                 <div
@@ -684,34 +698,57 @@ export default function CompanyShowroomLandingPage() {
                   </div>
 
                   <span className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-1 rounded-lg">
-                    Click to Play Factory Tour
+                    {!hasCustomVideo ? '[Sample Video] Click to Play' : 'Click to Play Video Stream'}
                   </span>
                 </div>
               </div>
 
-              {/* [개선 4] 갤러리 사진 (사진 미등록 시 카테고리 디폴트 3장 갤러리 렌더링) */}
+              {/* 갤러리 사진 (사진 미등록 시 샘플 워터마크 표출) */}
               <div className="border-t border-slate-100 pt-6 space-y-3">
-                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4 text-emerald-600" />
-                  Facilities & Operations Gallery (현장 사진 갤러리)
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4 text-emerald-600" />
+                    Facilities & Operations Gallery
+                  </h3>
+
+                  {!hasCustomGallery && (
+                    <span className="text-[10px] font-extrabold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 flex items-center gap-1">
+                      <Info className="w-3 h-3" /> [Sample Gallery Photos]
+                    </span>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {effectiveGalleryImages.map((imgUrl, idx) => (
-                    <div key={idx} className="h-32 rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 group shadow-sm">
+                    <div key={idx} className="h-32 rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 group shadow-sm relative">
                       <img src={imgUrl} alt={`Gallery ${idx}`} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                      {!hasCustomGallery && (
+                        <span className="absolute top-2 left-2 bg-black/70 text-amber-300 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md backdrop-blur-sm">
+                          Sample
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* [개선 5] 품질 인증서 (인증서 미등록 시 기본 인증 태그 지원) */}
+              {/* ★ [핵심 요구사항 반영] 품질 인증서 (가짜 인증서 원천 제거 및 샘플 표출 구분) */}
               <div className="border-t border-slate-100 pt-6 space-y-3">
-                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                  <Award className="w-4 h-4 text-amber-500" />
-                  Quality Certifications & Licenses (품질 인증서)
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                    <Award className="w-4 h-4 text-amber-500" />
+                    Quality Certifications & Licenses
+                  </h3>
+
+                  {!hasCustomCertifications && (
+                    <span className="text-[10px] font-extrabold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 flex items-center gap-1">
+                      <Info className="w-3 h-3" /> [Sample Certifications]
+                    </span>
+                  )}
+                </div>
+
                 <div className="flex flex-wrap gap-2">
-                  {company?.certifications && Array.isArray(company.certifications) && company.certifications.length > 0 ? (
+                  {hasCustomCertifications ? (
                     company.certifications.map((cert, index) => (
                       <span
                         key={index}
@@ -722,14 +759,22 @@ export default function CompanyShowroomLandingPage() {
                       </span>
                     ))
                   ) : (
-                    <>
-                      <span className="px-3.5 py-2 bg-blue-50 text-blue-800 text-xs font-bold rounded-xl border border-blue-200 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-blue-600" /> ISO 9001 Standard
-                      </span>
-                      <span className="px-3.5 py-2 bg-emerald-50 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-200 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" /> CE Quality Mark
-                      </span>
-                    </>
+                    /* 허위 기재를 방지하도록 [Sample Certifications] 워터마크 태그가 달린 가이드 표출 */
+                    <div className="w-full p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                        <Info className="w-4 h-4 text-amber-500" />
+                        <span>No official certifications registered yet. Below are sample license categories:</span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        <span className="px-3 py-1.5 bg-white text-slate-400 text-xs font-bold rounded-xl border border-slate-200 flex items-center gap-1.5 opacity-70">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" /> [Sample] ISO 9001 Standard
+                        </span>
+                        <span className="px-3 py-1.5 bg-white text-slate-400 text-xs font-bold rounded-xl border border-slate-200 flex items-center gap-1.5 opacity-70">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" /> [Sample] CE Quality License
+                        </span>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>

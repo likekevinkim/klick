@@ -63,6 +63,8 @@ export default function EditCompanyModal({
   // 직접 파일 업로드 상태
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+
   const [newGalleryUrl, setNewGalleryUrl] = useState('');
   const [newCertText, setNewCertText] = useState('');
 
@@ -127,6 +129,38 @@ export default function EditCompanyModal({
       alert('갤러리 이미지 파일 업로드 실패: ' + (err.message || '스토리지 연결 오류'));
     } finally {
       setUploadingGallery(false);
+    }
+  };
+
+  // 3. 비디오 파일 직접 업로드 (Supabase Storage)
+  const handleVideoFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingVideo(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `video_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `videos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('company-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('company-images')
+        .getPublicUrl(filePath);
+
+      if (publicUrlData?.publicUrl) {
+        setEditVideoUrl(publicUrlData.publicUrl);
+      }
+    } catch (err) {
+      console.error('Video upload error:', err);
+      alert('비디오 파일 업로드 실패: ' + (err.message || '스토리지 연결 오류'));
+    } finally {
+      setUploadingVideo(false);
     }
   };
 
@@ -195,7 +229,7 @@ export default function EditCompanyModal({
               Edit My Company Profile & Specs
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Update your company capacity, cover photo, gallery images, video, and certifications.
+              Update your company capacity, cover photo, gallery images, video file, and certifications.
             </p>
           </div>
 
@@ -248,7 +282,7 @@ export default function EditCompanyModal({
             />
           </div>
 
-          {/* 2. 대표 사진 (직접 업로드 또는 URL) */}
+          {/* 2. 대표 사진 (직접 파일 업로드 또는 URL) */}
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
             <label className="block font-extrabold text-slate-800 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
@@ -290,7 +324,7 @@ export default function EditCompanyModal({
             )}
           </div>
 
-          {/* 3. 기타 사진 갤러리 (직접 업로드 또는 URL) */}
+          {/* 3. 기타 사진 갤러리 (직접 파일 업로드 또는 URL) */}
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
             <label className="block font-extrabold text-slate-800 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
@@ -354,19 +388,53 @@ export default function EditCompanyModal({
             )}
           </div>
 
-          {/* 4. 홍보 비디오 URL */}
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-            <label className="block font-extrabold text-slate-800 flex items-center gap-1.5">
-              <Video className="w-4 h-4 text-purple-600" />
-              Company Video Tour Stream URL (관련 비디오 URL)
+          {/* 4. 홍보 비디오 (직접 동영상 파일 업로드 또는 URL) */}
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+            <label className="block font-extrabold text-slate-800 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Video className="w-4 h-4 text-purple-600" />
+                Company Video Tour File / Stream URL (동영상 파일 직접 업로드 또는 URL)
+              </span>
+              <span className="text-[10px] text-slate-400 font-semibold">MP4 / WEBM / URL</span>
             </label>
-            <input
-              type="url"
-              value={editVideoUrl}
-              onChange={(e) => setEditVideoUrl(e.target.value)}
-              placeholder="e.g. https://www.w3schools.com/html/mov_bbb.mp4"
-              className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-            />
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <label className="flex-1 px-4 py-2.5 bg-white border border-slate-300 hover:border-purple-500 rounded-xl cursor-pointer flex items-center justify-center gap-2 transition text-slate-700 font-bold">
+                {uploadingVideo ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
+                ) : (
+                  <Upload className="w-4 h-4 text-purple-600" />
+                )}
+                <span>{uploadingVideo ? 'Uploading Video File...' : 'Upload Video File (.mp4)'}</span>
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/ogg"
+                  onChange={handleVideoFileUpload}
+                  className="hidden"
+                />
+              </label>
+
+              <input
+                type="url"
+                value={editVideoUrl}
+                onChange={(e) => setEditVideoUrl(e.target.value)}
+                placeholder="Or paste Stream URL (https://...)"
+                className="flex-1 px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+              />
+            </div>
+
+            {editVideoUrl && (
+              <div className="p-2.5 bg-purple-50 rounded-xl border border-purple-200 text-purple-900 text-xs font-bold flex items-center justify-between">
+                <span className="truncate max-w-[400px]">Attached Video: {editVideoUrl}</span>
+                <button
+                  type="button"
+                  onClick={() => setEditVideoUrl('')}
+                  className="text-rose-600 hover:underline cursor-pointer text-[10px]"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 5. Certifications (+ 버튼으로 계속 추가) */}
