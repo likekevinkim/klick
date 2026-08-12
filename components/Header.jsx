@@ -27,7 +27,7 @@ export default function Header() {
   const [user, setUser] = useState(null);
   const pathname = usePathname();
 
-  // 실시간 안읽은 채팅 메시지 총 개수 상태 (기본 동기화 수치)
+  // 실시간 안읽은 채팅 메시지 총 개수 상태 (기본 0 초기화)
   const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   const languages = [
@@ -59,11 +59,19 @@ export default function Header() {
     setTimeout(triggerGoogleCombo, 300);
   };
 
-  // Supabase DB 기반 상대방 발신 중 '진짜 안 읽은 메시지' 정밀 계산
+  // Supabase DB 기반 상대방 발신 중 '진짜 안 읽은 메시지' 정밀 계산 (비로그인 시 무조건 0)
   const updateUnreadCountFromStorage = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const currentUser = session?.user || null;
+
+      // 비로그인 상태일 때는 강제로 카운트를 0으로 초기화
+      if (!currentUser) {
+        setUnreadChatCount(0);
+        localStorage.setItem('klick_unread_chat_count', '0');
+        return;
+      }
+
       const currentRole = currentUser?.user_metadata?.role || 'seller';
 
       // 로컬 스토리지에 읽은 대화방 ID 목록 가져오기
@@ -97,6 +105,7 @@ export default function Header() {
       }
     } catch (err) {
       console.error('Failed to calculate exact unread count:', err);
+      setUnreadChatCount(0);
     }
   };
 
@@ -106,19 +115,25 @@ export default function Header() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
+        updateUnreadCountFromStorage();
       } else {
-        setTimeout(async () => {
-          const { data: { session: retrySession } } = await supabase.auth.getSession();
-          setUser(retrySession?.user || null);
-        }, 300);
+        setUser(null);
+        setUnreadChatCount(0);
+        localStorage.setItem('klick_unread_chat_count', '0');
       }
     };
     fetchUserSession();
 
     // 2. Supabase 세션 상태 변화 실시간 감지
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
-      updateUnreadCountFromStorage();
+      if (session?.user) {
+        setUser(session.user);
+        updateUnreadCountFromStorage();
+      } else {
+        setUser(null);
+        setUnreadChatCount(0);
+        localStorage.setItem('klick_unread_chat_count', '0');
+      }
     });
 
     // 3. 저장된 언어 불러오기 (기본값: EN)
@@ -127,8 +142,6 @@ export default function Header() {
     setCurrentLang(savedLabel);
 
     // 4. 안읽은 메시지 수 정밀 초기화 및 실시간 리스너 등록
-    updateUnreadCountFromStorage();
-
     const handleUnreadUpdate = () => {
       updateUnreadCountFromStorage();
     };
@@ -213,8 +226,10 @@ export default function Header() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setUnreadChatCount(0);
     setIsUserMenuOpen(false);
     localStorage.removeItem('klick_unread_chat_count');
+    localStorage.removeItem('klick_read_room_ids');
     router.push('/');
   };
 
@@ -290,7 +305,7 @@ export default function Header() {
               >
                 <div className="relative">
                   <User className="w-4 h-4 text-blue-400" />
-                  {/* 안읽은 메시지 수 뱃지 */}
+                  {/* 안읽은 메시지 수 뱃지 (로그인 시에만 노출) */}
                   {unreadChatCount > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-md animate-pulse">
                       {unreadChatCount > 99 ? '99+' : unreadChatCount}
@@ -404,7 +419,7 @@ export default function Header() {
             </Link>
           )}
 
-          {/* 5. 다국어 언어 선택 드롭다운 (반응형: 모바일에서는 지구본 아이콘만, sm 이상에서는 텍스트/화살표 함께 노출) */}
+          {/* 5. 다국어 언어 선택 드롭다운 (모바일에서는 지구본 아이콘만 컴팩트하게 노출) */}
           <div className="relative border-l border-slate-800 pl-1.5 sm:pl-2 ml-0.5 sm:ml-1">
             <button
               type="button"
