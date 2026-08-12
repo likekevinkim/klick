@@ -122,7 +122,7 @@ function AuthPageContent() {
         setIsOtpSent(true);
         setEmailStatusMessage({ 
           type: 'success', 
-          text: `[${email}] A 6-digit verification code has been sent to your inbox. Please check your spam folder if not received.` 
+          text: `[${email}] A 6-digit verification code has been sent to your inbox.` 
         });
       }
     } catch (err) {
@@ -420,23 +420,7 @@ function AuthPageContent() {
                 )}
               </div>
 
-              {/* [개선 포인트] 이메일 바로 직하단에 노출되는 발송 결과 안내 상자 */}
-              {isSignUp && emailStatusMessage.text && (
-                <div className={`mt-2 p-3.5 rounded-xl text-xs flex items-center gap-2 font-medium animate-fadeIn ${
-                  emailStatusMessage.type === 'success' 
-                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' 
-                    : 'bg-rose-50 border border-rose-200 text-rose-700'
-                }`}>
-                  {emailStatusMessage.type === 'success' ? (
-                    <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
-                  ) : (
-                    <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
-                  )}
-                  <span className="leading-relaxed">{emailStatusMessage.text}</span>
-                </div>
-              )}
-
-              {/* Step 2: 6-Digit OTP Box positioned DIRECTLY under Email Input */}
+              {/* Step 2: 6-Digit OTP Box */}
               {isSignUp && isOtpSent && !isEmailVerified && (
                 <div className="mt-2.5 p-4 bg-blue-50/90 border border-blue-200 rounded-2xl space-y-2.5 animate-fadeIn">
                   <div className="flex items-center justify-between">
@@ -475,6 +459,22 @@ function AuthPageContent() {
                       )}
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* [요구사항 반영] 6자리 OTP 입력박스 바로 직하단에 노출되는 녹색 성공 / 빨간색 에러 메시지 상자 */}
+              {isSignUp && emailStatusMessage.text && (
+                <div className={`mt-2.5 p-3.5 rounded-xl text-xs flex items-center gap-2 font-medium animate-fadeIn ${
+                  emailStatusMessage.type === 'success' 
+                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' 
+                    : 'bg-rose-50 border border-rose-200 text-rose-700'
+                }`}>
+                  {emailStatusMessage.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
+                  )}
+                  <span className="leading-relaxed">{emailStatusMessage.text}</span>
                 </div>
               )}
             </div>
