@@ -49,19 +49,20 @@ export default function CompanyShowroomLandingPage() {
 
   const [activeTab, setActiveTab] = useState('about');
 
-  // 모달 토글 및 상태
+  // 모달 토글 및 상태 (초기 상태값 비워두기)
   const [isEditCompanyModalOpen, setIsEditCompanyModalOpen] = useState(false);
   const [isSavingCompany, setIsSavingCompany] = useState(false);
 
   const [editCompanyNameKo, setEditCompanyNameKo] = useState('');
   const [editCompanyNameEn, setEditCompanyNameEn] = useState('');
+  const [editCategory, setEditCategory] = useState('Industrial Machinery');
   const [editTagline, setEditTagline] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editBusinessType, setEditBusinessType] = useState('Direct Manufacturer');
-  const [editLocation, setEditLocation] = useState('South Korea 🇰🇷');
-  const [editEstablishedYear, setEditEstablishedYear] = useState('2024');
-  const [editEmployeesCount, setEditEmployeesCount] = useState('10 - 50 Employees');
-  const [editFactorySize, setEditFactorySize] = useState('1,000 sq. meters');
+  const [editLocation, setEditLocation] = useState('');
+  const [editEstablishedYear, setEditEstablishedYear] = useState('');
+  const [editEmployeesCount, setEditEmployeesCount] = useState('');
+  const [editFactorySize, setEditFactorySize] = useState('');
 
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
@@ -76,6 +77,23 @@ export default function CompanyShowroomLandingPage() {
 
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [selectedVideoUrl, setSelectedVideoUrl] = useState('');
+
+  const factoryVideos = [
+    {
+      id: 1,
+      title: 'CNC Precision Machining & Valve Assembly Line Tour',
+      duration: '02:15',
+      thumbnail: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+      video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    },
+    {
+      id: 2,
+      title: 'Zero-Defect Quality Control (QC) Pressure Testing Process',
+      duration: '01:45',
+      thumbnail: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=800&q=80',
+      video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    }
+  ];
 
   useEffect(() => {
     setMounted(true);
@@ -92,7 +110,7 @@ export default function CompanyShowroomLandingPage() {
 
       let fetchedCompany = null;
 
-      // 1. Supabase DB에서 실제 등록된 공장 데이터만 조회
+      // 1. Supabase DB에서 실제 등록된 회사 데이터만 조회
       if (companyId) {
         const { data: dbCompany } = await supabase
           .from('companies')
@@ -112,18 +130,20 @@ export default function CompanyShowroomLandingPage() {
         }
       }
 
+      // 2. 가짜 데이터 완전 제거: DB에 없으면 null 상태 유지하고 유저 메타데이터 기본 입력값만 세팅
       if (fetchedCompany) {
         setCompany(fetchedCompany);
 
         setEditCompanyNameKo(fetchedCompany.company_name_ko || '');
         setEditCompanyNameEn(fetchedCompany.company_name_en || fetchedCompany.company_name || '');
+        setEditCategory(fetchedCompany.category || 'Industrial Machinery');
         setEditTagline(fetchedCompany.tagline || '');
         setEditDescription(fetchedCompany.description || '');
         setEditBusinessType(fetchedCompany.business_type || 'Direct Manufacturer');
-        setEditLocation(fetchedCompany.location || 'South Korea 🇰🇷');
-        setEditEstablishedYear(fetchedCompany.established_year || '2024');
-        setEditEmployeesCount(fetchedCompany.employees_count || '10 - 50 Employees');
-        setEditFactorySize(fetchedCompany.factory_size || '1,000 sq. meters');
+        setEditLocation(fetchedCompany.location || '');
+        setEditEstablishedYear(fetchedCompany.established_year || '');
+        setEditEmployeesCount(fetchedCompany.employees_count || '');
+        setEditFactorySize(fetchedCompany.factory_size || '');
       } else {
         setCompany(null);
         if (currentUser) {
@@ -136,7 +156,7 @@ export default function CompanyShowroomLandingPage() {
         setIsEditCompanyModalOpen(true);
       }
 
-      // 2. 해당 공장 소유의 실제 등록 제품만 조회
+      // 3. 해당 회사 소유의 실제 등록 제품만 조회
       if (currentUser?.id || companyId) {
         const targetUserId = currentUser?.id || companyId;
         const { data: matchedProducts } = await supabase
@@ -158,14 +178,12 @@ export default function CompanyShowroomLandingPage() {
     }
   };
 
-  // ★ RLS 보안 정책 지원 및 세션 유저 기반 안전 저장 (SELECT 후 UPDATE/INSERT 분기)
   const handleSaveCompanyProfile = async (e) => {
     e.preventDefault();
 
     try {
       setIsSavingCompany(true);
 
-      // 최신 세션 유저 가져오기
       const { data: { session } } = await supabase.auth.getSession();
       const activeUser = session?.user || user;
 
@@ -182,6 +200,7 @@ export default function CompanyShowroomLandingPage() {
         company_name: editCompanyNameEn || editCompanyNameKo || 'Korean Manufacturer',
         company_name_ko: editCompanyNameKo,
         company_name_en: editCompanyNameEn,
+        category: editCategory,
         tagline: editTagline,
         description: editDescription,
         business_type: editBusinessType,
@@ -192,7 +211,6 @@ export default function CompanyShowroomLandingPage() {
         updated_at: new Date().toISOString()
       };
 
-      // 기존 DB 레코드 존재 여부 정밀 확인
       const { data: existingComp } = await supabase
         .from('companies')
         .select('id, user_id')
@@ -202,21 +220,18 @@ export default function CompanyShowroomLandingPage() {
       let saveError = null;
 
       if (existingComp) {
-        // 기존 레코드가 있으면 UPDATE (RLS UPDATE 정책 허용 범위)
         const { error: updateErr } = await supabase
           .from('companies')
           .update(updatedPayload)
           .eq('user_id', activeUserId);
         saveError = updateErr;
       } else {
-        // 신규 레코드면 INSERT (RLS INSERT 정책 허용 범위)
         const { error: insertErr } = await supabase
           .from('companies')
           .insert([updatedPayload]);
         saveError = insertErr;
       }
 
-      // 예외 상호 처리 (company_name_ko 스키마 미준비 시 우회)
       if (saveError && saveError.message.includes('company_name_ko')) {
         const fallbackPayload = { ...updatedPayload };
         delete fallbackPayload.company_name_ko;
@@ -230,12 +245,12 @@ export default function CompanyShowroomLandingPage() {
         throw saveError;
       }
 
-      alert('공장 정보가 성공적으로 저장되었습니다!');
+      alert('회사 정보가 성공적으로 저장되었습니다!');
       setCompany(prev => ({ ...(prev || {}), ...updatedPayload }));
       setIsEditCompanyModalOpen(false);
     } catch (err) {
       console.error('Company save error:', err);
-      alert('공장 프로필 저장 중 오류가 발생했습니다: ' + (err.message || '데이터베이스 연동 오류'));
+      alert('회사 프로필 저장 중 오류가 발생했습니다: ' + (err.message || '데이터베이스 연동 오류'));
     } finally {
       setIsSavingCompany(false);
     }
@@ -298,7 +313,7 @@ export default function CompanyShowroomLandingPage() {
 
   const handleStartCompanyChat = () => {
     const compName = encodeURIComponent(company?.company_name_en || company?.company_name || 'Korean Manufacturer');
-    const title = encodeURIComponent('Factory Partnership & Wholesale Inquiry');
+    const title = encodeURIComponent('Company Partnership & Wholesale Inquiry');
     router.push(`/chat?company=${compName}&title=${title}`);
   };
 
@@ -314,11 +329,16 @@ export default function CompanyShowroomLandingPage() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
-                <ShieldCheck className="w-3.5 h-3.5" /> Verified Korean Factory
+                <ShieldCheck className="w-3.5 h-3.5" /> Verified Korean Company
               </span>
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold border border-blue-500/30">
                 <Factory className="w-3.5 h-3.5" /> {company?.business_type || 'Direct Manufacturer'}
               </span>
+              {company?.category && (
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-500/30">
+                  {company.category}
+                </span>
+              )}
             </div>
 
             {isOwner && (
@@ -328,20 +348,20 @@ export default function CompanyShowroomLandingPage() {
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center gap-1.5 cursor-pointer"
               >
                 <Edit3 className="w-4 h-4" />
-                <span>{company ? 'Edit Factory Info & Specs' : 'Register Factory Specs'}</span>
+                <span>{company ? 'Edit Company Info & Specs' : 'Register Company Specs'}</span>
               </button>
             )}
           </div>
 
           <div className="space-y-3 max-w-4xl">
             <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-snug">
-              {company?.company_name_en || company?.company_name || user?.user_metadata?.company_name_en || user?.user_metadata?.company_name || 'My Factory Showroom'}
+              {company?.company_name_en || company?.company_name || user?.user_metadata?.company_name_en || user?.user_metadata?.company_name || 'My Company Showroom'}
             </h1>
             {company?.company_name_ko && (
-              <p className="text-slate-400 text-sm font-bold">상호명: {company.company_name_ko}</p>
+              <p className="text-slate-400 text-sm font-bold">Company Name (Korean): {company.company_name_ko}</p>
             )}
             <p className="text-slate-300 text-base md:text-lg leading-relaxed font-medium">
-              {company?.tagline || 'Please register your factory details and production capacity to attract global buyers.'}
+              {company?.tagline || 'Please register your company details and capacity to attract global buyers.'}
             </p>
           </div>
 
@@ -395,7 +415,7 @@ export default function CompanyShowroomLandingPage() {
               }`}
             >
               <Building2 className="w-4 h-4" />
-              <span>Factory Overview & Certifications</span>
+              <span>Company Overview & Certifications</span>
             </button>
 
             <button
@@ -444,7 +464,7 @@ export default function CompanyShowroomLandingPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-extrabold text-slate-900">Company Overview & Manufacturing Strength</h2>
-                  <p className="text-xs text-slate-500 mt-1">Detailed information about our factory capacity and mission.</p>
+                  <p className="text-xs text-slate-500 mt-1">Detailed information about our company capacity and mission.</p>
                 </div>
 
                 {isOwner && (
@@ -463,11 +483,11 @@ export default function CompanyShowroomLandingPage() {
               {!company?.description ? (
                 <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-3 p-6">
                   <Building2 className="w-10 h-10 text-slate-300 mx-auto stroke-1" />
-                  <h3 className="text-sm font-bold text-slate-800">No Factory Specifications Registered Yet</h3>
+                  <h3 className="text-sm font-bold text-slate-800">No Company Specifications Registered Yet</h3>
                   <p className="text-xs text-slate-500 max-w-sm mx-auto">
                     {isOwner 
                       ? 'Register your production capabilities, factory size, and ISO certifications to receive direct buyer inquiries!'
-                      : 'This manufacturer has not provided detailed factory specifications yet.'}
+                      : 'This company has not provided detailed specifications yet.'}
                   </p>
                   {isOwner && (
                     <button
@@ -476,7 +496,7 @@ export default function CompanyShowroomLandingPage() {
                       className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition mt-2 cursor-pointer"
                     >
                       <PlusCircle className="w-4 h-4" />
-                      <span>Register Factory Specifications</span>
+                      <span>Register Company Specifications</span>
                     </button>
                   )}
                 </div>
@@ -517,7 +537,7 @@ export default function CompanyShowroomLandingPage() {
               <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 space-y-4 shadow-md">
                 <h3 className="text-base font-extrabold flex items-center gap-2">
                   <Mail className="w-4 h-4 text-emerald-400" />
-                  Direct Factory Contact
+                  Direct Contact
                 </h3>
 
                 <p className="text-xs text-slate-300 leading-relaxed">
@@ -537,7 +557,7 @@ export default function CompanyShowroomLandingPage() {
                   className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
-                  <span>Contact Manufacturer</span>
+                  <span>Contact Company</span>
                 </button>
               </div>
             </div>
@@ -547,7 +567,7 @@ export default function CompanyShowroomLandingPage() {
           <div className="space-y-6">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <div>
-                <h2 className="text-xl font-extrabold text-slate-900">Factory Showroom Catalog</h2>
+                <h2 className="text-xl font-extrabold text-slate-900">Company Showroom Catalog</h2>
                 <p className="text-xs text-slate-500 mt-1">
                   Products created here are automatically synchronized with the global Product Dashboard.
                 </p>
@@ -567,7 +587,7 @@ export default function CompanyShowroomLandingPage() {
 
             {loading ? (
               <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
-                <p className="text-slate-500 font-semibold text-sm">Loading Factory Showroom Products...</p>
+                <p className="text-slate-500 font-semibold text-sm">Loading Company Showroom Products...</p>
               </div>
             ) : products.length === 0 ? (
               <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 space-y-3 p-8">
@@ -576,7 +596,7 @@ export default function CompanyShowroomLandingPage() {
                 <p className="text-xs text-slate-500">
                   {isOwner 
                     ? 'Click "Add Showroom Product" above to publish your first export product!'
-                    : 'This factory has not registered any public showroom catalog items.'}
+                    : 'This company has not registered any public showroom catalog items.'}
                 </p>
                 {isOwner && (
                   <div className="pt-2">
@@ -626,7 +646,7 @@ export default function CompanyShowroomLandingPage() {
                         </h3>
 
                         <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                          {item.tagline || item.description_en || 'High durability factory export product verified for global buyers.'}
+                          {item.tagline || item.description_en || 'High durability export product verified for global buyers.'}
                         </p>
 
                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 grid grid-cols-2 gap-2 text-xs">
@@ -669,6 +689,8 @@ export default function CompanyShowroomLandingPage() {
         setEditCompanyNameKo={setEditCompanyNameKo}
         editCompanyNameEn={editCompanyNameEn}
         setEditCompanyNameEn={setEditCompanyNameEn}
+        editCategory={editCategory}
+        setEditCategory={setEditCategory}
         editTagline={editTagline}
         setEditTagline={setEditTagline}
         editBusinessType={editBusinessType}
