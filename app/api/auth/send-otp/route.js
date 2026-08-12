@@ -5,14 +5,16 @@ export const runtime = 'nodejs';
 
 export async function POST(request) {
   try {
-    // 1. Vercel 환경 변수 추출 및 공백/따옴표 안전 정제
+    // 1. Vercel 환경 변수 추출 및 공백/따옴표 제거
     const rawApiKey = process.env.RESEND_API_KEY || '';
     const apiKey = rawApiKey.replace(/["'\r\n]/g, '').trim();
+
+    const keyPreview = apiKey ? `${apiKey.substring(0, 5)}...` : 'EMPTY';
 
     if (!apiKey) {
       console.error('RESEND_API_KEY가 Vercel 환경 변수에 설정되지 않았습니다.');
       return NextResponse.json(
-        { error: 'Vercel 서버의 RESEND_API_KEY 환경 변수가 비어 있습니다. Vercel Settings에서 등록 후 Redeploy를 진행해 주세요.' },
+        { error: 'Vercel 서버의 RESEND_API_KEY 환경 변수가 설정되지 않았습니다. Resend에서 Full Access 키 생성 후 Vercel Settings에 등록하고 Redeploy를 진행해 주세요.' },
         { status: 500 }
       );
     }
@@ -32,7 +34,7 @@ export async function POST(request) {
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10분 유효
 
-    // 4. Resend Direct REST API 직접 호출 (도메인 승인된 true-k.net 주소)
+    // 4. 대표님 도메인(true-k.net)을 이용한 Resend Direct REST API 호출
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -63,15 +65,8 @@ export async function POST(request) {
 
       const errorMessage = resendResult?.message || 'Resend API 세션 연결 거부';
 
-      if (errorMessage.includes('only send testing emails')) {
-        return NextResponse.json(
-          { error: 'Resend 테스트 제한: 도메인 인증 전에는 truek.work@gmail.com 으로만 발송 가능합니다.' },
-          { status: 400 }
-        );
-      }
-
       return NextResponse.json(
-        { error: `Resend 발송 실패 [원인: ${errorMessage}]` },
+        { error: `Resend 발송 실패 [원인: ${errorMessage} / 인식된 Key: ${keyPreview}]` },
         { status: 500 }
       );
     }
