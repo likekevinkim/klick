@@ -34,7 +34,7 @@ export async function POST(request) {
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10분 유효
 
-    // 4. Resend Direct REST API 직접 호출 (글로벌 영문 템플릿 적용)
+    // 4. Resend Direct REST API 직접 호출 (글로벌 표준 영문 이메일 템플릿)
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -44,7 +44,7 @@ export async function POST(request) {
       body: JSON.stringify({
         from: 'KLICK B2B <noreply@true-k.net>',
         to: [email],
-        subject: `[KLICK B2B] Your 6-Digit Verification Code: ${generatedOtp}`,
+        subject: `[KLICK B2B] Verification Code: ${generatedOtp}`,
         html: `
           <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
             <div style="margin-bottom: 24px;">
@@ -54,11 +54,11 @@ export async function POST(request) {
             </div>
             
             <h2 style="color: #0f172a; font-size: 22px; font-weight: 800; margin-bottom: 12px; letter-spacing: -0.5px;">
-              Verify Your Email Address
+              Email Verification
             </h2>
             
             <p style="color: #475569; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
-              Thank you for registering with KLICK B2B. Please use the following 6-digit verification code to complete your registration process:
+              Thank you for registering with KLICK B2B Network. Please enter the following 6-digit verification code on the registration page to complete your account verification:
             </p>
             
             <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 24px; border-radius: 12px; text-align: center; margin: 28px 0;">
@@ -69,7 +69,7 @@ export async function POST(request) {
             
             <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin-bottom: 8px;">
               • This code is valid for <strong>10 minutes</strong>.<br />
-              • If you did not request this code, please safely ignore this email.
+              • If you did not request this verification, please safely ignore this email.
             </p>
             
             <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 32px 0 24px 0;" />
@@ -91,7 +91,7 @@ export async function POST(request) {
 
       if (errorMessage.includes('only send testing emails')) {
         return NextResponse.json(
-          { error: 'Resend Sandbox Restriction: Testing emails can only be sent to truek.work@gmail.com until domain session is propagated.' },
+          { error: 'Resend Sandbox Restriction: Testing emails can only be sent to truek.work@gmail.com until domain session is fully propagated.' },
           { status: 400 }
         );
       }
@@ -105,7 +105,7 @@ export async function POST(request) {
     // 5. 서버리스 메모리 소실 방지를 위한 보안 쿠키 생성
     const response = NextResponse.json({
       success: true,
-      message: 'Verification code has been sent to your email inbox.'
+      message: 'Verification code has been sent to your email address.'
     });
 
     const sessionPayload = Buffer.from(JSON.stringify({

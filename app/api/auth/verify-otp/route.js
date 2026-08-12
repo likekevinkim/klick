@@ -53,7 +53,7 @@ export async function POST(request) {
 
     if (String(storedData.code).trim() !== String(code).trim()) {
       return NextResponse.json(
-        { error: 'Invalid verification code. Please check your inbox for the latest code.' },
+        { error: 'Invalid verification code. Please check your inbox for the correct code.' },
         { status: 400 }
       );
     }

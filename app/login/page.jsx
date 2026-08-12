@@ -39,9 +39,9 @@ function AuthPageContent() {
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
-  // 셀러 전용 입력 상태 (한글/영문 상호명 수집)
-  const [companyNameKo, setCompanyNameKo] = useState('');
+  // 셀러 전용 입력 상태 (영문 상호명 기본, 한글 상호명 옵션/보조)
   const [companyNameEn, setCompanyNameEn] = useState('');
+  const [companyNameKo, setCompanyNameKo] = useState('');
   const [sellerPhone, setSellerPhone] = useState('');
   const [category, setCategory] = useState('Industrial Machinery');
 
@@ -129,7 +129,7 @@ function AuthPageContent() {
   // 2단계: 6자리 OTP 인증번호 서버 검증
   const handleVerifyOtpCode = async () => {
     if (!otpCode || otpCode.length < 6) {
-      setErrorMessage('Please enter the 6-digit code sent to your email.');
+      setErrorMessage('Please enter the 6-digit verification code sent to your email.');
       return;
     }
 
@@ -150,7 +150,7 @@ function AuthPageContent() {
         setIsEmailVerified(false);
       } else {
         setIsEmailVerified(true);
-        setSuccessMessage('Email verified successfully! Please complete the company information below.');
+        setSuccessMessage('Email verified successfully! Please enter your company details below.');
       }
     } catch (err) {
       console.error('Verify OTP Error:', err);
@@ -190,8 +190,8 @@ function AuthPageContent() {
             data: {
               role: userRole,
               company_name: userRole === 'seller' ? (companyNameEn || companyNameKo) : buyerCompanyNameEn,
-              company_name_ko: companyNameKo,
               company_name_en: userRole === 'seller' ? companyNameEn : buyerCompanyNameEn,
+              company_name_ko: companyNameKo,
               buyer_name: userRole === 'buyer' ? buyerName : '',
               is_new_user: true
             }
@@ -209,8 +209,8 @@ function AuthPageContent() {
                 {
                   user_id: activeUserId,
                   company_name: companyNameEn || companyNameKo || 'Hankook Precision Co., Ltd.',
-                  company_name_ko: companyNameKo,
                   company_name_en: companyNameEn,
+                  company_name_ko: companyNameKo,
                   description: `Official Global B2B Showroom of ${companyNameEn || companyNameKo}.`,
                   business_type: 'Direct Manufacturer',
                   location: 'South Korea',
@@ -408,7 +408,7 @@ function AuthPageContent() {
                 )}
               </div>
 
-              {/* [요청사항 반영] 이메일 입력창 바로 직하단에 노출되는 6자리 OTP 입력창 및 상태 메시지 */}
+              {/* 이메일 입력창 바로 직하단에 노출되는 6자리 OTP 입력 박스 */}
               {isSignUp && isOtpSent && !isEmailVerified && (
                 <div className="mt-2.5 p-4 bg-blue-50/90 border border-blue-200 rounded-2xl space-y-2.5 animate-fadeIn">
                   <div className="flex items-center justify-between">
@@ -426,7 +426,7 @@ function AuthPageContent() {
                         maxLength={6}
                         value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
-                        placeholder="6-Digit Number"
+                        placeholder="6-Digit Code"
                         className="w-full px-4 py-3 rounded-xl border border-blue-300 bg-white font-mono tracking-widest text-base font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none text-center text-slate-900"
                       />
                     </div>
@@ -450,33 +450,21 @@ function AuthPageContent() {
                 </div>
               )}
 
-              {/* 이메일 인증 성공 상자 (이메일 직하단 노출) */}
+              {/* 이메일 인증 성공 안내 상자 (이메일 직하단 노출) */}
               {isEmailVerified && isSignUp && (
                 <div className="mt-2.5 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2">
                   <ShieldCheck className="w-4.5 h-4.5 text-emerald-600 flex-shrink-0" />
-                  <span>Email verified successfully! Please enter your company details below.</span>
+                  <span>Email verified successfully! Please complete your company details below.</span>
                 </div>
               )}
             </div>
 
-            {/* Step 3: 세부 정보 입력 */}
+            {/* Step 3: 세부 정보 입력 (영문 회사명 기본 및 한글 회사명 보조) */}
             {isSignUp && (
               <>
                 {userRole === 'seller' ? (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">회사 상호명 (한글) *</label>
-                        <input
-                          type="text"
-                          required
-                          value={companyNameKo}
-                          onChange={(e) => setCompanyNameKo(e.target.value)}
-                          placeholder="예: (주)한국정밀공업"
-                          className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
-                        />
-                      </div>
-
                       <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1.5">Company Name (English) *</label>
                         <input
@@ -485,6 +473,17 @@ function AuthPageContent() {
                           value={companyNameEn}
                           onChange={(e) => setCompanyNameEn(e.target.value)}
                           placeholder="e.g. Hankook Precision Co., Ltd."
+                          className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Company Name (Korean / Optional)</label>
+                        <input
+                          type="text"
+                          value={companyNameKo}
+                          onChange={(e) => setCompanyNameKo(e.target.value)}
+                          placeholder="e.g. (주)한국정밀공업"
                           className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
                         />
                       </div>
