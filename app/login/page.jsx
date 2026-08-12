@@ -28,24 +28,27 @@ function AuthPageContent() {
   const [isSignUp, setIsSignUp] = useState(false); // false: Sign In, true: Sign Up
   const [userRole, setUserRole] = useState('seller'); // 'seller' or 'buyer'
 
-  // 공통 입력 필드
+  // Common input fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // 6자리 이메일 OTP 인증 관련 상태
+  // 6-digit email OTP states
   const [otpCode, setOtpCode] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
-  // 셀러 전용 입력 상태 (영문 상호명 기본, 한글 상호명 옵션/보조)
+  // Status message states specific to Email/OTP section
+  const [emailStatusMessage, setEmailStatusMessage] = useState({ type: '', text: '' });
+
+  // Seller dedicated states (English name primary, Korean name secondary)
   const [companyNameEn, setCompanyNameEn] = useState('');
   const [companyNameKo, setCompanyNameKo] = useState('');
   const [sellerPhone, setSellerPhone] = useState('');
   const [category, setCategory] = useState('Industrial Machinery');
 
-  // 바이어 전용 입력 상태 (담당자명, 영문 회사명, 국가)
+  // Buyer dedicated states
   const [buyerName, setBuyerName] = useState('');
   const [buyerCompanyNameEn, setBuyerCompanyNameEn] = useState('');
   const [country, setCountry] = useState('United States');
@@ -54,7 +57,7 @@ function AuthPageContent() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // 비밀번호 찾기 모달 상태
+  // Password reset modal state
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
@@ -64,7 +67,7 @@ function AuthPageContent() {
     setMounted(true);
   }, []);
 
-  // 비밀번호 재설정 이메일 발송
+  // Send password reset email
   const handleSendPasswordReset = async (e) => {
     e.preventDefault();
     if (!resetEmail) return;
@@ -92,15 +95,16 @@ function AuthPageContent() {
     }
   };
 
-  // 1단계: Next.js API Route(Resend Direct)를 통한 6자리 OTP 인증번호 발송 요청
+  // Step 1: Send 6-digit OTP verification code via Next.js Route Handler
   const handleSendOtpCode = async () => {
     if (!email || !email.includes('@')) {
-      setErrorMessage('Please enter a valid email address.');
+      setEmailStatusMessage({ type: 'error', text: 'Please enter a valid email address.' });
       return;
     }
 
     try {
       setIsSendingOtp(true);
+      setEmailStatusMessage({ type: '', text: '' });
       setErrorMessage('');
       setSuccessMessage('');
 
@@ -113,29 +117,32 @@ function AuthPageContent() {
       const data = await res.json();
 
       if (!res.ok) {
-        setErrorMessage(data.error || 'Failed to send verification code.');
+        setEmailStatusMessage({ type: 'error', text: data.error || 'Failed to send verification code.' });
       } else {
         setIsOtpSent(true);
-        setSuccessMessage(`[${email}] A 6-digit verification code has been sent to your inbox.`);
+        setEmailStatusMessage({ 
+          type: 'success', 
+          text: `[${email}] A 6-digit verification code has been sent to your inbox. Please check your spam folder if not received.` 
+        });
       }
     } catch (err) {
       console.error('Send OTP Exception:', err);
-      setErrorMessage('An error occurred while sending the verification code.');
+      setEmailStatusMessage({ type: 'error', text: 'An error occurred while sending the verification code.' });
     } finally {
       setIsSendingOtp(false);
     }
   };
 
-  // 2단계: 6자리 OTP 인증번호 서버 검증
+  // Step 2: Verify 6-digit OTP code on server
   const handleVerifyOtpCode = async () => {
     if (!otpCode || otpCode.length < 6) {
-      setErrorMessage('Please enter the 6-digit verification code sent to your email.');
+      setEmailStatusMessage({ type: 'error', text: 'Please enter the 6-digit verification code sent to your email.' });
       return;
     }
 
     try {
       setIsVerifyingOtp(true);
-      setErrorMessage('');
+      setEmailStatusMessage({ type: '', text: '' });
 
       const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',
@@ -146,22 +153,25 @@ function AuthPageContent() {
       const data = await res.json();
 
       if (!res.ok) {
-        setErrorMessage(data.error || 'Verification code does not match.');
+        setEmailStatusMessage({ type: 'error', text: data.error || 'Verification code does not match.' });
         setIsEmailVerified(false);
       } else {
         setIsEmailVerified(true);
-        setSuccessMessage('Email verified successfully! Please enter your company details below.');
+        setEmailStatusMessage({ 
+          type: 'success', 
+          text: 'Email verified successfully! Please complete your company details below.' 
+        });
       }
     } catch (err) {
       console.error('Verify OTP Error:', err);
-      setErrorMessage('An error occurred during verification.');
+      setEmailStatusMessage({ type: 'error', text: 'An error occurred during verification.' });
       setIsEmailVerified(false);
     } finally {
       setIsVerifyingOtp(false);
     }
   };
 
-  // 3단계: 가입 완료 및 세부 정보 제출 핸들러 (인증 미완료 시 절대 진행 불가)
+  // Step 3: Complete registration and submit form
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -182,7 +192,7 @@ function AuthPageContent() {
           return;
         }
 
-        // Supabase 계정 생성
+        // Supabase user registration
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: email,
           password: password,
@@ -279,7 +289,7 @@ function AuthPageContent() {
       <Header />
 
       <main className="max-w-5xl mx-auto px-6 mt-12 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-        {/* 좌측 안내 섹션 */}
+        {/* Left Information Section */}
         <div className="lg:col-span-6 space-y-6">
           <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
             <Globe className="w-4 h-4" /> KLICK Global B2B Network
@@ -321,15 +331,16 @@ function AuthPageContent() {
           </div>
         </div>
 
-        {/* 우측 폼 카드 영역 */}
+        {/* Right Form Card Section */}
         <div className="lg:col-span-6 bg-white p-8 md:p-10 rounded-3xl shadow-sm border border-slate-200 space-y-6">
-          {/* 역할 선택 탭 (Seller / Buyer) */}
+          {/* Role Selection Tabs */}
           <div className="bg-slate-100 p-1.5 rounded-2xl grid grid-cols-2 gap-1">
             <button
               type="button"
               onClick={() => {
                 setUserRole('seller');
                 setErrorMessage('');
+                setEmailStatusMessage({ type: '', text: '' });
               }}
               className={`py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                 userRole === 'seller'
@@ -346,6 +357,7 @@ function AuthPageContent() {
               onClick={() => {
                 setUserRole('buyer');
                 setErrorMessage('');
+                setEmailStatusMessage({ type: '', text: '' });
               }}
               className={`py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                 userRole === 'buyer'
@@ -372,7 +384,7 @@ function AuthPageContent() {
           </div>
 
           <form onSubmit={handleAuthSubmit} className="space-y-4">
-            {/* Step 1: 이메일 입력 영역 */}
+            {/* Step 1: Email Input */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-700">Email Address *</label>
               <div className="flex gap-2">
@@ -408,7 +420,23 @@ function AuthPageContent() {
                 )}
               </div>
 
-              {/* 이메일 입력창 바로 직하단에 노출되는 6자리 OTP 입력 박스 */}
+              {/* [개선 포인트] 이메일 바로 직하단에 노출되는 발송 결과 안내 상자 */}
+              {isSignUp && emailStatusMessage.text && (
+                <div className={`mt-2 p-3.5 rounded-xl text-xs flex items-center gap-2 font-medium animate-fadeIn ${
+                  emailStatusMessage.type === 'success' 
+                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' 
+                    : 'bg-rose-50 border border-rose-200 text-rose-700'
+                }`}>
+                  {emailStatusMessage.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
+                  )}
+                  <span className="leading-relaxed">{emailStatusMessage.text}</span>
+                </div>
+              )}
+
+              {/* Step 2: 6-Digit OTP Box positioned DIRECTLY under Email Input */}
               {isSignUp && isOtpSent && !isEmailVerified && (
                 <div className="mt-2.5 p-4 bg-blue-50/90 border border-blue-200 rounded-2xl space-y-2.5 animate-fadeIn">
                   <div className="flex items-center justify-between">
@@ -449,17 +477,9 @@ function AuthPageContent() {
                   </div>
                 </div>
               )}
-
-              {/* 이메일 인증 성공 안내 상자 (이메일 직하단 노출) */}
-              {isEmailVerified && isSignUp && (
-                <div className="mt-2.5 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2">
-                  <ShieldCheck className="w-4.5 h-4.5 text-emerald-600 flex-shrink-0" />
-                  <span>Email verified successfully! Please complete your company details below.</span>
-                </div>
-              )}
             </div>
 
-            {/* Step 3: 세부 정보 입력 (영문 회사명 기본 및 한글 회사명 보조) */}
+            {/* Step 3: Company Details (English Primary & Korean Secondary) */}
             {isSignUp && (
               <>
                 {userRole === 'seller' ? (
@@ -566,7 +586,7 @@ function AuthPageContent() {
               </>
             )}
 
-            {/* 비밀번호 입력 */}
+            {/* Password Input */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-bold text-slate-700">Password (at least 6 characters) *</label>
@@ -594,6 +614,7 @@ function AuthPageContent() {
               </div>
             </div>
 
+            {/* General Form Level Error / Success Messages */}
             {errorMessage && (
               <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -631,7 +652,7 @@ function AuthPageContent() {
             </button>
           </form>
 
-          {/* 모드 전환 */}
+          {/* Mode Switcher */}
           <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>{isSignUp ? 'Already have an account?' : "Don't have an account yet?"}</span>
             <button
@@ -640,6 +661,7 @@ function AuthPageContent() {
                 setIsSignUp(!isSignUp);
                 setErrorMessage('');
                 setSuccessMessage('');
+                setEmailStatusMessage({ type: '', text: '' });
               }}
               className="font-bold text-blue-600 hover:underline cursor-pointer"
             >
@@ -649,7 +671,7 @@ function AuthPageContent() {
         </div>
       </main>
 
-      {/* 비밀번호 찾기 모달 */}
+      {/* Forgot Password Modal */}
       {isForgotPasswordOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-slate-200 shadow-2xl space-y-4">
