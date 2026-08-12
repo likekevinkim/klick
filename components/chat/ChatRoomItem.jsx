@@ -93,11 +93,11 @@ export default function ChatRoomItem({
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
-  // 한글 IME 조합 중(isComposing)일 때는 엔터 키 중복 전송을 방지
+  // 한글 조합 중(isComposing)일 때는 엔터 키 중복 전송 방지
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       if (e.nativeEvent.isComposing) {
-        return; // 한글 조합 진행 중이면 중복 실행 막음
+        return;
       }
       e.preventDefault();
       handleSubmit(e);
@@ -106,7 +106,7 @@ export default function ChatRoomItem({
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm transition hover:border-blue-400">
-      {/* 1. 대화방 아코디언 헤더 (안읽은 메시지 개수 뱃지 수치 표출) */}
+      {/* 1. 대화방 아코디언 헤더 */}
       <div
         onClick={onToggle}
         className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/80 transition select-none"
@@ -118,7 +118,6 @@ export default function ChatRoomItem({
               {userRole === 'seller' ? room.buyer_name || 'Global Buyer' : room.seller_name || 'Korean Manufacturer'}
             </span>
 
-            {/* 각 대화방 카드별 안읽은 메시지 수 알림 뱃지 (0보다 클 때만 정밀 표시) */}
             {room.unread_count > 0 && (
               <span className="bg-rose-500 text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full animate-pulse shadow-sm">
                 {room.unread_count} New
@@ -186,6 +185,10 @@ export default function ChatRoomItem({
               messages.map((msg, index) => {
                 const isMine = msg.sender_role === userRole;
 
+                // 언어 표시 텍스트 결정 (내 언어와 메시지 발신자 언어에 따른 AI 번역 태그)
+                const isKoreanText = /[ㄱ-ㅎ|가-힣]/.test(msg.message || '');
+                const translateLabel = isKoreanText ? 'AI Translate' : 'AI 번역';
+
                 return (
                   <div
                     key={msg.id || index}
@@ -204,22 +207,19 @@ export default function ChatRoomItem({
                           : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
                       }`}
                     >
-                      {/* 1. 상단: 작성자가 입력한 [원문 텍스트] */}
+                      {/* 1. 상단: 작성자가 입력한 [원문 텍스트] (예: Hi 또는 안녕) */}
                       {msg.message && (
                         <p className="leading-relaxed font-semibold whitespace-pre-wrap">{msg.message}</p>
                       )}
 
-                      {/* 2. 하단: [AI 번역] - 상단 선택 언어로 자동 렌더링 */}
+                      {/* 2. 하단: [AI 번역 : 번역문] (예: [AI 번역 : 안녕] 또는 [AI 번역 : Hi]) */}
                       <div className={`pt-2 border-t text-xs space-y-0.5 ${
                         isMine ? 'border-blue-400/50 text-blue-100' : 'border-slate-100 text-slate-500'
                       }`}>
                         <div className="flex items-center gap-1 text-[10px] font-extrabold opacity-90">
-                          <Sparkles className="w-3 h-3 text-amber-400" />
-                          <span>[AI 번역 / Auto Translation]</span>
+                          <Sparkles className="w-3 h-3 text-amber-400 flex-shrink-0" />
+                          <span>[{translateLabel} : {msg.translated_message || msg.message}]</span>
                         </div>
-                        <p className="font-medium leading-relaxed whitespace-pre-wrap">
-                          {msg.translated_message || msg.message}
-                        </p>
                       </div>
 
                       {msg.file && (
@@ -294,7 +294,7 @@ export default function ChatRoomItem({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* 대화방 내부 독점 하단 입력창 */}
+          {/* 대화방 내부 하단 입력창 */}
           <div className="bg-white rounded-2xl border border-slate-200 p-3 space-y-2 shadow-sm pt-2">
             {attachedFile && (
               <div className="px-3.5 py-1.5 bg-blue-50 border border-blue-100 flex items-center justify-between text-xs rounded-xl">

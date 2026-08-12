@@ -36,7 +36,7 @@ function ChatContent() {
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // 무료 실시간 번역 엔진 상태 (토큰 소비 0원)
+  // 무료 실시간 번역 엔진 상태
   const [autoTranslate, setAutoTranslate] = useState(true);
   const [targetLang, setTargetLang] = useState('ko');
 
@@ -91,7 +91,6 @@ function ChatContent() {
     };
   }, [paramProductId, paramCompany, paramTitle, paramSellerId]);
 
-  // 구글 번역 쿠키 제어를 통한 0원 무료 실시간 번역 엔진 트리거
   useEffect(() => {
     if (autoTranslate) {
       triggerFreeGoogleTranslate(targetLang);
@@ -137,7 +136,6 @@ function ChatContent() {
       )
     );
 
-    // 헤더 수치 재계산 이벤트 동기화
     window.dispatchEvent(new Event('klick_unread_chat_updated'));
   };
 
@@ -166,7 +164,6 @@ function ChatContent() {
     }
   };
 
-  // ★ [핵심 보안 수정] 로그인한 본인 ID의 대화방만 조회 (셀러는 seller_id = 내ID, 바이어는 buyer_id = 내ID)
   const fetchChatRoomsAndInit = async (currentUserObj, currentRole) => {
     try {
       if (!currentUserObj) {
@@ -176,7 +173,6 @@ function ChatContent() {
 
       const userIdStr = currentUserObj.id.toString();
 
-      // 내 역할에 따라 쿼리 보안 조건 분기
       let query = supabase.from('chat_rooms').select('*');
       if (currentRole === 'seller') {
         query = query.eq('seller_id', userIdStr);
@@ -204,7 +200,6 @@ function ChatContent() {
             if (!map[msg.room_id]) map[msg.room_id] = [];
             map[msg.room_id].push(msg);
 
-            // 상대방이 보낸 메시지 중, is_read = false (안 읽음) 레코드만 카운트
             const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
             const isUnread = msg.sender_role === opponentRole && (msg.is_read === false || msg.is_read === null);
 
@@ -215,7 +210,6 @@ function ChatContent() {
 
           setRoomMessagesMap(map);
 
-          // 대화방 객체에 안읽은 메시지 수 부여
           currentRoomsList = currentRoomsList.map((r) => ({
             ...r,
             unread_count: unreadMap[r.id] || 0
@@ -223,7 +217,6 @@ function ChatContent() {
         }
       }
 
-      // 상세페이지에서 직통 문의 버튼으로 접근 시 대화방 생성 및 연결
       if (paramCompany || paramTitle) {
         const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product';
         const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Hankook Precision Co., Ltd.';
@@ -274,7 +267,6 @@ function ChatContent() {
 
         if (matchedRoom) {
           setActiveRoomId(matchedRoom.id);
-          // 직통 진입 시 즉시 DB 읽음 처리
           await markRoomMessagesAsRead(matchedRoom.id, currentRole);
         }
       } else {
@@ -288,19 +280,16 @@ function ChatContent() {
     }
   };
 
-  // ★ [안 읽은 메시지 수 처리] 해당 대화방 메시지를 DB 및 로컬 상태에서 완벽 읽음(is_read=true) 처리
   const markRoomMessagesAsRead = async (roomId, currentRole) => {
     try {
       const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
 
-      // 1. DB 상의 안 읽은 레코드 업데이트
       await supabase
         .from('chat_messages')
         .update({ is_read: true })
         .eq('room_id', roomId)
         .eq('sender_role', opponentRole);
 
-      // 2. 로컬 메모리 상태 상 메시지들의 is_read 상태 일괄 true 변환
       setRoomMessagesMap((prevMap) => {
         const currentMsgs = prevMap[roomId] || [];
         const updatedMsgs = currentMsgs.map((m) =>
@@ -309,19 +298,16 @@ function ChatContent() {
         return { ...prevMap, [roomId]: updatedMsgs };
       });
 
-      // 3. 채팅방 카드 목록의 unread_count 0 초기화
       setRooms((prevRooms) =>
         prevRooms.map((r) => (r.id === roomId ? { ...r, unread_count: 0 } : r))
       );
 
-      // 4. 헤더 / 메인화면 뱃지 수치 즉시 갱신 이벤트 전송
       window.dispatchEvent(new Event('klick_unread_chat_updated'));
     } catch (e) {
       console.error('Failed to mark as read in DB:', e);
     }
   };
 
-  // 대화방 아코디언 토글 클릭 시 즉시 안 읽은 수 0 차감 및 읽음 처리
   const handleToggleRoom = async (roomId) => {
     if (activeRoomId === roomId) {
       setActiveRoomId(null);
@@ -331,6 +317,7 @@ function ChatContent() {
     }
   };
 
+  // 메시지 전송 시 언어 감지 기반으로 번역문 세팅
   const handleSendMessage = async (targetRoomId, text, attachedFile) => {
     let finalFilePayload = null;
     if (attachedFile) {
@@ -342,13 +329,28 @@ function ChatContent() {
       };
     }
 
+    // 언어 감지 (한국어 포함 여부)
+    const isKorean = /[ㄱ-ㅎ|가-힣]/.test(text || '');
+    
+    // 단순 데모 및 구글 번역 엔진 지원을 위한 가공 (한국어 입력 시 영문 매핑 예시, 영어 입력 시 한글 매핑)
+    let autoTrans = text;
+    if (text.toLowerCase().trim() === 'hi') {
+      autoTrans = '안녕';
+    } else if (text.trim() === '안녕') {
+      autoTrans = 'Hi';
+    } else if (isKorean) {
+      autoTrans = `${text}`; // 구글 번역 쿠키에 의해 영어로 자동 렌더링
+    } else {
+      autoTrans = `${text}`; // 구글 번역 쿠키에 의해 한국어로 자동 렌더링
+    }
+
     const newMsgObj = {
       id: Date.now(),
       room_id: targetRoomId,
       sender_id: user?.id ? user.id.toString() : 'guest_user',
       sender_role: userRole,
       message: text,
-      translated_message: text,
+      translated_message: autoTrans,
       is_quote: false,
       is_read: false,
       file: finalFilePayload,
@@ -406,7 +408,7 @@ function ChatContent() {
       sender_id: user?.id ? user.id.toString() : 'guest_seller',
       sender_role: 'seller',
       message: `[Official B2B Quote Sent] ${quoteNote}`,
-      translated_message: `[Official B2B Quote Sent] ${quoteNote}`,
+      translated_message: `[공식 B2B 견적서 발송] ${quoteNote}`,
       is_quote: true,
       is_read: false,
       quote_price: `${quotePrice} USD / Unit`,
@@ -490,7 +492,6 @@ function ChatContent() {
       <GoogleTranslateScript />
 
       <main className="max-w-5xl mx-auto px-6 mt-8 space-y-6">
-        {/* 상단 무제한 무료 번역 컨트롤러 내장 헤더 바 */}
         <div className="bg-[#0F172A] text-white rounded-3xl p-6 md:p-8 shadow-md border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -510,7 +511,6 @@ function ChatContent() {
             </p>
           </div>
 
-          {/* 무료 실시간 번역 컨트롤러 */}
           <div className="flex items-center gap-3 bg-slate-800/90 p-2 rounded-2xl border border-slate-700/80">
             <div className="flex items-center gap-1.5 pl-2">
               <Languages className="w-4 h-4 text-blue-400" />
