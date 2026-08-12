@@ -2,6 +2,9 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
+// 메모리 기반 임시 OTP 저장소 (글로벌 싱글톤 저장)
+global.otpStore = global.otpStore || new Map();
+
 export async function POST(request) {
   try {
     const apiKey = process.env.RESEND_API_KEY;
@@ -29,9 +32,9 @@ export async function POST(request) {
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10분 유효기간
 
-    // Resend Direct SDK 발송 요청
+    // Resend Direct SDK 발송 요청 (인증된 true-k.net 도메인의 noreply 주소 사용)
     const { data, error } = await resend.emails.send({
-      from: 'KLICK B2B <onboarding@resend.dev>',
+      from: 'KLICK B2B <noreply@true-k.net>',
       to: [email],
       subject: `[KLICK B2B] Your 6-Digit Email Verification Code: ${generatedOtp}`,
       html: `
@@ -48,15 +51,6 @@ export async function POST(request) {
 
     if (error) {
       console.error('Resend Direct Error:', error);
-      
-      // Resend 테스트 모드 제한 에러 처리
-      if (error.message && error.message.includes('only send testing emails')) {
-        return NextResponse.json(
-          { error: 'Resend 무료 테스트 모드 제한: 현재는 Resend 계정 가입 이메일(truek.work@gmail.com)로만 테스트 메일 발송이 가능합니다. 해당 이메일 주소를 입력해 주세요!' },
-          { status: 400 }
-        );
-      }
-
       return NextResponse.json(
         { error: `메일 발송 실패: ${error.message}` },
         { status: 500 }
