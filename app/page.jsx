@@ -32,7 +32,7 @@ export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // ★ 회원가입 직후 1회 출력될 온보딩 선택 모달 상태 및 유저 정보
+  // 셀러 정보 미등록 시 로그인 때마다 출력될 온보딩 선택 모달 상태 및 유저 정보
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState('seller');
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
@@ -62,20 +62,57 @@ export default function HomePage() {
     };
   }, []);
 
-  // ★ 회원가입 직후 온보딩 모달 트리거 여부 확인
+  // ★ 로그인 시 셀러/바이어의 상세 정보 등록 여부를 실시간 검증하여 미등록 시 모달 자동 출력
   const checkOnboardingStatus = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const userObj = session?.user || null;
-    setCurrentUser(userObj);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userObj = session?.user || null;
+      setCurrentUser(userObj);
 
-    if (userObj) {
-      const role = userObj.user_metadata?.role || 'seller';
-      setUserRole(role);
+      if (userObj) {
+        const role = userObj.user_metadata?.role || 'seller';
+        setUserRole(role);
 
-      const isNewFlag = localStorage.getItem('klick_show_onboarding');
-      if (isNewFlag === 'true') {
-        setShowOnboardingModal(true);
+        // 로컬 회원가입 신규 생성 플래그 체크
+        const isNewFlag = localStorage.getItem('klick_show_onboarding');
+
+        if (role === 'seller') {
+          // DB에서 해당 셀러의 공장 정보 및 등록된 상품 수 실시간 조회
+          const { data: compData } = await supabase
+            .from('companies')
+            .select('*')
+            .eq('user_id', userObj.id)
+            .single();
+
+          const { data: prodData } = await supabase
+            .from('products')
+            .select('id')
+            .eq('company_id', userObj.id);
+
+          const hasCompanyDetails = compData && (compData.description || compData.certifications);
+          const hasProducts = prodData && prodData.length > 0;
+
+          // 공장 상세나 물품 등록이 안 되어 있거나 신규 가입일 경우 로그인할 때마다 띄움
+          if (!hasCompanyDetails || !hasProducts || isNewFlag === 'true') {
+            setShowOnboardingModal(true);
+          }
+        } else {
+          // 바이어 계정일 경우 DB에서 바이어 프로필 상세 정보 작성 여부 확인
+          const { data: buyerData } = await supabase
+            .from('buyers')
+            .select('*')
+            .eq('auth_user_id', userObj.id)
+            .single();
+
+          const hasBuyerDetails = buyerData && (buyerData.company_name_en || buyerData.country);
+
+          if (!hasBuyerDetails || isNewFlag === 'true') {
+            setShowOnboardingModal(true);
+          }
+        }
       }
+    } catch (err) {
+      console.error('Failed to check onboarding status:', err);
     }
   };
 
@@ -387,7 +424,7 @@ export default function HomePage() {
         </section>
       </main>
 
-      {/* ★ 가입 직후 출력되는 온보딩 선택 모달 팝업 */}
+      {/* 가입 직후 또는 프로필 정보 미등록 시 출력되는 등록 유도 모달 팝업 */}
       {showOnboardingModal && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 animate-fadeIn">
@@ -413,8 +450,8 @@ export default function HomePage() {
               </h2>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {userRole === 'seller'
-                  ? '공장 위치, 주요 생산 설비, 품질 인증서(ISO/CE)를 사전에 세밀히 입력하시면 해외 바이어들에게 3배 더 많은 견적 문의를 받을 수 있습니다.'
-                  : 'Complete your business profile to receive official wholesale quotations and verified factory discounts.'}
+                  ? '공장 위치, 주요 생산 설비, 품질 인증서(ISO/CE) 및 판매 물품을 사전에 세밀히 등록하시면 해외 바이어들에게 3배 더 많은 견적 문의를 받을 수 있습니다.'
+                  : 'Complete your buyer sourcing profile to receive direct wholesale factory quotes and verified manufacturer discounts.'}
               </p>
             </div>
 
@@ -424,7 +461,7 @@ export default function HomePage() {
                 onClick={handleCloseOnboarding}
                 className="py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
               >
-                나중에 둘러보기 (Explore First)
+                {userRole === 'seller' ? '나중에 작성하기 (둘러보기)' : 'Skip for Now (Explore First)'}
               </button>
 
               <button
@@ -433,7 +470,7 @@ export default function HomePage() {
                 className="py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Edit3 className="w-4 h-4" />
-                <span>지금 정보 입력하기</span>
+                <span>{userRole === 'seller' ? '지금 정보 입력하기' : 'Complete Profile Now'}</span>
               </button>
             </div>
           </div>
