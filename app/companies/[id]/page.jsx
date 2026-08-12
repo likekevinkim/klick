@@ -112,7 +112,6 @@ export default function CompanyShowroomLandingPage() {
         }
       }
 
-      // 2. 가짜 데이터 완전 제거: DB에 없으면 null 상태 유지
       if (fetchedCompany) {
         setCompany(fetchedCompany);
 
@@ -127,7 +126,6 @@ export default function CompanyShowroomLandingPage() {
         setEditFactorySize(fetchedCompany.factory_size || '1,000 sq. meters');
       } else {
         setCompany(null);
-        // 로그인 유저의 회원가입 기본 정보가 있으면 폼 초기값으로만 세팅
         if (currentUser) {
           setEditCompanyNameKo(currentUser.user_metadata?.company_name_ko || '');
           setEditCompanyNameEn(currentUser.user_metadata?.company_name_en || currentUser.user_metadata?.company_name || '');
@@ -138,7 +136,7 @@ export default function CompanyShowroomLandingPage() {
         setIsEditCompanyModalOpen(true);
       }
 
-      // 3. 해당 공장 소유의 실제 등록 제품만 조회 (가짜 데이터 제거)
+      // 3. 해당 공장 소유의 실제 등록 제품만 조회
       if (currentUser?.id || companyId) {
         const targetUserId = currentUser?.id || companyId;
         const { data: matchedProducts } = await supabase
@@ -160,6 +158,7 @@ export default function CompanyShowroomLandingPage() {
     }
   };
 
+  // ★ ON CONFLICT 제약 조건 오류 해결을 위한 안전 2중 분기 처리 (UPDATE 또는 INSERT)
   const handleSaveCompanyProfile = async (e) => {
     e.preventDefault();
     if (!user) return;
@@ -182,19 +181,42 @@ export default function CompanyShowroomLandingPage() {
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabase
+      // 1. 기존 레코드가 있는지 먼저 조회
+      const { data: existingComp } = await supabase
         .from('companies')
-        .upsert([updatedPayload], { onConflict: 'user_id' });
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-      if (error) {
+      let saveError = null;
+
+      if (existingComp) {
+        // 기존 레코드가 있으면 UPDATE
+        const { error: updateErr } = await supabase
+          .from('companies')
+          .update(updatedPayload)
+          .eq('user_id', user.id);
+        saveError = updateErr;
+      } else {
+        // 신규 레코드면 INSERT
+        const { error: insertErr } = await supabase
+          .from('companies')
+          .insert([updatedPayload]);
+        saveError = insertErr;
+      }
+
+      // 만약 company_name_ko 컬럼 문제 발생 시 안전 우회 처리
+      if (saveError && saveError.message.includes('company_name_ko')) {
         const fallbackPayload = { ...updatedPayload };
         delete fallbackPayload.company_name_ko;
 
-        const { error: fallbackError } = await supabase
-          .from('companies')
-          .upsert([fallbackPayload], { onConflict: 'user_id' });
-
-        if (fallbackError) throw fallbackError;
+        if (existingComp) {
+          await supabase.from('companies').update(fallbackPayload).eq('user_id', user.id);
+        } else {
+          await supabase.from('companies').insert([fallbackPayload]);
+        }
+      } else if (saveError) {
+        throw saveError;
       }
 
       alert('공장 정보가 성공적으로 저장되었습니다!');
