@@ -115,10 +115,10 @@ export default function ChatRoomItem({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100 flex items-center gap-1">
               <Building2 className="w-3 h-3" />
-              {room.seller_name}
+              {userRole === 'seller' ? room.buyer_name || 'Global Buyer' : room.seller_name || 'Korean Manufacturer'}
             </span>
 
-            {/* 각 대화방 카드별 안읽은 메시지 수 알림 뱃지 */}
+            {/* 각 대화방 카드별 안읽은 메시지 수 알림 뱃지 (0보다 클 때만 정밀 표시) */}
             {room.unread_count > 0 && (
               <span className="bg-rose-500 text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full animate-pulse shadow-sm">
                 {room.unread_count} New
@@ -127,11 +127,11 @@ export default function ChatRoomItem({
           </div>
 
           <h3 className="text-sm font-extrabold text-slate-900 line-clamp-1">
-            {room.product_title}
+            {room.product_title || 'B2B Trade Discussion'}
           </h3>
 
           <p className="text-xs text-slate-500 line-clamp-1 font-medium">
-            {room.buyer_name}: "{room.last_message || '대화가 시작되었습니다.'}"
+            {userRole === 'seller' ? room.buyer_name : room.seller_name}: "{room.last_message || '대화가 시작되었습니다.'}"
           </p>
         </div>
 
@@ -359,7 +359,7 @@ export default function ChatRoomItem({
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={`Message ${userRole === 'seller' ? room.buyer_name : room.seller_name}...`}
+                placeholder={`Message ${userRole === 'seller' ? room.buyer_name || 'Buyer' : room.seller_name || 'Seller'}...`}
                 className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
               />
 

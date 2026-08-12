@@ -149,6 +149,12 @@ function ChatContent() {
       const currentUserObj = session?.user || null;
       setUser(currentUserObj);
 
+      if (!currentUserObj) {
+        setRooms([]);
+        setLoading(false);
+        return;
+      }
+
       const role = currentUserObj?.user_metadata?.role || 'seller';
       setUserRole(role);
 
@@ -160,13 +166,25 @@ function ChatContent() {
     }
   };
 
-  // DB `is_read = false` 기준 안읽은 새 메시지 수 정밀 계산 및 채팅방 로드
+  // ★ [핵심 보안 수정] 로그인한 본인 ID의 대화방만 조회 (셀러는 seller_id = 내ID, 바이어는 buyer_id = 내ID)
   const fetchChatRoomsAndInit = async (currentUserObj, currentRole) => {
     try {
-      const { data: existingRooms } = await supabase
-        .from('chat_rooms')
-        .select('*')
-        .order('updated_at', { ascending: false });
+      if (!currentUserObj) {
+        setRooms([]);
+        return;
+      }
+
+      const userIdStr = currentUserObj.id.toString();
+
+      // 내 역할에 따라 쿼리 보안 조건 분기
+      let query = supabase.from('chat_rooms').select('*');
+      if (currentRole === 'seller') {
+        query = query.eq('seller_id', userIdStr);
+      } else {
+        query = query.eq('buyer_id', userIdStr);
+      }
+
+      const { data: existingRooms } = await query.order('updated_at', { ascending: false });
 
       let currentRoomsList = existingRooms || [];
 
@@ -218,7 +236,7 @@ function ChatContent() {
           const newRoomPayload = {
             product_id: paramProductId ? paramProductId.toString() : null,
             product_title: companyTitle,
-            buyer_id: currentUserObj?.id ? currentUserObj.id.toString() : 'guest_buyer',
+            buyer_id: userIdStr,
             buyer_name: currentUserObj?.email ? currentUserObj.email.split('@')[0] : 'Global Buyer',
             seller_id: paramSellerId ? paramSellerId.toString() : null,
             seller_name: companySeller,
@@ -237,7 +255,7 @@ function ChatContent() {
 
             const initialMsg = {
               room_id: matchedRoom.id,
-              sender_id: currentUserObj?.id ? currentUserObj.id.toString() : 'guest_buyer',
+              sender_id: userIdStr,
               sender_role: 'buyer',
               message: `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`,
               translated_message: `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`,
@@ -270,36 +288,46 @@ function ChatContent() {
     }
   };
 
-  // 해당 대화방의 상대방 메시지를 DB에서 `is_read = true`로 직접 UPDATE 처리
+  // ★ [안 읽은 메시지 수 처리] 해당 대화방 메시지를 DB 및 로컬 상태에서 완벽 읽음(is_read=true) 처리
   const markRoomMessagesAsRead = async (roomId, currentRole) => {
     try {
       const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
+
+      // 1. DB 상의 안 읽은 레코드 업데이트
       await supabase
         .from('chat_messages')
         .update({ is_read: true })
         .eq('room_id', roomId)
         .eq('sender_role', opponentRole);
 
+      // 2. 로컬 메모리 상태 상 메시지들의 is_read 상태 일괄 true 변환
+      setRoomMessagesMap((prevMap) => {
+        const currentMsgs = prevMap[roomId] || [];
+        const updatedMsgs = currentMsgs.map((m) =>
+          m.sender_role === opponentRole ? { ...m, is_read: true } : m
+        );
+        return { ...prevMap, [roomId]: updatedMsgs };
+      });
+
+      // 3. 채팅방 카드 목록의 unread_count 0 초기화
+      setRooms((prevRooms) =>
+        prevRooms.map((r) => (r.id === roomId ? { ...r, unread_count: 0 } : r))
+      );
+
+      // 4. 헤더 / 메인화면 뱃지 수치 즉시 갱신 이벤트 전송
       window.dispatchEvent(new Event('klick_unread_chat_updated'));
     } catch (e) {
       console.error('Failed to mark as read in DB:', e);
     }
   };
 
-  // 대화방 토글 클릭 시 정밀 읽음 처리
+  // 대화방 아코디언 토글 클릭 시 즉시 안 읽은 수 0 차감 및 읽음 처리
   const handleToggleRoom = async (roomId) => {
     if (activeRoomId === roomId) {
       setActiveRoomId(null);
     } else {
       setActiveRoomId(roomId);
-
-      // 1. 해당 대화방 메시지 DB is_read = true 로 세팅
       await markRoomMessagesAsRead(roomId, userRole);
-
-      // 2. UI 상 unread_count 0 처리
-      setRooms((prevRooms) =>
-        prevRooms.map((r) => (r.id === roomId ? { ...r, unread_count: 0 } : r))
-      );
     }
   };
 
