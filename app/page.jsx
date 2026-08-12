@@ -61,6 +61,7 @@ export default function HomePage() {
     };
   }, []);
 
+  // ★ 로그인 직후 플래그(klick_show_onboarding)가 명시적으로 존재하는 경우에만 모달 트리거
   const checkOnboardingStatus = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -71,37 +72,44 @@ export default function HomePage() {
         const role = userObj.user_metadata?.role || 'seller';
         setUserRole(role);
 
-        const isNewFlag = localStorage.getItem('klick_show_onboarding');
+        // 로그인/회원가입 직후 설정되는 온보딩 플래그 확인
+        const isLoginTriggered = localStorage.getItem('klick_show_onboarding');
 
-        if (role === 'seller') {
-          const { data: compData } = await supabase
-            .from('companies')
-            .select('*')
-            .eq('user_id', userObj.id)
-            .single();
+        if (isLoginTriggered === 'true') {
+          if (role === 'seller') {
+            const { data: compData } = await supabase
+              .from('companies')
+              .select('*')
+              .eq('user_id', userObj.id)
+              .maybeSingle();
 
-          const { data: prodData } = await supabase
-            .from('products')
-            .select('id')
-            .eq('company_id', userObj.id);
+            const { data: prodData } = await supabase
+              .from('products')
+              .select('id')
+              .eq('company_id', userObj.id);
 
-          const hasCompanyDetails = compData && (compData.description || compData.certifications);
-          const hasProducts = prodData && prodData.length > 0;
+            const hasCompanyDetails = compData && (compData.description || compData.certifications);
+            const hasProducts = prodData && prodData.length > 0;
 
-          if (!hasCompanyDetails || !hasProducts || isNewFlag === 'true') {
-            setShowOnboardingModal(true);
-          }
-        } else {
-          const { data: buyerData } = await supabase
-            .from('buyers')
-            .select('*')
-            .eq('auth_user_id', userObj.id)
-            .single();
+            if (!hasCompanyDetails || !hasProducts) {
+              setShowOnboardingModal(true);
+            } else {
+              localStorage.removeItem('klick_show_onboarding');
+            }
+          } else {
+            const { data: buyerData } = await supabase
+              .from('buyers')
+              .select('*')
+              .eq('auth_user_id', userObj.id)
+              .maybeSingle();
 
-          const hasBuyerDetails = buyerData && (buyerData.company_name_en || buyerData.country);
+            const hasBuyerDetails = buyerData && (buyerData.company_name_en || buyerData.country);
 
-          if (!hasBuyerDetails || isNewFlag === 'true') {
-            setShowOnboardingModal(true);
+            if (!hasBuyerDetails) {
+              setShowOnboardingModal(true);
+            } else {
+              localStorage.removeItem('klick_show_onboarding');
+            }
           }
         }
       }
@@ -110,11 +118,13 @@ export default function HomePage() {
     }
   };
 
+  // 모달 닫기 시 플래그 즉시 삭제 -> 이후 홈 화면 방문 시 재노출 방지
   const handleCloseOnboarding = () => {
     localStorage.removeItem('klick_show_onboarding');
     setShowOnboardingModal(false);
   };
 
+  // 정보 입력 페이지로 이동
   const handleGoToProfileEdit = () => {
     localStorage.removeItem('klick_show_onboarding');
     setShowOnboardingModal(false);
@@ -127,7 +137,6 @@ export default function HomePage() {
     }
   };
 
-  // ★ DB 검증 기반 안읽은 채팅 카운트 동기화 (잘못된 로컬스토리지 값 클리어)
   const updateUnreadCount = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     const currentUserObj = session?.user || null;
@@ -423,7 +432,7 @@ export default function HomePage() {
         </section>
       </main>
 
-      {/* 가입 직후 또는 프로필 정보 미등록 시 출력되는 등록 유도 모달 팝업 */}
+      {/* 로그인 직후 온보딩 플래그가 존재할 때만 딱 1회 노출되는 권유 모달 */}
       {showOnboardingModal && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 animate-fadeIn">
