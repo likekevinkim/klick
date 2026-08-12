@@ -2,17 +2,15 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-// 메모리 기반 임시 OTP 저장소 (글로벌 싱글톤 저장)
-global.otpStore = global.otpStore || new Map();
-
 export async function POST(request) {
   try {
     const apiKey = process.env.RESEND_API_KEY;
 
+    // Vercel 서버 환경 변수 검증 가드
     if (!apiKey || apiKey.trim() === '') {
-      console.error('RESEND_API_KEY is missing or invalid in environment variables.');
+      console.error('RESEND_API_KEY is missing or invalid in Vercel Environment Variables.');
       return NextResponse.json(
-        { error: '서버 환경 변수(RESEND_API_KEY) 설정이 누락되었습니다. .env.local 파일을 확인해 주세요.' },
+        { error: 'Vercel 서버 환경 변수(RESEND_API_KEY) 설정이 누락되었습니다. Vercel Settings에서 환경변수를 등록 후 Redeploy 해주세요.' },
         { status: 500 }
       );
     }
@@ -32,7 +30,7 @@ export async function POST(request) {
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10분 유효기간
 
-    // Resend Direct SDK 발송 요청 (인증된 true-k.net 도메인의 noreply 주소 사용)
+    // Resend Direct SDK 발송 요청 (승인된 true-k.net 도메인 메일 주소)
     const { data, error } = await resend.emails.send({
       from: 'KLICK B2B <noreply@true-k.net>',
       to: [email],
@@ -50,9 +48,18 @@ export async function POST(request) {
     });
 
     if (error) {
-      console.error('Resend Direct Error:', error);
+      console.error('Resend Direct Error Details:', error);
+      
+      // Resend 테스트 모드 제약 에러 구체적 분기 처리
+      if (error.message && error.message.includes('only send testing emails')) {
+        return NextResponse.json(
+          { error: 'Resend 테스트 모드 제한: 현재는 Resend 계정 가입 이메일(truek.work@gmail.com)로만 테스트 메일 발송이 가능합니다. 해당 이메일 주소를 입력해 주세요!' },
+          { status: 400 }
+        );
+      }
+
       return NextResponse.json(
-        { error: `메일 발송 실패: ${error.message}` },
+        { error: `Resend 메일 발송 실패 [원인: ${error.message || 'API 세션 거부'}]` },
         { status: 500 }
       );
     }
@@ -80,7 +87,7 @@ export async function POST(request) {
   } catch (err) {
     console.error('Send OTP Route Handler Exception:', err);
     return NextResponse.json(
-      { error: `서버 내부 오류: ${err.message || '알 수 없는 에러'}` },
+      { error: `서버 내부 처리 예외: ${err.message || '알 수 없는 서버 에러'}` },
       { status: 500 }
     );
   }
