@@ -29,9 +29,7 @@ import {
   Plus,
   PlusCircle,
   Globe2,
-  Briefcase,
-  Info,
-  Check
+  Briefcase
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -261,7 +259,7 @@ export default function CompanyShowroomLandingPage() {
 
       const activeUserId = activeUser.id;
 
-      // 대표 커버 이미지 설정 (사용자가 커스텀 업로드/입력하지 않았을 경우 빈 값 유지)
+      // 대표 커버 이미지 설정
       const categoryKey = editCategory || 'Industrial Machinery';
 
       const updatedPayload = {
@@ -396,19 +394,16 @@ export default function CompanyShowroomLandingPage() {
     router.push(`/chat?company=${compName}&title=${title}`);
   };
 
-  // 대표 커버 이미지 (실제 입력값 및 샘플 여부 판별)
+  // 대표 커버 이미지 (실제 입력값 및 디폴트 이미지 매핑)
   const categoryKey = company?.category || 'Industrial Machinery';
   const categoryDefaults = DEFAULT_CATEGORY_IMAGES[categoryKey] || DEFAULT_CATEGORY_IMAGES['Industrial Machinery'];
   
   const hasCustomCover = company?.cover_image && company.cover_image.trim() !== '';
   const effectiveCoverImage = hasCustomCover ? company.cover_image : categoryDefaults.cover;
 
-  // 갤러리 이미지 (실제 입력값 및 샘플 여부 판별)
+  // 갤러리 이미지
   const hasCustomGallery = company?.gallery_images && Array.isArray(company.gallery_images) && company.gallery_images.length > 0;
   const effectiveGalleryImages = hasCustomGallery ? company.gallery_images : categoryDefaults.gallery;
-
-  // 비디오 존재 여부
-  const hasCustomVideo = company?.video_url && company.video_url.trim() !== '';
 
   // 인증서 실제 존재 여부
   const hasCustomCertifications = company?.certifications && Array.isArray(company.certifications) && company.certifications.length > 0;
@@ -427,14 +422,6 @@ export default function CompanyShowroomLandingPage() {
         <div className="absolute inset-0 opacity-25">
           <img src={effectiveCoverImage} alt="Company Cover Background" className="w-full h-full object-cover" />
         </div>
-
-        {/* 상단 커버 이미지 샘플 여부 표출 워터마크 */}
-        {!hasCustomCover && (
-          <div className="absolute top-4 right-6 bg-slate-900/80 backdrop-blur-md text-amber-400 text-[10px] font-extrabold px-3 py-1 rounded-full border border-amber-500/30 flex items-center gap-1 shadow-lg">
-            <Info className="w-3.5 h-3.5 text-amber-400" />
-            <span>[Sample Cover Image] KLICK B2B Verified</span>
-          </div>
-        )}
 
         <div className="max-w-6xl mx-auto space-y-6 relative z-10">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -567,7 +554,7 @@ export default function CompanyShowroomLandingPage() {
         </div>
       </section>
 
-      {/* 3. 탭별 컨텐츠 (하단 흰색 섹션 풍성하게 출력) */}
+      {/* 3. 탭별 컨텐츠 (우측 상단 샘플 뱃지 및 가짜 인증서 가지치기 완료) */}
       <main className="max-w-6xl mx-auto px-6 mt-10">
         {activeTab === 'about' ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -592,7 +579,7 @@ export default function CompanyShowroomLandingPage() {
                 )}
               </div>
 
-              {/* 입력하신 기본 스펙 정보들이 주르륵 보이는 비주얼 카드 그리드 */}
+              {/* 입력하신 기본 스펙 정보 그리드 */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs">
                 <div className="p-3 bg-white rounded-xl border border-slate-100 space-y-1">
                   <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
@@ -668,24 +655,12 @@ export default function CompanyShowroomLandingPage() {
                 )}
               </div>
 
-              {/* 비디오 투어 Stream (비디오 미등록 시 샘플 표출) */}
+              {/* 비디오 투어 Stream (우측 상단 어색한 뱃지 제거) */}
               <div className="border-t border-slate-100 pt-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                    <Video className="w-4 h-4 text-purple-600" />
-                    Facility Video Stream
-                  </h3>
-
-                  {!hasCustomVideo ? (
-                    <span className="text-[10px] font-extrabold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 flex items-center gap-1">
-                      <Info className="w-3 h-3" /> [Sample Video] KLICK Verified
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3" /> Verified Video Stream
-                    </span>
-                  )}
-                </div>
+                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                  <Video className="w-4 h-4 text-purple-600" />
+                  Facility Video Stream
+                </h3>
 
                 <div
                   onClick={() => handleOpenVideo(company?.video_url || 'https://www.w3schools.com/html/mov_bbb.mp4')}
@@ -698,54 +673,33 @@ export default function CompanyShowroomLandingPage() {
                   </div>
 
                   <span className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-1 rounded-lg">
-                    {!hasCustomVideo ? '[Sample Video] Click to Play' : 'Click to Play Video Stream'}
+                    Click to Play Video Stream
                   </span>
                 </div>
               </div>
 
-              {/* 갤러리 사진 (사진 미등록 시 샘플 워터마크 표출) */}
+              {/* 갤러리 사진 (우측 상단 뱃지 및 Sample 워터마크 태그 완전 정제) */}
               <div className="border-t border-slate-100 pt-6 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                    <ImageIcon className="w-4 h-4 text-emerald-600" />
-                    Facilities & Operations Gallery
-                  </h3>
-
-                  {!hasCustomGallery && (
-                    <span className="text-[10px] font-extrabold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 flex items-center gap-1">
-                      <Info className="w-3 h-3" /> [Sample Gallery Photos]
-                    </span>
-                  )}
-                </div>
+                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-emerald-600" />
+                  Facilities & Operations Gallery
+                </h3>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {effectiveGalleryImages.map((imgUrl, idx) => (
                     <div key={idx} className="h-32 rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 group shadow-sm relative">
                       <img src={imgUrl} alt={`Gallery ${idx}`} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-                      {!hasCustomGallery && (
-                        <span className="absolute top-2 left-2 bg-black/70 text-amber-300 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md backdrop-blur-sm">
-                          Sample
-                        </span>
-                      )}
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* ★ [핵심 요구사항 반영] 품질 인증서 (가짜 인증서 원천 제거 및 샘플 표출 구분) */}
+              {/* ★ [요구사항 반영] 품질 인증서 (우측 상단 뱃지 및 가짜 샘플 박스 완전 제거) */}
               <div className="border-t border-slate-100 pt-6 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                    <Award className="w-4 h-4 text-amber-500" />
-                    Quality Certifications & Licenses
-                  </h3>
-
-                  {!hasCustomCertifications && (
-                    <span className="text-[10px] font-extrabold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 flex items-center gap-1">
-                      <Info className="w-3 h-3" /> [Sample Certifications]
-                    </span>
-                  )}
-                </div>
+                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                  <Award className="w-4 h-4 text-amber-500" />
+                  Quality Certifications & Licenses
+                </h3>
 
                 <div className="flex flex-wrap gap-2">
                   {hasCustomCertifications ? (
@@ -759,22 +713,10 @@ export default function CompanyShowroomLandingPage() {
                       </span>
                     ))
                   ) : (
-                    /* 허위 기재를 방지하도록 [Sample Certifications] 워터마크 태그가 달린 가이드 표출 */
-                    <div className="w-full p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2">
-                      <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-                        <Info className="w-4 h-4 text-amber-500" />
-                        <span>No official certifications registered yet. Below are sample license categories:</span>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        <span className="px-3 py-1.5 bg-white text-slate-400 text-xs font-bold rounded-xl border border-slate-200 flex items-center gap-1.5 opacity-70">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" /> [Sample] ISO 9001 Standard
-                        </span>
-                        <span className="px-3 py-1.5 bg-white text-slate-400 text-xs font-bold rounded-xl border border-slate-200 flex items-center gap-1.5 opacity-70">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" /> [Sample] CE Quality License
-                        </span>
-                      </div>
-                    </div>
+                    /* 인증서 미등록 시 가짜 샘플 태그 없이 단일 텍스트로만 표출 */
+                    <p className="text-xs text-slate-400 font-medium italic py-1">
+                      No official certifications registered yet.
+                    </p>
                   )}
                 </div>
               </div>
