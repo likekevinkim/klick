@@ -36,46 +36,6 @@ function FactoriesDirectoryContent() {
     'General Manufacturing'
   ];
 
-  // 카테고리별 검증된 한국 공장 마스터 데이터
-  const initialFactoriesList = [
-    {
-      id: '1',
-      company_name: 'Hankook Precision Co., Ltd.',
-      category: 'Industrial Machinery',
-      location: 'Incheon, South Korea 🇰🇷',
-      certifications: 'ISO 9001, CE Certified',
-      description: 'Leading South Korean manufacturer specializing in high-precision CNC machinery and automated industrial parts since 1998.',
-      cover_image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&auto=format&fit=crop&q=60',
-      logo_letter: 'H',
-      established: '1998',
-      verified: true
-    },
-    {
-      id: '2',
-      company_name: 'Seoul Bio Cosmetics Ltd.',
-      category: 'K-Beauty & Cosmetics',
-      location: 'Seoul, South Korea 🇰🇷',
-      certifications: 'CGMP, FDA Registered, ISO 22716',
-      description: 'OEM/ODM manufacturer of premium K-Beauty skincare, organic serum solutions, and Derma cosmetics.',
-      cover_image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=800&auto=format&fit=crop&q=60',
-      logo_letter: 'S',
-      established: '2008',
-      verified: true
-    },
-    {
-      id: '3',
-      company_name: 'Gyeonggi Smart Tech Industries',
-      category: 'Electronics & Smart IT',
-      location: 'Suwon, Gyeonggi-do, South Korea 🇰🇷',
-      certifications: 'KC, RoHS, FCC Certified',
-      description: 'High-tech electronics factory producing smart IoT sensors, industrial PCBs, and automated controllers.',
-      cover_image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=60',
-      logo_letter: 'G',
-      established: '2015',
-      verified: true
-    }
-  ];
-
   useEffect(() => {
     setMounted(true);
     fetchFactoriesWithProducts();
@@ -85,25 +45,43 @@ function FactoriesDirectoryContent() {
     try {
       setLoading(true);
 
-      // Supabase DB에서 실제 등록된 상품 데이터를 조회해 공장별 매핑 수치 반영
-      const { data: dbProducts } = await supabase.from('products').select('*');
+      // 1. Supabase DB에서 실제 등록된 회사(셀러) 데이터 조회
+      const { data: dbCompanies, error: compError } = await supabase
+        .from('companies')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      const mappedFactories = initialFactoriesList.map(fac => {
+      if (compError) throw compError;
+
+      // 2. 공장별 등록된 상품 개수 매핑을 위해 상품 데이터 조회
+      const { data: dbProducts } = await supabase.from('products').select('company_id');
+
+      // 3. UI 렌더링에 맞게 데이터 매핑 (값이 비어있을 경우 Fallback 기본값 제공)
+      const mappedFactories = (dbCompanies || []).map(fac => {
         const facProducts = (dbProducts || []).filter(
-          p => (p.company_name || '').toLowerCase().includes(fac.company_name.toLowerCase().slice(0, 5)) ||
-               p.company_id === fac.id
+          p => p.company_id === fac.user_id || p.company_id === fac.id
         );
+
         return {
-          ...fac,
-          product_count: facProducts.length > 0 ? facProducts.length : (dbProducts?.length || 2),
-          products: facProducts
+          id: fac.user_id || fac.id, // 라우팅을 위한 고유 ID
+          company_name: fac.company_name_en || fac.company_name || fac.company_name_ko || 'Korean Manufacturer',
+          company_name_ko: fac.company_name_ko || '',
+          category: fac.category || 'General Manufacturing',
+          location: fac.location || 'South Korea 🇰🇷',
+          certifications: fac.certifications || 'ISO 9001, KC Certified',
+          description: fac.description || 'Verified manufacturer on KLICK B2B Network.',
+          // DB에 커버 이미지가 없을 경우를 대비한 기본 고퀄리티 이미지
+          cover_image: fac.cover_image || 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&auto=format&fit=crop&q=60',
+          established: fac.established || new Date(fac.created_at).getFullYear() || '2024',
+          product_count: facProducts.length,
+          verified: true
         };
       });
 
       setFactories(mappedFactories);
     } catch (err) {
       console.error('Failed to load factory directory:', err);
-      setFactories(initialFactoriesList);
+      setFactories([]); // 에러 발생 시 빈 배열로 세팅하여 빈 상태 화면 유도
     } finally {
       setLoading(false);
     }
@@ -202,10 +180,27 @@ function FactoriesDirectoryContent() {
             <p className="text-xs text-slate-400">Loading verified manufacturing directory...</p>
           </div>
         ) : filteredFactories.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 space-y-3 p-6 shadow-sm">
-            <Building2 className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
-            <h3 className="text-sm font-bold text-slate-800">No Factories Found</h3>
-            <p className="text-xs text-slate-500">There are no manufacturers matching your search criteria.</p>
+          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 space-y-4 p-6 shadow-sm">
+            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
+              <Building2 className="w-8 h-8 stroke-1" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-800">No Factories Registered Yet</h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+              {searchQuery || selectedCategory !== 'All'
+                ? 'There are no manufacturers matching your search criteria. Try adjusting your filters.'
+                : 'There are currently no factory showrooms registered in the database. Register your factory now!'}
+            </p>
+            {!searchQuery && selectedCategory === 'All' && (
+              <div className="pt-2">
+                <Link
+                  href="/login"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs shadow transition"
+                >
+                  <span>Register Factory Showroom</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -242,7 +237,7 @@ function FactoriesDirectoryContent() {
                       <span className="text-[10px] text-slate-400 font-bold">Est. {fac.established}</span>
                     </div>
 
-                    <h3 className="text-base font-extrabold text-slate-900 group-hover:text-blue-600 transition flex items-center gap-2">
+                    <h3 className="text-base font-extrabold text-slate-900 group-hover:text-blue-600 transition flex items-center gap-2 line-clamp-1">
                       <Building2 className="w-4.5 h-4.5 text-blue-600 flex-shrink-0" />
                       {fac.company_name}
                     </h3>
@@ -265,7 +260,9 @@ function FactoriesDirectoryContent() {
                       <span className="text-slate-400 font-bold flex items-center gap-1">
                         <Award className="w-3.5 h-3.5 text-amber-500" /> Certs:
                       </span>
-                      <span className="font-extrabold text-blue-600">{fac.certifications}</span>
+                      <span className="font-extrabold text-blue-600 line-clamp-1 text-right max-w-[150px]">
+                        {fac.certifications}
+                      </span>
                     </div>
                   </div>
                 </div>

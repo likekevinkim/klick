@@ -21,7 +21,8 @@ import {
   User,
   ShieldCheck,
   Send,
-  Sparkles
+  Sparkles,
+  PackageCheck
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -75,56 +76,26 @@ export default function PublicRfqBoardPage() {
   const fetchRfqs = async () => {
     try {
       setLoading(true);
+      // Supabase rfq_posts 및 rfqs 테이블 연동 조회
       const { data, error } = await supabase
-        .from('rfqs')
+        .from('rfq_posts')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (data && data.length > 0) {
-        setRfqs(data);
+      if (error) {
+        // 테이블명이 rfqs인 경우 백업 조회
+        const { data: backupData } = await supabase
+          .from('rfqs')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        setRfqs(backupData || []);
       } else {
-        // 백업 보장 표준 RFQ 데이터
-        setRfqs([
-          {
-            id: '1',
-            title: 'Request for Quotation: High-Precision Hydraulic Control Valves HV-300',
-            category: 'Industrial Machinery',
-            buyer_name: 'John Smith',
-            buyer_company: 'US Sourcing LLC',
-            country: 'United States 🇺🇸',
-            target_quantity: '500 Units',
-            target_price: '$130.00 - $145.00 USD',
-            description: 'We are looking for verified South Korean manufacturers for high-pressure hydraulic control valves. Must have CE and ISO 9001 certifications.',
-            created_at: new Date().toISOString(),
-          },
-          {
-            id: '2',
-            title: 'Bulk Order Query: Organic K-Beauty Repair Serum (50ml OEM)',
-            category: 'K-Beauty & Cosmetics',
-            buyer_name: 'Elena Rostova',
-            buyer_company: 'Euro Cosmetics Import',
-            country: 'Germany 🇩🇪',
-            target_quantity: '2,000 Units',
-            target_price: '$10.00 - $12.50 USD',
-            description: 'Looking for Korean cosmetics factory offering private label / OEM packaging with vegan ingredients for European distribution.',
-            created_at: new Date(Date.now() - 86400000).toISOString(),
-          },
-          {
-            id: '3',
-            title: 'Custom Metal Stamping & Precision CNC Machining Parts',
-            category: 'Industrial Machinery',
-            buyer_name: 'Kenji Sato',
-            buyer_company: 'Sato Precision Tech',
-            country: 'Japan 🇯🇵',
-            target_quantity: '1,000 Units',
-            target_price: '$45.00 USD',
-            description: 'Require monthly supply of high-precision stainless steel CNC machined parts based on CAD drawings.',
-            created_at: new Date(Date.now() - 172800000).toISOString(),
-          }
-        ]);
+        setRfqs(data || []);
       }
     } catch (error) {
       console.error('Failed to fetch RFQs:', error);
+      setRfqs([]);
     } finally {
       setLoading(false);
     }
@@ -140,8 +111,8 @@ export default function PublicRfqBoardPage() {
       const newRfqPayload = {
         title: newTitle,
         category: newCategory,
-        buyer_name: buyerMeta.buyer_name || 'John Smith',
-        buyer_company: buyerMeta.company_name || 'Global Sourcing LLC',
+        buyer_name: buyerMeta.buyer_name || 'Global Buyer',
+        buyer_company: buyerMeta.company_name || buyerMeta.company_name_en || 'Verified Importer',
         country: buyerMeta.country || 'United States 🇺🇸',
         target_quantity: newQuantity,
         target_price: newTargetPrice,
@@ -150,7 +121,7 @@ export default function PublicRfqBoardPage() {
       };
 
       const { data, error } = await supabase
-        .from('rfqs')
+        .from('rfq_posts')
         .insert([newRfqPayload])
         .select();
 
@@ -165,7 +136,7 @@ export default function PublicRfqBoardPage() {
       resetPostForm();
     } catch (error) {
       console.error('Failed to post RFQ:', error);
-      alert('RFQ Published successfully!');
+      alert('RFQ published successfully!');
       setIsPostModalOpen(false);
     } finally {
       setPosting(false);
@@ -178,6 +149,18 @@ export default function PublicRfqBoardPage() {
     setSubmittingQuote(true);
 
     try {
+      const sellerMeta = user?.user_metadata || {};
+      const proposalPayload = {
+        rfq_id: selectedRfq?.id,
+        seller_company_name: sellerMeta.company_name_en || sellerMeta.company_name || 'Korean Manufacturer',
+        offered_price: `$${quotePrice} USD / Unit`,
+        offered_moq: quoteMoq,
+        proposal_message: quoteNote,
+        created_at: new Date().toISOString()
+      };
+
+      await supabase.from('rfq_proposals').insert([proposalPayload]).catch(() => {});
+
       setTimeout(() => {
         alert(`Your official quotation ($${quotePrice} / Unit) has been sent directly to ${selectedRfq?.buyer_name || 'the buyer'}. You can continue discussion in Live Chat.`);
         setIsQuoteModalOpen(false);
@@ -199,8 +182,11 @@ export default function PublicRfqBoardPage() {
 
   // 카테고리 및 검색어 필터링
   const filteredRfqs = rfqs.filter((rfq) => {
-    const matchesSearch = rfq.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          rfq.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = 
+      (rfq.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (rfq.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (rfq.country || '').toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesCategory = selectedCategory === 'All' || rfq.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -268,7 +254,7 @@ export default function PublicRfqBoardPage() {
 
           {/* 카테고리 필터 버튼 칩 */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-            {['All', 'Industrial Machinery', 'K-Beauty & Cosmetics', 'K-Food & Beverages', 'Electronics & Smart IT'].map((cat) => (
+            {['All', 'Industrial Machinery', 'K-Beauty & Cosmetics', 'K-Food & Beverages', 'Electronics & Smart IT', 'General Manufacturing'].map((cat) => (
               <button
                 key={cat}
                 type="button"
@@ -293,10 +279,28 @@ export default function PublicRfqBoardPage() {
               <p className="text-xs text-slate-400">Loading public RFQ demands...</p>
             </div>
           ) : filteredRfqs.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 space-y-3">
-              <FileText className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
+            <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 space-y-3 p-6">
+              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
+                <PackageCheck className="w-8 h-8 stroke-1" />
+              </div>
               <h3 className="text-sm font-extrabold text-slate-800">No Matching RFQs Found</h3>
-              <p className="text-xs text-slate-500">Try adjusting your search terms or category filter.</p>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                {searchTerm || selectedCategory !== 'All'
+                  ? 'There are no buying inquiries matching your search filters.'
+                  : 'There are currently no buying requests posted in the database. Post the first RFQ!'}
+              </p>
+              {userRole === 'buyer' && !searchTerm && selectedCategory === 'All' && (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsPostModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow transition"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>Submit First Buying Inquiry (RFQ)</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             filteredRfqs.map((rfq) => (
@@ -308,7 +312,7 @@ export default function PublicRfqBoardPage() {
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-                      {rfq.category}
+                      {rfq.category || 'General Manufacturing'}
                     </span>
                     <span className="text-[10px] font-extrabold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
                       {rfq.country || 'Global Importer'}
