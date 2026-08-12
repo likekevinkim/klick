@@ -32,7 +32,7 @@ export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // 셀러 정보 미등록 시 로그인 때마다 출력될 온보딩 선택 모달 상태 및 유저 정보
+  // 셀러/바이어 프로필 미등록 시 로그인 때마다 출력될 온보딩 선택 모달 상태 및 유저 정보
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState('seller');
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
@@ -106,6 +106,7 @@ export default function HomePage() {
 
           const hasBuyerDetails = buyerData && (buyerData.company_name_en || buyerData.country);
 
+          // 바이어 프로필 상세 정보가 미작성 상태이거나 신규 가입 플래그가 남아있는 경우 모달 출력
           if (!hasBuyerDetails || isNewFlag === 'true') {
             setShowOnboardingModal(true);
           }
