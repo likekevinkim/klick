@@ -16,8 +16,10 @@ import {
   List, 
   Heading, 
   Award,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Upload
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 export default function EditCompanyModal({
   isOpen,
@@ -58,39 +60,103 @@ export default function EditCompanyModal({
   const currentYear = 2026;
   const years = Array.from({ length: currentYear - 1950 + 1 }, (_, i) => (currentYear - i).toString());
 
-  // 기타 사진 URL 임시 입력
+  // 직접 파일 업로드 상태
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
   const [newGalleryUrl, setNewGalleryUrl] = useState('');
-  
-  // 인증서 임시 입력
   const [newCertText, setNewCertText] = useState('');
 
-  // 사진 추가 함수
-  const handleAddGalleryImage = () => {
+  // 1. 대표 사진 컴퓨터 파일 직접 업로드 (Supabase Storage)
+  const handleCoverFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingCover(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `cover_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `covers/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('company-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('company-images')
+        .getPublicUrl(filePath);
+
+      if (publicUrlData?.publicUrl) {
+        setEditCoverImage(publicUrlData.publicUrl);
+      }
+    } catch (err) {
+      console.error('Cover upload error:', err);
+      alert('대표 이미지 파일 업로드 실패: ' + (err.message || '스토리지 연결 오류'));
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
+  // 2. 갤러리 기타 사진 컴퓨터 파일 직접 업로드 (Supabase Storage)
+  const handleGalleryFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingGallery(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `gallery_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `gallery/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('company-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('company-images')
+        .getPublicUrl(filePath);
+
+      if (publicUrlData?.publicUrl) {
+        setEditGalleryImages([...(editGalleryImages || []), publicUrlData.publicUrl]);
+      }
+    } catch (err) {
+      console.error('Gallery upload error:', err);
+      alert('갤러리 이미지 파일 업로드 실패: ' + (err.message || '스토리지 연결 오류'));
+    } finally {
+      setUploadingGallery(false);
+    }
+  };
+
+  // 사진 URL 입력 추가
+  const handleAddGalleryImageByUrl = () => {
     if (!newGalleryUrl.trim()) return;
     setEditGalleryImages([...(editGalleryImages || []), newGalleryUrl.trim()]);
     setNewGalleryUrl('');
   };
 
-  // 사진 삭제 함수
+  // 갤러리 사진 삭제
   const handleRemoveGalleryImage = (index) => {
     const updated = editGalleryImages.filter((_, i) => i !== index);
     setEditGalleryImages(updated);
   };
 
-  // 인증서 추가 함수 (+ 버튼)
+  // 인증서 추가 (+ 버튼)
   const handleAddCertification = () => {
     if (!newCertText.trim()) return;
     setEditCertifications([...(editCertifications || []), newCertText.trim()]);
     setNewCertText('');
   };
 
-  // 인증서 삭제 함수
+  // 인증서 삭제
   const handleRemoveCertification = (index) => {
     const updated = editCertifications.filter((_, i) => i !== index);
     setEditCertifications(updated);
   };
 
-  // 경량 텍스트 에디터 서식 태그 주입 헬퍼
+  // 에디터 서식 태그 주입 헬퍼
   const handleInsertEditorTag = (tagType) => {
     let prefix = '';
     let suffix = '';
@@ -108,7 +174,7 @@ export default function EditCompanyModal({
       prefix = '<ul>\n  <li>';
       suffix = '</li>\n</ul>';
     } else if (tagType === 'image') {
-      const url = prompt('Enter Image URL to embed:');
+      const url = prompt('Enter Image URL to embed in Overview:');
       if (url) {
         prefix = `<img src="${url}" alt="Company Detail Image" class="w-full my-3 rounded-2xl border" />`;
       }
@@ -182,19 +248,41 @@ export default function EditCompanyModal({
             />
           </div>
 
-          {/* 2. 대표 사진 (Cover Image) 설정 */}
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-            <label className="block font-extrabold text-slate-800 flex items-center gap-1.5">
-              <ImageIcon className="w-4 h-4 text-blue-600" />
-              Main Company Cover Photo URL (대표 사진)
+          {/* 2. 대표 사진 (직접 업로드 또는 URL) */}
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+            <label className="block font-extrabold text-slate-800 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4 text-blue-600" />
+                Main Cover Photo (대표 사진)
+              </span>
+              <span className="text-[10px] text-slate-400 font-semibold">File Upload or URL</span>
             </label>
-            <input
-              type="url"
-              value={editCoverImage}
-              onChange={(e) => setEditCoverImage(e.target.value)}
-              placeholder="https://images.unsplash.com/..."
-              className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-            />
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <label className="flex-1 px-4 py-2.5 bg-white border border-slate-300 hover:border-blue-500 rounded-xl cursor-pointer flex items-center justify-center gap-2 transition text-slate-700 font-bold">
+                {uploadingCover ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                ) : (
+                  <Upload className="w-4 h-4 text-blue-600" />
+                )}
+                <span>{uploadingCover ? 'Uploading File...' : 'Upload Image File'}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCoverFileUpload}
+                  className="hidden"
+                />
+              </label>
+
+              <input
+                type="url"
+                value={editCoverImage}
+                onChange={(e) => setEditCoverImage(e.target.value)}
+                placeholder="Or paste Image URL (https://...)"
+                className="flex-1 px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+              />
+            </div>
+
             {editCoverImage && (
               <div className="h-28 rounded-xl overflow-hidden border border-slate-200 bg-slate-200 mt-2">
                 <img src={editCoverImage} alt="Cover Preview" className="w-full h-full object-cover" />
@@ -202,34 +290,54 @@ export default function EditCompanyModal({
             )}
           </div>
 
-          {/* 3. 기타 사진 (Gallery Images) 관리 */}
+          {/* 3. 기타 사진 갤러리 (직접 업로드 또는 URL) */}
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-            <label className="block font-extrabold text-slate-800 flex items-center gap-1.5">
-              <ImageIcon className="w-4 h-4 text-emerald-600" />
-              Facility & Production Line Gallery Photos (기타 사진 갤러리)
+            <label className="block font-extrabold text-slate-800 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4 text-emerald-600" />
+                Gallery Photos (기타 사진 갤러리)
+              </span>
+              <span className="text-[10px] text-slate-400 font-semibold">Multiple Photos Supported</span>
             </label>
 
-            <div className="flex gap-2">
-              <input
-                type="url"
-                value={newGalleryUrl}
-                onChange={(e) => setNewGalleryUrl(e.target.value)}
-                placeholder="Enter Photo URL (https://...)"
-                className="flex-1 px-3.5 py-2 bg-white rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={handleAddGalleryImage}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl shadow transition flex items-center gap-1 cursor-pointer flex-shrink-0"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Photo</span>
-              </button>
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+              <label className="sm:col-span-5 px-4 py-2.5 bg-white border border-slate-300 hover:border-emerald-500 rounded-xl cursor-pointer flex items-center justify-center gap-2 transition text-slate-700 font-bold">
+                {uploadingGallery ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                ) : (
+                  <Upload className="w-4 h-4 text-emerald-600" />
+                )}
+                <span>{uploadingGallery ? 'Uploading...' : 'Upload Photo File'}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleGalleryFileUpload}
+                  className="hidden"
+                />
+              </label>
+
+              <div className="sm:col-span-7 flex gap-2">
+                <input
+                  type="url"
+                  value={newGalleryUrl}
+                  onChange={(e) => setNewGalleryUrl(e.target.value)}
+                  placeholder="Paste URL (https://...)"
+                  className="flex-1 px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddGalleryImageByUrl}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl shadow transition flex items-center gap-1 cursor-pointer flex-shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add URL</span>
+                </button>
+              </div>
             </div>
 
             {/* 등록된 갤러리 리스트 */}
             {editGalleryImages && editGalleryImages.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
                 {editGalleryImages.map((url, idx) => (
                   <div key={idx} className="relative h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-200 group">
                     <img src={url} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
@@ -417,7 +525,6 @@ export default function EditCompanyModal({
                 Detailed Overview & Manufacturing Strength (에디터)
               </label>
 
-              {/* 에디터 툴바 */}
               <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
                 <button
                   type="button"
