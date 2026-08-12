@@ -49,7 +49,7 @@ export default function CompanyShowroomLandingPage() {
 
   const [activeTab, setActiveTab] = useState('about');
 
-  // 모달 토글 및 상태 (초기 상태값 비워두기)
+  // 모달 토글 및 상태
   const [isEditCompanyModalOpen, setIsEditCompanyModalOpen] = useState(false);
   const [isSavingCompany, setIsSavingCompany] = useState(false);
 
@@ -64,6 +64,12 @@ export default function CompanyShowroomLandingPage() {
   const [editEmployeesCount, setEditEmployeesCount] = useState('');
   const [editFactorySize, setEditFactorySize] = useState('');
 
+  // 대표사진, 갤러리사진, 비디오, 인증서 상태
+  const [editCoverImage, setEditCoverImage] = useState('');
+  const [editGalleryImages, setEditGalleryImages] = useState([]);
+  const [editVideoUrl, setEditVideoUrl] = useState('');
+  const [editCertifications, setEditCertifications] = useState([]);
+
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
 
@@ -77,23 +83,6 @@ export default function CompanyShowroomLandingPage() {
 
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [selectedVideoUrl, setSelectedVideoUrl] = useState('');
-
-  const factoryVideos = [
-    {
-      id: 1,
-      title: 'CNC Precision Machining & Valve Assembly Line Tour',
-      duration: '02:15',
-      thumbnail: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-      video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
-    },
-    {
-      id: 2,
-      title: 'Zero-Defect Quality Control (QC) Pressure Testing Process',
-      duration: '01:45',
-      thumbnail: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=800&q=80',
-      video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
-    }
-  ];
 
   useEffect(() => {
     setMounted(true);
@@ -110,7 +99,6 @@ export default function CompanyShowroomLandingPage() {
 
       let fetchedCompany = null;
 
-      // 1. Supabase DB에서 실제 등록된 회사 데이터만 조회
       if (companyId) {
         const { data: dbCompany } = await supabase
           .from('companies')
@@ -121,7 +109,6 @@ export default function CompanyShowroomLandingPage() {
         if (dbCompany) fetchedCompany = dbCompany;
       }
 
-      // 본인 소유 권한 확인
       if (currentUser) {
         if (fetchedCompany && (fetchedCompany.user_id === currentUser.id || companyId === currentUser.id)) {
           setIsOwner(true);
@@ -130,7 +117,6 @@ export default function CompanyShowroomLandingPage() {
         }
       }
 
-      // 2. 가짜 데이터 완전 제거: DB에 없으면 null 상태 유지하고 유저 메타데이터 기본 입력값만 세팅
       if (fetchedCompany) {
         setCompany(fetchedCompany);
 
@@ -144,6 +130,11 @@ export default function CompanyShowroomLandingPage() {
         setEditEstablishedYear(fetchedCompany.established_year || '');
         setEditEmployeesCount(fetchedCompany.employees_count || '');
         setEditFactorySize(fetchedCompany.factory_size || '');
+
+        setEditCoverImage(fetchedCompany.cover_image || '');
+        setEditGalleryImages(fetchedCompany.gallery_images || []);
+        setEditVideoUrl(fetchedCompany.video_url || '');
+        setEditCertifications(fetchedCompany.certifications || []);
       } else {
         setCompany(null);
         if (currentUser) {
@@ -156,7 +147,6 @@ export default function CompanyShowroomLandingPage() {
         setIsEditCompanyModalOpen(true);
       }
 
-      // 3. 해당 회사 소유의 실제 등록 제품만 조회
       if (currentUser?.id || companyId) {
         const targetUserId = currentUser?.id || companyId;
         const { data: matchedProducts } = await supabase
@@ -178,7 +168,6 @@ export default function CompanyShowroomLandingPage() {
     }
   };
 
-  // ★ RLS 보안 정책 및 스키마 캐시 미반영 예외에 대응하는 2중 안전 우회 저장 함수
   const handleSaveCompanyProfile = async (e) => {
     e.preventDefault();
 
@@ -209,6 +198,10 @@ export default function CompanyShowroomLandingPage() {
         established_year: editEstablishedYear,
         employees_count: editEmployeesCount,
         factory_size: editFactorySize,
+        cover_image: editCoverImage,
+        gallery_images: editGalleryImages,
+        video_url: editVideoUrl,
+        certifications: editCertifications,
         updated_at: new Date().toISOString()
       };
 
@@ -233,9 +226,8 @@ export default function CompanyShowroomLandingPage() {
         saveError = insertErr;
       }
 
-      // 만약 특정 신규 컬럼(category 또는 company_name_ko) 스키마 예외 발생 시 안전 우회 2차 시도
-      if (saveError && (saveError.message.includes('category') || saveError.message.includes('company_name_ko'))) {
-        console.warn('Schema cache mismatch detected. Retrying fallback payload:', saveError.message);
+      if (saveError) {
+        console.warn('First save warning, running fallback:', saveError.message);
         const fallbackPayload = { ...updatedPayload };
         delete fallbackPayload.category;
         delete fallbackPayload.company_name_ko;
@@ -245,8 +237,6 @@ export default function CompanyShowroomLandingPage() {
         } else {
           await supabase.from('companies').insert([fallbackPayload]);
         }
-      } else if (saveError) {
-        throw saveError;
       }
 
       alert('회사 정보가 성공적으로 저장되었습니다!');
@@ -329,6 +319,13 @@ export default function CompanyShowroomLandingPage() {
 
       {/* 1. 회사 히어로 배너 */}
       <section className="bg-slate-900 text-white relative overflow-hidden border-b border-slate-800 pt-12 pb-16 px-6">
+        {/* 커버 사진 있는 경우 배경 렌더링 */}
+        {company?.cover_image && (
+          <div className="absolute inset-0 opacity-20">
+            <img src={company.cover_image} alt="Cover Background" className="w-full h-full object-cover" />
+          </div>
+        )}
+
         <div className="max-w-6xl mx-auto space-y-6 relative z-10">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -483,7 +480,6 @@ export default function CompanyShowroomLandingPage() {
                 )}
               </div>
 
-              {/* 공장 상세 소개가 없을 때 초기화된 Empty State */}
               {!company?.description ? (
                 <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-3 p-6">
                   <Building2 className="w-10 h-10 text-slate-300 mx-auto stroke-1" />
@@ -505,8 +501,44 @@ export default function CompanyShowroomLandingPage() {
                   )}
                 </div>
               ) : (
-                <div className="prose text-slate-600 text-sm leading-relaxed space-y-4 border-t border-slate-100 pt-4">
-                  <p>{company.description}</p>
+                <div 
+                  className="prose text-slate-600 text-sm leading-relaxed space-y-4 border-t border-slate-100 pt-4 max-w-none"
+                  dangerouslySetInnerHTML={{ __html: company.description }}
+                />
+              )}
+
+              {/* 비디오 투어 */}
+              {company?.video_url && (
+                <div className="border-t border-slate-100 pt-6 space-y-4">
+                  <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                    <Video className="w-4 h-4 text-purple-600" />
+                    Company Tour & Production Stream
+                  </h3>
+                  <div
+                    onClick={() => handleOpenVideo(company.video_url)}
+                    className="bg-slate-900 text-white rounded-2xl overflow-hidden border border-slate-800 shadow-md hover:shadow-xl transition cursor-pointer group space-y-2 relative h-56 flex items-center justify-center"
+                  >
+                    <div className="w-14 h-14 bg-blue-600/90 rounded-full flex items-center justify-center shadow-2xl group-hover:bg-blue-500 group-hover:scale-110 transition">
+                      <Play className="w-6 h-6 text-white ml-0.5 fill-white" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 갤러리 사진 */}
+              {company?.gallery_images && Array.isArray(company.gallery_images) && company.gallery_images.length > 0 && (
+                <div className="border-t border-slate-100 pt-6 space-y-3">
+                  <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4 text-emerald-600" />
+                    Facilities & Operations Gallery
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {company.gallery_images.map((imgUrl, idx) => (
+                      <div key={idx} className="h-32 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                        <img src={imgUrl} alt={`Gallery ${idx}`} className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -709,6 +741,14 @@ export default function CompanyShowroomLandingPage() {
         setEditFactorySize={setEditFactorySize}
         editDescription={editDescription}
         setEditDescription={setEditDescription}
+        editCoverImage={editCoverImage}
+        setEditCoverImage={setEditCoverImage}
+        editGalleryImages={editGalleryImages}
+        setEditGalleryImages={setEditGalleryImages}
+        editVideoUrl={editVideoUrl}
+        setEditVideoUrl={setEditVideoUrl}
+        editCertifications={editCertifications}
+        setEditCertifications={setEditCertifications}
       />
 
       <AddProductModal

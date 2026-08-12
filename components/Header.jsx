@@ -341,7 +341,7 @@ export default function Header() {
                         className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
                       >
                         <Building2 className="w-4 h-4 text-blue-500" />
-                        <span>My Factory & Showroom</span>
+                        <span>My Company & Showroom</span>
                       </Link>
 
                       <Link
