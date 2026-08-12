@@ -136,7 +136,7 @@ export default function CompanyShowroomLandingPage() {
         setIsEditCompanyModalOpen(true);
       }
 
-      // 3. 해당 공장 소유의 실제 등록 제품만 조회
+      // 2. 해당 공장 소유의 실제 등록 제품만 조회
       if (currentUser?.id || companyId) {
         const targetUserId = currentUser?.id || companyId;
         const { data: matchedProducts } = await supabase
@@ -158,16 +158,27 @@ export default function CompanyShowroomLandingPage() {
     }
   };
 
-  // ★ ON CONFLICT 제약 조건 오류 해결을 위한 안전 2중 분기 처리 (UPDATE 또는 INSERT)
+  // ★ RLS 보안 정책 지원 및 세션 유저 기반 안전 저장 (SELECT 후 UPDATE/INSERT 분기)
   const handleSaveCompanyProfile = async (e) => {
     e.preventDefault();
-    if (!user) return;
 
     try {
       setIsSavingCompany(true);
 
+      // 최신 세션 유저 가져오기
+      const { data: { session } } = await supabase.auth.getSession();
+      const activeUser = session?.user || user;
+
+      if (!activeUser) {
+        alert('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.');
+        router.push('/login');
+        return;
+      }
+
+      const activeUserId = activeUser.id;
+
       const updatedPayload = {
-        user_id: user.id,
+        user_id: activeUserId,
         company_name: editCompanyNameEn || editCompanyNameKo || 'Korean Manufacturer',
         company_name_ko: editCompanyNameKo,
         company_name_en: editCompanyNameEn,
@@ -181,37 +192,37 @@ export default function CompanyShowroomLandingPage() {
         updated_at: new Date().toISOString()
       };
 
-      // 1. 기존 레코드가 있는지 먼저 조회
+      // 기존 DB 레코드 존재 여부 정밀 확인
       const { data: existingComp } = await supabase
         .from('companies')
-        .select('id')
-        .eq('user_id', user.id)
+        .select('id, user_id')
+        .eq('user_id', activeUserId)
         .maybeSingle();
 
       let saveError = null;
 
       if (existingComp) {
-        // 기존 레코드가 있으면 UPDATE
+        // 기존 레코드가 있으면 UPDATE (RLS UPDATE 정책 허용 범위)
         const { error: updateErr } = await supabase
           .from('companies')
           .update(updatedPayload)
-          .eq('user_id', user.id);
+          .eq('user_id', activeUserId);
         saveError = updateErr;
       } else {
-        // 신규 레코드면 INSERT
+        // 신규 레코드면 INSERT (RLS INSERT 정책 허용 범위)
         const { error: insertErr } = await supabase
           .from('companies')
           .insert([updatedPayload]);
         saveError = insertErr;
       }
 
-      // 만약 company_name_ko 컬럼 문제 발생 시 안전 우회 처리
+      // 예외 상호 처리 (company_name_ko 스키마 미준비 시 우회)
       if (saveError && saveError.message.includes('company_name_ko')) {
         const fallbackPayload = { ...updatedPayload };
         delete fallbackPayload.company_name_ko;
 
         if (existingComp) {
-          await supabase.from('companies').update(fallbackPayload).eq('user_id', user.id);
+          await supabase.from('companies').update(fallbackPayload).eq('user_id', activeUserId);
         } else {
           await supabase.from('companies').insert([fallbackPayload]);
         }
