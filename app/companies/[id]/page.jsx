@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-// 대표 사진이 없을 경우 사용할 카테고리별 기본 고화질 대표 커버 이미지
+// 대표 커버 이미지가 없을 경우 사용할 카테고리별 기본 고화질 대표 커버 이미지
 const DEFAULT_CATEGORY_IMAGES = {
   'Industrial Machinery': 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&auto=format&fit=crop&q=60',
   'K-Beauty & Cosmetics': 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&auto=format&fit=crop&q=60',
@@ -109,7 +109,7 @@ export default function CompanyShowroomLandingPage() {
 
       let fetchedCompany = null;
 
-      // 1. Supabase DB에서 고유 ID 또는 user_id 기반회사 조회
+      // 1. Supabase DB에서 고유 ID 또는 user_id 기반 회사 데이터 조회
       if (companyId) {
         const { data: dbCompany } = await supabase
           .from('companies')
@@ -132,6 +132,7 @@ export default function CompanyShowroomLandingPage() {
       if (fetchedCompany) {
         setCompany(fetchedCompany);
 
+        // DB에서 불러온 데이터들을 폼 상태값 및 UI 세팅에 완전하게 연동
         setEditCompanyNameKo(fetchedCompany.company_name_ko || '');
         setEditCompanyNameEn(fetchedCompany.company_name_en || fetchedCompany.company_name || '');
         setEditCategory(fetchedCompany.category || 'Industrial Machinery');
@@ -181,7 +182,7 @@ export default function CompanyShowroomLandingPage() {
     }
   };
 
-  // ★ Supabase DB 영구 저장 처리 (SELECT 후 UPDATE 또는 INSERT)
+  // ★ Supabase DB 영구 저장 처리 (description 포함 모든 필드 정밀 동기화)
   const handleSaveCompanyProfile = async (e) => {
     e.preventDefault();
 
@@ -199,7 +200,7 @@ export default function CompanyShowroomLandingPage() {
 
       const activeUserId = activeUser.id;
 
-      // 대표 이미지가 비어있는 경우 카테고리별 기본 이미지 할당
+      // 대표 커버 이미지 설정
       const categoryKey = editCategory || 'Industrial Machinery';
       const finalCoverImg = editCoverImage && editCoverImage.trim() !== '' 
         ? editCoverImage 
@@ -212,7 +213,7 @@ export default function CompanyShowroomLandingPage() {
         company_name_en: editCompanyNameEn,
         category: categoryKey,
         tagline: editTagline,
-        description: editDescription,
+        description: editDescription, // 에디터 작성 본문 정밀 저장
         business_type: editBusinessType,
         location: editLocation,
         established_year: editEstablishedYear,
@@ -260,11 +261,13 @@ export default function CompanyShowroomLandingPage() {
       }
 
       alert('회사 정보가 성공적으로 DB에 저장되었습니다!');
+      
+      // 저장된 데이터로 로컬 객체 즉시 업데이트
       setCompany(prev => ({ ...(prev || {}), ...updatedPayload }));
       setIsEditCompanyModalOpen(false);
       
-      // 저장 직후 최신 데이터 재동기화
-      fetchCompanyAndProductsData();
+      // 최신 DB 레코드 완전 재동기화
+      await fetchCompanyAndProductsData();
     } catch (err) {
       console.error('Company save error:', err);
       alert('회사 프로필 저장 중 오류가 발생했습니다: ' + (err.message || '데이터베이스 연동 오류'));
@@ -339,6 +342,9 @@ export default function CompanyShowroomLandingPage() {
   const effectiveCoverImage = company?.cover_image && company.cover_image.trim() !== '' 
     ? company.cover_image 
     : (DEFAULT_CATEGORY_IMAGES[categoryKey] || DEFAULT_CATEGORY_IMAGES['Industrial Machinery']);
+
+  // 회사 소개글 데이터 검증 (공백 문자열 체크)
+  const hasDescriptionData = company?.description && company.description.trim() !== '';
 
   if (!mounted) return null;
 
@@ -506,8 +512,8 @@ export default function CompanyShowroomLandingPage() {
                 )}
               </div>
 
-              {/* 상세 소개 없으면 Empty State */}
-              {!company?.description ? (
+              {/* Company Overview 정밀 출력 구역 (데이터 존재 시 HTML 서식 포함 즉시 출력) */}
+              {!hasDescriptionData ? (
                 <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-3 p-6">
                   <Building2 className="w-10 h-10 text-slate-300 mx-auto stroke-1" />
                   <h3 className="text-sm font-bold text-slate-800">No Company Specifications Registered Yet</h3>
@@ -528,14 +534,17 @@ export default function CompanyShowroomLandingPage() {
                   )}
                 </div>
               ) : (
-                <div 
-                  className="prose text-slate-600 text-sm leading-relaxed space-y-4 border-t border-slate-100 pt-4 max-w-none"
-                  dangerouslySetInnerHTML={{ __html: company.description }}
-                />
+                <div className="border-t border-slate-100 pt-4 space-y-4">
+                  {/* HTML 태그 포함 에디터 본문 렌더링 */}
+                  <div 
+                    className="prose text-slate-700 text-sm leading-relaxed max-w-none space-y-3 font-medium"
+                    dangerouslySetInnerHTML={{ __html: company.description }}
+                  />
+                </div>
               )}
 
               {/* 비디오 투어 */}
-              {company?.video_url && (
+              {company?.video_url && company.video_url.trim() !== '' && (
                 <div className="border-t border-slate-100 pt-6 space-y-4">
                   <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                     <Video className="w-4 h-4 text-purple-600" />
