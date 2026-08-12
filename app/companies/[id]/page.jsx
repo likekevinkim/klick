@@ -47,7 +47,7 @@ export default function CompanyShowroomLandingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const companyId = params?.id;
+  const rawCompanyId = params?.id;
   const autoEditParam = searchParams.get('edit');
 
   const [mounted, setMounted] = useState(false);
@@ -97,8 +97,9 @@ export default function CompanyShowroomLandingPage() {
   useEffect(() => {
     setMounted(true);
     fetchCompanyAndProductsData();
-  }, [companyId]);
+  }, [rawCompanyId]);
 
+  // DB 조회 정밀 스캔 함수
   const fetchCompanyAndProductsData = async () => {
     try {
       setLoading(true);
@@ -108,31 +109,47 @@ export default function CompanyShowroomLandingPage() {
       setUser(currentUser);
 
       let fetchedCompany = null;
+      const targetUserId = currentUser?.id || rawCompanyId;
 
-      // 1. Supabase DB에서 고유 ID 또는 user_id 기반 회사 데이터 조회
-      if (companyId) {
-        const { data: dbCompany } = await supabase
+      // 1. 로그인 유저 ID로 직접 DB 조회 (최우선)
+      if (currentUser?.id) {
+        const { data: compByUserId } = await supabase
           .from('companies')
           .select('*')
-          .or(`id.eq.${companyId},user_id.eq.${companyId}`)
+          .eq('user_id', currentUser.id)
           .maybeSingle();
 
-        if (dbCompany) fetchedCompany = dbCompany;
+        if (compByUserId) {
+          fetchedCompany = compByUserId;
+        }
+      }
+
+      // 2. URL 파라미터 ID로 DB 조회 (보조)
+      if (!fetchedCompany && rawCompanyId) {
+        const { data: compByParamId } = await supabase
+          .from('companies')
+          .select('*')
+          .or(`id.eq.${rawCompanyId},user_id.eq.${rawCompanyId}`)
+          .maybeSingle();
+
+        if (compByParamId) {
+          fetchedCompany = compByParamId;
+        }
       }
 
       // 본인 소유 권한 체크
       if (currentUser) {
-        if (fetchedCompany && (fetchedCompany.user_id === currentUser.id || companyId === currentUser.id)) {
+        if (fetchedCompany && (fetchedCompany.user_id === currentUser.id || rawCompanyId === currentUser.id)) {
           setIsOwner(true);
-        } else if (currentUser.user_metadata?.role === 'seller' && (companyId === currentUser.id || !fetchedCompany)) {
+        } else if (currentUser.user_metadata?.role === 'seller') {
           setIsOwner(true);
         }
       }
 
+      // 3. 불러온 DB 데이터를 폼 및 화면 상태에 완전 매핑
       if (fetchedCompany) {
         setCompany(fetchedCompany);
 
-        // DB에서 불러온 데이터들을 폼 상태값 및 UI 세팅에 완전하게 연동
         setEditCompanyNameKo(fetchedCompany.company_name_ko || '');
         setEditCompanyNameEn(fetchedCompany.company_name_en || fetchedCompany.company_name || '');
         setEditCategory(fetchedCompany.category || 'Industrial Machinery');
@@ -160,13 +177,12 @@ export default function CompanyShowroomLandingPage() {
         setIsEditCompanyModalOpen(true);
       }
 
-      // 2. 해당 회사 소유의 등록 제품만 조회
-      if (currentUser?.id || companyId) {
-        const targetUserId = currentUser?.id || companyId;
+      // 4. 해당 회사 소유의 실제 등록 제품만 조회
+      if (targetUserId) {
         const { data: matchedProducts } = await supabase
           .from('products')
           .select('*')
-          .or(`user_id.eq.${targetUserId},company_id.eq.${companyId}`)
+          .or(`user_id.eq.${targetUserId},company_id.eq.${rawCompanyId}`)
           .order('created_at', { ascending: false });
 
         setProducts(matchedProducts || []);
@@ -182,7 +198,7 @@ export default function CompanyShowroomLandingPage() {
     }
   };
 
-  // ★ Supabase DB 영구 저장 처리 (description 포함 모든 필드 정밀 동기화)
+  // ★ Supabase DB 영구 저장 처리 (SELECT 후 UPDATE 또는 INSERT)
   const handleSaveCompanyProfile = async (e) => {
     e.preventDefault();
 
@@ -200,7 +216,7 @@ export default function CompanyShowroomLandingPage() {
 
       const activeUserId = activeUser.id;
 
-      // 대표 커버 이미지 설정
+      // 대표 커버 이미지 설정 (비어있으면 카테고리별 기본 이미지 사용)
       const categoryKey = editCategory || 'Industrial Machinery';
       const finalCoverImg = editCoverImage && editCoverImage.trim() !== '' 
         ? editCoverImage 
@@ -213,7 +229,7 @@ export default function CompanyShowroomLandingPage() {
         company_name_en: editCompanyNameEn,
         category: categoryKey,
         tagline: editTagline,
-        description: editDescription, // 에디터 작성 본문 정밀 저장
+        description: editDescription,
         business_type: editBusinessType,
         location: editLocation,
         established_year: editEstablishedYear,
@@ -226,6 +242,7 @@ export default function CompanyShowroomLandingPage() {
         updated_at: new Date().toISOString()
       };
 
+      // 기존 레코드 존재 여부 정밀 확인
       const { data: existingComp } = await supabase
         .from('companies')
         .select('id, user_id')
@@ -261,11 +278,11 @@ export default function CompanyShowroomLandingPage() {
       }
 
       alert('회사 정보가 성공적으로 DB에 저장되었습니다!');
-      
-      // 저장된 데이터로 로컬 객체 즉시 업데이트
-      setCompany(prev => ({ ...(prev || {}), ...updatedPayload }));
+
+      // 저장된 최신 객체를 로컬 State에 즉각 매핑
+      setCompany(updatedPayload);
       setIsEditCompanyModalOpen(false);
-      
+
       // 최신 DB 레코드 완전 재동기화
       await fetchCompanyAndProductsData();
     } catch (err) {
@@ -512,7 +529,7 @@ export default function CompanyShowroomLandingPage() {
                 )}
               </div>
 
-              {/* Company Overview 정밀 출력 구역 (데이터 존재 시 HTML 서식 포함 즉시 출력) */}
+              {/* Company Overview 출력 구역 */}
               {!hasDescriptionData ? (
                 <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-3 p-6">
                   <Building2 className="w-10 h-10 text-slate-300 mx-auto stroke-1" />
@@ -535,7 +552,6 @@ export default function CompanyShowroomLandingPage() {
                 </div>
               ) : (
                 <div className="border-t border-slate-100 pt-4 space-y-4">
-                  {/* HTML 태그 포함 에디터 본문 렌더링 */}
                   <div 
                     className="prose text-slate-700 text-sm leading-relaxed max-w-none space-y-3 font-medium"
                     dangerouslySetInnerHTML={{ __html: company.description }}
