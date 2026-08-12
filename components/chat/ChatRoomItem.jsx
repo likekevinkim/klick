@@ -12,7 +12,8 @@ import {
   Image as ImageIcon, 
   X, 
   CreditCard, 
-  Truck 
+  Truck,
+  Sparkles
 } from 'lucide-react';
 
 export default function ChatRoomItem({
@@ -20,6 +21,7 @@ export default function ChatRoomItem({
   isOpen,
   userRole,
   messages,
+  targetLang = 'ko',
   onToggle,
   onOpenQuoteModal,
   onOpenDocModal,
@@ -91,7 +93,7 @@ export default function ChatRoomItem({
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
-  // ★ 핵심 해결책: 한글 IME 조합 중(isComposing)일 때는 엔터 키 전송을 방지
+  // 한글 IME 조합 중(isComposing)일 때는 엔터 키 중복 전송을 방지
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       if (e.nativeEvent.isComposing) {
@@ -202,13 +204,23 @@ export default function ChatRoomItem({
                           : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
                       }`}
                     >
-                      {msg.message && <p className="leading-relaxed font-medium">{msg.message}</p>}
-
-                      {msg.translated_message && (
-                        <p className={`text-[11px] pt-1.5 border-t italic font-mono ${isMine ? 'border-blue-500/60 text-blue-100' : 'border-slate-100 text-slate-500'}`}>
-                          {msg.translated_message}
-                        </p>
+                      {/* 1. 상단: 작성자가 입력한 [원문 텍스트] */}
+                      {msg.message && (
+                        <p className="leading-relaxed font-semibold whitespace-pre-wrap">{msg.message}</p>
                       )}
+
+                      {/* 2. 하단: [AI 번역] - 상단 선택 언어로 자동 렌더링 */}
+                      <div className={`pt-2 border-t text-xs space-y-0.5 ${
+                        isMine ? 'border-blue-400/50 text-blue-100' : 'border-slate-100 text-slate-500'
+                      }`}>
+                        <div className="flex items-center gap-1 text-[10px] font-extrabold opacity-90">
+                          <Sparkles className="w-3 h-3 text-amber-400" />
+                          <span>[AI 번역 / Auto Translation]</span>
+                        </div>
+                        <p className="font-medium leading-relaxed whitespace-pre-wrap">
+                          {msg.translated_message || msg.message}
+                        </p>
+                      </div>
 
                       {msg.file && (
                         <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 mt-1 ${isMine ? 'bg-blue-700/60 border-blue-500' : 'bg-slate-50 border-slate-200'}`}>

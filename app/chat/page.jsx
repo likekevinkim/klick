@@ -240,7 +240,7 @@ function ChatContent() {
               sender_id: currentUserObj?.id ? currentUserObj.id.toString() : 'guest_buyer',
               sender_role: 'buyer',
               message: `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`,
-              translated_message: `안녕하세요! ${companySeller}의 [${companyTitle}] 상품에 대해 문의드립니다. FOB 단가 및 공식 카탈로그를 전달해 주실 수 있나요?`,
+              translated_message: `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`,
               is_quote: false,
               is_read: false,
               created_at: new Date().toISOString()
@@ -304,15 +304,6 @@ function ChatContent() {
   };
 
   const handleSendMessage = async (targetRoomId, text, attachedFile) => {
-    let autoTranslation = '';
-    if (text) {
-      if (/[ㄱ-ㅎ|가-힣]/.test(text)) {
-        autoTranslation = `[AI Trans] ${text}`;
-      } else {
-        autoTranslation = `[AI 번역] ${text}`;
-      }
-    }
-
     let finalFilePayload = null;
     if (attachedFile) {
       finalFilePayload = {
@@ -329,7 +320,7 @@ function ChatContent() {
       sender_id: user?.id ? user.id.toString() : 'guest_user',
       sender_role: userRole,
       message: text,
-      translated_message: autoTranslation,
+      translated_message: text,
       is_quote: false,
       is_read: false,
       file: finalFilePayload,
@@ -387,7 +378,7 @@ function ChatContent() {
       sender_id: user?.id ? user.id.toString() : 'guest_seller',
       sender_role: 'seller',
       message: `[Official B2B Quote Sent] ${quoteNote}`,
-      translated_message: `[공식 B2B 견적서 발송] ${quoteNote}`,
+      translated_message: `[Official B2B Quote Sent] ${quoteNote}`,
       is_quote: true,
       is_read: false,
       quote_price: `${quotePrice} USD / Unit`,
@@ -546,6 +537,7 @@ function ChatContent() {
                 isOpen={activeRoomId === room.id}
                 userRole={userRole}
                 messages={roomMessagesMap[room.id] || []}
+                targetLang={targetLang}
                 onToggle={() => handleToggleRoom(room.id)}
                 onOpenQuoteModal={() => setIsQuoteModalOpen(true)}
                 onOpenDocModal={handleOpenDocModal}
