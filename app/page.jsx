@@ -32,7 +32,6 @@ export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // 셀러/바이어 프로필 미등록 시 로그인 때마다 출력될 온보딩 선택 모달 상태 및 유저 정보
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState('seller');
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
@@ -62,7 +61,6 @@ export default function HomePage() {
     };
   }, []);
 
-  // ★ 로그인 시 셀러/바이어의 상세 정보 등록 여부를 실시간 검증하여 미등록 시 모달 자동 출력
   const checkOnboardingStatus = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -73,11 +71,9 @@ export default function HomePage() {
         const role = userObj.user_metadata?.role || 'seller';
         setUserRole(role);
 
-        // 로컬 회원가입 신규 생성 플래그 체크
         const isNewFlag = localStorage.getItem('klick_show_onboarding');
 
         if (role === 'seller') {
-          // DB에서 해당 셀러의 공장 정보 및 등록된 상품 수 실시간 조회
           const { data: compData } = await supabase
             .from('companies')
             .select('*')
@@ -92,12 +88,10 @@ export default function HomePage() {
           const hasCompanyDetails = compData && (compData.description || compData.certifications);
           const hasProducts = prodData && prodData.length > 0;
 
-          // 공장 상세나 물품 등록이 안 되어 있거나 신규 가입일 경우 로그인할 때마다 띄움
           if (!hasCompanyDetails || !hasProducts || isNewFlag === 'true') {
             setShowOnboardingModal(true);
           }
         } else {
-          // 바이어 계정일 경우 DB에서 바이어 프로필 상세 정보 작성 여부 확인
           const { data: buyerData } = await supabase
             .from('buyers')
             .select('*')
@@ -106,7 +100,6 @@ export default function HomePage() {
 
           const hasBuyerDetails = buyerData && (buyerData.company_name_en || buyerData.country);
 
-          // 바이어 프로필 상세 정보가 미작성 상태이거나 신규 가입 플래그가 남아있는 경우 모달 출력
           if (!hasBuyerDetails || isNewFlag === 'true') {
             setShowOnboardingModal(true);
           }
@@ -122,7 +115,6 @@ export default function HomePage() {
     setShowOnboardingModal(false);
   };
 
-  // 온보딩 모달에서 [지금 정보 입력하기] 클릭 시 이동 처리
   const handleGoToProfileEdit = () => {
     localStorage.removeItem('klick_show_onboarding');
     setShowOnboardingModal(false);
@@ -135,13 +127,20 @@ export default function HomePage() {
     }
   };
 
-  const updateUnreadCount = () => {
-    const savedCount = localStorage.getItem('klick_unread_chat_count');
-    if (savedCount !== null) {
-      setUnreadCount(parseInt(savedCount, 10));
-    } else {
+  // ★ DB 검증 기반 안읽은 채팅 카운트 동기화 (잘못된 로컬스토리지 값 클리어)
+  const updateUnreadCount = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const currentUserObj = session?.user || null;
+
+    if (!currentUserObj) {
       setUnreadCount(0);
+      localStorage.setItem('klick_unread_chat_count', '0');
+      return;
     }
+
+    const savedCount = localStorage.getItem('klick_unread_chat_count');
+    const parsed = parseInt(savedCount || '0', 10);
+    setUnreadCount(isNaN(parsed) ? 0 : parsed);
   };
 
   const fetchHomeProducts = async () => {
@@ -157,7 +156,6 @@ export default function HomePage() {
         console.error('Supabase fetch error on homepage:', error);
         setProducts([]);
       } else if (data) {
-        // 이미지 유효성 및 필드 호환성 매핑
         const formattedData = data.map(item => {
           let mainImg = item.image_url || '';
           if (!mainImg && item.gallery_images) {

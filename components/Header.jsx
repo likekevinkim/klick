@@ -59,13 +59,13 @@ export default function Header() {
     setTimeout(triggerGoogleCombo, 300);
   };
 
-  // Supabase DB 기반 상대방 발신 중 '진짜 안 읽은 메시지' 정밀 계산 (비로그인 시 무조건 0)
+  // Supabase DB 기반 내 계정의 대화방 검증 및 진짜 안 읽은 메시지 정밀 계산
   const updateUnreadCountFromStorage = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const currentUser = session?.user || null;
 
-      // 비로그인 상태일 때는 강제로 카운트를 0으로 초기화
+      // 비로그인 상태일 때는 강제로 카운트를 0으로 초기화하고 스토리지 정리
       if (!currentUser) {
         setUnreadChatCount(0);
         localStorage.setItem('klick_unread_chat_count', '0');
@@ -73,32 +73,44 @@ export default function Header() {
       }
 
       const currentRole = currentUser?.user_metadata?.role || 'seller';
+      const userIdStr = currentUser.id.toString();
 
-      // 로컬 스토리지에 읽은 대화방 ID 목록 가져오기
-      const readRoomIds = (localStorage.getItem('klick_read_room_ids') || '').split(',').filter(Boolean);
+      // 내 소유의 대화방만 정확하게 조회
+      let roomQuery = supabase.from('chat_rooms').select('id');
+      if (currentRole === 'seller') {
+        roomQuery = roomQuery.eq('seller_id', userIdStr);
+      } else {
+        roomQuery = roomQuery.eq('buyer_id', userIdStr);
+      }
 
-      const { data: roomData } = await supabase.from('chat_rooms').select('id');
-      if (roomData && roomData.length > 0) {
-        const roomIds = roomData.map((r) => r.id);
-        const { data: msgData } = await supabase
-          .from('chat_messages')
-          .select('*')
-          .in('room_id', roomIds);
+      const { data: roomData } = await roomQuery;
 
-        if (msgData) {
-          const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
+      // 내 대화방이 전혀 없으면 뱃지를 0으로 강제 초기화
+      if (!roomData || roomData.length === 0) {
+        setUnreadChatCount(0);
+        localStorage.setItem('klick_unread_chat_count', '0');
+        return;
+      }
 
-          // 상대방이 보낸 메시지 중, 아직 읽지 않은 대화방(readRoomIds에 없음)의 메시지만 안읽음으로 인정
-          const unreadMsgs = msgData.filter((m) => {
-            const isOpponent = m.sender_role === opponentRole;
-            const isRoomUnread = !readRoomIds.includes(m.room_id.toString());
-            return isOpponent && isRoomUnread;
-          });
+      const roomIds = roomData.map((r) => r.id);
+      const { data: msgData } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .in('room_id', roomIds);
 
-          const count = Math.min(unreadMsgs.length, 99);
-          setUnreadChatCount(count);
-          localStorage.setItem('klick_unread_chat_count', count.toString());
-        }
+      if (msgData && msgData.length > 0) {
+        const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
+
+        // 상대방이 발신한 메시지 중 is_read = false (또는 null)인 정밀 메시지만 카운트
+        const unreadMsgs = msgData.filter((m) => {
+          const isOpponent = m.sender_role === opponentRole;
+          const isUnread = m.is_read === false || m.is_read === null;
+          return isOpponent && isUnread;
+        });
+
+        const count = Math.min(unreadMsgs.length, 99);
+        setUnreadChatCount(count);
+        localStorage.setItem('klick_unread_chat_count', count.toString());
       } else {
         setUnreadChatCount(0);
         localStorage.setItem('klick_unread_chat_count', '0');
@@ -106,6 +118,7 @@ export default function Header() {
     } catch (err) {
       console.error('Failed to calculate exact unread count:', err);
       setUnreadChatCount(0);
+      localStorage.setItem('klick_unread_chat_count', '0');
     }
   };
 
@@ -228,18 +241,16 @@ export default function Header() {
     setUser(null);
     setUnreadChatCount(0);
     setIsUserMenuOpen(false);
-    localStorage.removeItem('klick_unread_chat_count');
+    localStorage.setItem('klick_unread_chat_count', '0');
     localStorage.removeItem('klick_read_room_ids');
     router.push('/');
   };
 
   const userRole = user?.user_metadata?.role || 'seller';
-  // 셀러 본인의 고유 ID에 기반한 공장 쇼룸 주소
   const myCompanyShowroomUrl = user?.id ? `/companies/${user.id}` : '/companies/1';
 
   return (
     <header className="sticky top-0 z-[99999] bg-slate-900 text-white border-b border-slate-800 shadow-md">
-      {/* 구글 번역 숨김 요소 */}
       <div id="google_translate_element" className="hidden"></div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-18 flex items-center justify-between gap-2 sm:gap-4">
@@ -258,9 +269,8 @@ export default function Header() {
           </div>
         </Link>
 
-        {/* 내비게이션 & 사용자 맞춤 버튼 영역 */}
+        {/* 내비게이션 영역 */}
         <nav className="flex items-center gap-1.5 sm:gap-3">
-          {/* 1. 홈 바로가기 */}
           <Link
             href="/"
             title="Home"
@@ -270,7 +280,6 @@ export default function Header() {
             <span className="sr-only">Home</span>
           </Link>
 
-          {/* 2. 카테고리별 공장 디렉토리 바로가기 버튼 */}
           <Link
             href="/factories"
             className={`p-2 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
@@ -283,7 +292,6 @@ export default function Header() {
             <span className="hidden sm:inline">Factories</span>
           </Link>
 
-          {/* 3. 공개 RFQ 게시판 버튼 */}
           <Link
             href="/rfq"
             className="p-2 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition cursor-pointer flex items-center gap-1.5"
@@ -292,7 +300,6 @@ export default function Header() {
             <span className="hidden sm:inline">RFQ Board</span>
           </Link>
 
-          {/* 4. 로그인 상태 분기 UI */}
           {user ? (
             <div className="relative">
               <button
@@ -305,7 +312,7 @@ export default function Header() {
               >
                 <div className="relative">
                   <User className="w-4 h-4 text-blue-400" />
-                  {/* 안읽은 메시지 수 뱃지 (로그인 시에만 노출) */}
+                  {/* 안읽은 메시지 수 뱃지 (0보다 클 때만 노출) */}
                   {unreadChatCount > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-md animate-pulse">
                       {unreadChatCount > 99 ? '99+' : unreadChatCount}
@@ -320,7 +327,6 @@ export default function Header() {
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
 
-              {/* 드롭다운 메뉴 영역 */}
               {isUserMenuOpen && (
                 <div className="absolute right-0 mt-2 w-52 sm:w-56 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-fadeIn">
                   <div className="px-4 py-2 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -329,7 +335,6 @@ export default function Header() {
 
                   {userRole === 'seller' ? (
                     <>
-                      {/* My Factory & Showroom */}
                       <Link
                         href={myCompanyShowroomUrl}
                         onClick={() => setIsUserMenuOpen(false)}
@@ -339,7 +344,6 @@ export default function Header() {
                         <span>My Factory & Showroom</span>
                       </Link>
 
-                      {/* Product Dashboard */}
                       <Link
                         href="/products"
                         onClick={() => setIsUserMenuOpen(false)}
@@ -349,7 +353,6 @@ export default function Header() {
                         <span>Product Dashboard</span>
                       </Link>
 
-                      {/* Live Chat Hub */}
                       <Link
                         href="/chat"
                         onClick={() => setIsUserMenuOpen(false)}
@@ -409,7 +412,6 @@ export default function Header() {
               )}
             </div>
           ) : (
-            /* 비로그인 상태 UI */
             <Link
               href="/login"
               className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5"
@@ -419,7 +421,6 @@ export default function Header() {
             </Link>
           )}
 
-          {/* 5. 다국어 언어 선택 드롭다운 (모바일에서는 지구본 아이콘만 컴팩트하게 노출) */}
           <div className="relative border-l border-slate-800 pl-1.5 sm:pl-2 ml-0.5 sm:ml-1">
             <button
               type="button"
