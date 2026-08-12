@@ -32,6 +32,16 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
+// 대표 사진이 없을 경우 사용할 카테고리별 기본 고화질 대표 커버 이미지
+const DEFAULT_CATEGORY_IMAGES = {
+  'Industrial Machinery': 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&auto=format&fit=crop&q=60',
+  'K-Beauty & Cosmetics': 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&auto=format&fit=crop&q=60',
+  'K-Food & Beverages': 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop&q=60',
+  'Electronics & Smart IT': 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=60',
+  'General Manufacturing': 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=60',
+  'etc': 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=800&auto=format&fit=crop&q=60'
+};
+
 export default function CompanyShowroomLandingPage() {
   const params = useParams();
   const router = useRouter();
@@ -99,16 +109,18 @@ export default function CompanyShowroomLandingPage() {
 
       let fetchedCompany = null;
 
+      // 1. Supabase DB에서 고유 ID 또는 user_id 기반회사 조회
       if (companyId) {
         const { data: dbCompany } = await supabase
           .from('companies')
           .select('*')
           .or(`id.eq.${companyId},user_id.eq.${companyId}`)
-          .single();
+          .maybeSingle();
 
         if (dbCompany) fetchedCompany = dbCompany;
       }
 
+      // 본인 소유 권한 체크
       if (currentUser) {
         if (fetchedCompany && (fetchedCompany.user_id === currentUser.id || companyId === currentUser.id)) {
           setIsOwner(true);
@@ -147,6 +159,7 @@ export default function CompanyShowroomLandingPage() {
         setIsEditCompanyModalOpen(true);
       }
 
+      // 2. 해당 회사 소유의 등록 제품만 조회
       if (currentUser?.id || companyId) {
         const targetUserId = currentUser?.id || companyId;
         const { data: matchedProducts } = await supabase
@@ -168,6 +181,7 @@ export default function CompanyShowroomLandingPage() {
     }
   };
 
+  // ★ Supabase DB 영구 저장 처리 (SELECT 후 UPDATE 또는 INSERT)
   const handleSaveCompanyProfile = async (e) => {
     e.preventDefault();
 
@@ -185,12 +199,18 @@ export default function CompanyShowroomLandingPage() {
 
       const activeUserId = activeUser.id;
 
+      // 대표 이미지가 비어있는 경우 카테고리별 기본 이미지 할당
+      const categoryKey = editCategory || 'Industrial Machinery';
+      const finalCoverImg = editCoverImage && editCoverImage.trim() !== '' 
+        ? editCoverImage 
+        : (DEFAULT_CATEGORY_IMAGES[categoryKey] || DEFAULT_CATEGORY_IMAGES['Industrial Machinery']);
+
       const updatedPayload = {
         user_id: activeUserId,
         company_name: editCompanyNameEn || editCompanyNameKo || 'Korean Manufacturer',
         company_name_ko: editCompanyNameKo,
         company_name_en: editCompanyNameEn,
-        category: editCategory,
+        category: categoryKey,
         tagline: editTagline,
         description: editDescription,
         business_type: editBusinessType,
@@ -198,7 +218,7 @@ export default function CompanyShowroomLandingPage() {
         established_year: editEstablishedYear,
         employees_count: editEmployeesCount,
         factory_size: editFactorySize,
-        cover_image: editCoverImage,
+        cover_image: finalCoverImg,
         gallery_images: editGalleryImages,
         video_url: editVideoUrl,
         certifications: editCertifications,
@@ -227,7 +247,7 @@ export default function CompanyShowroomLandingPage() {
       }
 
       if (saveError) {
-        console.warn('First save warning, running fallback:', saveError.message);
+        console.warn('First save attempt warning, executing fallback:', saveError.message);
         const fallbackPayload = { ...updatedPayload };
         delete fallbackPayload.category;
         delete fallbackPayload.company_name_ko;
@@ -239,9 +259,12 @@ export default function CompanyShowroomLandingPage() {
         }
       }
 
-      alert('회사 정보가 성공적으로 저장되었습니다!');
+      alert('회사 정보가 성공적으로 DB에 저장되었습니다!');
       setCompany(prev => ({ ...(prev || {}), ...updatedPayload }));
       setIsEditCompanyModalOpen(false);
+      
+      // 저장 직후 최신 데이터 재동기화
+      fetchCompanyAndProductsData();
     } catch (err) {
       console.error('Company save error:', err);
       alert('회사 프로필 저장 중 오류가 발생했습니다: ' + (err.message || '데이터베이스 연동 오류'));
@@ -311,6 +334,12 @@ export default function CompanyShowroomLandingPage() {
     router.push(`/chat?company=${compName}&title=${title}`);
   };
 
+  // 대표 커버 이미지 (미등록 시 카테고리 기본 이미지 사용)
+  const categoryKey = company?.category || 'Industrial Machinery';
+  const effectiveCoverImage = company?.cover_image && company.cover_image.trim() !== '' 
+    ? company.cover_image 
+    : (DEFAULT_CATEGORY_IMAGES[categoryKey] || DEFAULT_CATEGORY_IMAGES['Industrial Machinery']);
+
   if (!mounted) return null;
 
   return (
@@ -319,12 +348,9 @@ export default function CompanyShowroomLandingPage() {
 
       {/* 1. 회사 히어로 배너 */}
       <section className="bg-slate-900 text-white relative overflow-hidden border-b border-slate-800 pt-12 pb-16 px-6">
-        {/* 커버 사진 있는 경우 배경 렌더링 */}
-        {company?.cover_image && (
-          <div className="absolute inset-0 opacity-20">
-            <img src={company.cover_image} alt="Cover Background" className="w-full h-full object-cover" />
-          </div>
-        )}
+        <div className="absolute inset-0 opacity-25">
+          <img src={effectiveCoverImage} alt="Company Cover Background" className="w-full h-full object-cover" />
+        </div>
 
         <div className="max-w-6xl mx-auto space-y-6 relative z-10">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -480,6 +506,7 @@ export default function CompanyShowroomLandingPage() {
                 )}
               </div>
 
+              {/* 상세 소개 없으면 Empty State */}
               {!company?.description ? (
                 <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-3 p-6">
                   <Building2 className="w-10 h-10 text-slate-300 mx-auto stroke-1" />
