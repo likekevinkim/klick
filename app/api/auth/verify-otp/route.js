@@ -11,7 +11,7 @@ export async function POST(request) {
 
     if (!email || !code) {
       return NextResponse.json(
-        { error: '이메일과 6자리 인증번호를 모두 입력해 주세요.' },
+        { error: 'Please enter both email and 6-digit verification code.' },
         { status: 400 }
       );
     }
@@ -21,7 +21,7 @@ export async function POST(request) {
 
     if (!otpCookie) {
       return NextResponse.json(
-        { error: '인증번호 발송 기록이 없거나 세션이 만료되었습니다. [인증번호 발송] 버튼을 눌러 다시 시도해 주세요.' },
+        { error: 'No verification record found or session expired. Please click [Send Code] again.' },
         { status: 400 }
       );
     }
@@ -32,28 +32,28 @@ export async function POST(request) {
       storedData = JSON.parse(decodedPayload);
     } catch (parseErr) {
       return NextResponse.json(
-        { error: '인증 세션이 유효하지 않습니다. 인증번호를 다시 발송해 주세요.' },
+        { error: 'Invalid verification session. Please resend code.' },
         { status: 400 }
       );
     }
 
     if (!storedData || storedData.email !== email) {
       return NextResponse.json(
-        { error: '요청한 이메일과 인증 세션 정보가 일치하지 않습니다.' },
+        { error: 'The requested email does not match the active verification session.' },
         { status: 400 }
       );
     }
 
     if (Date.now() > storedData.expiresAt) {
       return NextResponse.json(
-        { error: '인증번호 유효시간(10분)이 만료되었습니다. 다시 발송해 주세요.' },
+        { error: 'Verification code has expired (10 min limit). Please request a new code.' },
         { status: 400 }
       );
     }
 
     if (String(storedData.code).trim() !== String(code).trim()) {
       return NextResponse.json(
-        { error: '인증번호가 일치하지 않습니다. 메일함의 최신 번호를 확인해 주세요.' },
+        { error: 'Invalid verification code. Please check your inbox for the latest code.' },
         { status: 400 }
       );
     }
@@ -61,7 +61,7 @@ export async function POST(request) {
     // 검증 성공 응답 및 사용 완료된 쿠키 제거
     const response = NextResponse.json({
       success: true,
-      message: '이메일 인증이 성공적으로 완료되었습니다.'
+      message: 'Email verified successfully!'
     });
 
     response.cookies.delete('klick_otp_session');
@@ -70,7 +70,7 @@ export async function POST(request) {
   } catch (err) {
     console.error('Verify OTP Route Handler Exception:', err);
     return NextResponse.json(
-      { error: '인증번호 검증 중 오류가 발생했습니다.' },
+      { error: 'Error occurred during verification process.' },
       { status: 500 }
     );
   }

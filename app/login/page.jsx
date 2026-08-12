@@ -25,7 +25,7 @@ import { useRouter } from 'next/navigation';
 function AuthPageContent() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false); // false: 로그인, true: 회원가입
+  const [isSignUp, setIsSignUp] = useState(false); // false: Sign In, true: Sign Up
   const [userRole, setUserRole] = useState('seller'); // 'seller' or 'buyer'
 
   // 공통 입력 필드
@@ -80,13 +80,13 @@ function AuthPageContent() {
       });
 
       if (error) {
-        setResetStatus('오류: ' + error.message);
+        setResetStatus('Error: ' + error.message);
       } else {
-        setResetStatus('비밀번호 재설정 링크가 이메일로 발송되었습니다. 메일함을 확인해 주세요.');
+        setResetStatus('Password reset link has been sent to your email address.');
       }
     } catch (err) {
       console.error('Reset password error:', err);
-      setResetStatus('이메일 발송 처리에 실패했습니다.');
+      setResetStatus('Failed to send password reset email.');
     } finally {
       setResetLoading(false);
     }
@@ -95,7 +95,7 @@ function AuthPageContent() {
   // 1단계: Next.js API Route(Resend Direct)를 통한 6자리 OTP 인증번호 발송 요청
   const handleSendOtpCode = async () => {
     if (!email || !email.includes('@')) {
-      setErrorMessage('올바른 이메일 주소를 입력해 주세요.');
+      setErrorMessage('Please enter a valid email address.');
       return;
     }
 
@@ -113,14 +113,14 @@ function AuthPageContent() {
       const data = await res.json();
 
       if (!res.ok) {
-        setErrorMessage(data.error || '인증번호 발송에 실패했습니다.');
+        setErrorMessage(data.error || 'Failed to send verification code.');
       } else {
         setIsOtpSent(true);
-        setSuccessMessage(`[${email}] 메일함으로 6자리 인증번호가 발송되었습니다. 수신함 및 스팸함을 확인해 주세요!`);
+        setSuccessMessage(`[${email}] A 6-digit verification code has been sent to your inbox.`);
       }
     } catch (err) {
       console.error('Send OTP Exception:', err);
-      setErrorMessage('인증번호 발송 처리 중 오류가 발생했습니다.');
+      setErrorMessage('An error occurred while sending the verification code.');
     } finally {
       setIsSendingOtp(false);
     }
@@ -129,7 +129,7 @@ function AuthPageContent() {
   // 2단계: 6자리 OTP 인증번호 서버 검증
   const handleVerifyOtpCode = async () => {
     if (!otpCode || otpCode.length < 6) {
-      setErrorMessage('메일로 받으신 6자리 숫자 인증번호를 올바르게 입력해 주세요.');
+      setErrorMessage('Please enter the 6-digit code sent to your email.');
       return;
     }
 
@@ -146,15 +146,15 @@ function AuthPageContent() {
       const data = await res.json();
 
       if (!res.ok) {
-        setErrorMessage(data.error || '인증번호가 일치하지 않습니다.');
+        setErrorMessage(data.error || 'Verification code does not match.');
         setIsEmailVerified(false);
       } else {
         setIsEmailVerified(true);
-        setSuccessMessage('이메일 인증이 완벽하게 확인되었습니다! 아래 회사 정보와 비밀번호를 입력해 주십시오.');
+        setSuccessMessage('Email verified successfully! Please complete the company information below.');
       }
     } catch (err) {
       console.error('Verify OTP Error:', err);
-      setErrorMessage('인증번호 확인 중 오류가 발생했습니다.');
+      setErrorMessage('An error occurred during verification.');
       setIsEmailVerified(false);
     } finally {
       setIsVerifyingOtp(false);
@@ -171,13 +171,13 @@ function AuthPageContent() {
     try {
       if (isSignUp) {
         if (!isEmailVerified) {
-          setErrorMessage('보안 정책상 이메일 6자리 인증을 완벽히 완료하셔야 회원가입이 가능합니다.');
+          setErrorMessage('Email verification is required before completing registration.');
           setIsLoading(false);
           return;
         }
 
         if (password.length < 6) {
-          setErrorMessage('비밀번호는 최소 6자리 이상이어야 합니다.');
+          setErrorMessage('Password must be at least 6 characters long.');
           setIsLoading(false);
           return;
         }
@@ -234,7 +234,7 @@ function AuthPageContent() {
         }
 
         localStorage.setItem('klick_show_onboarding', 'true');
-        setSuccessMessage('회원가입이 정상 완료되었습니다! 홈 화면으로 이동합니다...');
+        setSuccessMessage('Registration completed successfully! Redirecting to home page...');
 
         setTimeout(() => {
           router.push('/');
@@ -248,7 +248,7 @@ function AuthPageContent() {
         if (error) throw error;
 
         await supabase.auth.getSession();
-        setSuccessMessage('성공적으로 로그인되었습니다! 홈 화면으로 이동합니다...');
+        setSuccessMessage('Successfully signed in! Redirecting...');
 
         setTimeout(() => {
           router.push('/');
@@ -256,14 +256,14 @@ function AuthPageContent() {
       }
     } catch (error) {
       console.error('Auth Error:', error);
-      let msg = error.message || '인증 처리에 실패했습니다.';
+      let msg = error.message || 'Authentication process failed.';
 
       if (msg.includes('Failed to fetch') || msg.includes('fetch')) {
-        msg = '서버 연결에 실패했습니다. 인터넷 연결 상태를 확인해 주세요.';
+        msg = 'Failed to connect to server. Please check your internet connection.';
       } else if (msg.includes('Invalid login credentials')) {
-        msg = '이메일 또는 비밀번호가 올바르지 않습니다.';
+        msg = 'Invalid email or password.';
       } else if (msg.includes('User already registered')) {
-        msg = '이미 가입된 이메일 주소입니다. 로그인 모드로 전환해 주세요.';
+        msg = 'This email is already registered. Please switch to Sign In mode.';
       }
 
       setErrorMessage(msg);
@@ -372,7 +372,7 @@ function AuthPageContent() {
           </div>
 
           <form onSubmit={handleAuthSubmit} className="space-y-4">
-            {/* Step 1: 이메일 입력 및 인증번호 발송 영역 */}
+            {/* Step 1: 이메일 입력 영역 */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-700">Email Address *</label>
               <div className="flex gap-2">
@@ -401,63 +401,63 @@ function AuthPageContent() {
                     ) : (
                       <>
                         {isOtpSent ? <RefreshCw className="w-3.5 h-3.5 text-blue-400" /> : <Send className="w-3.5 h-3.5 text-blue-400" />}
-                        <span>{isOtpSent ? '재발송' : '인증번호 발송'}</span>
+                        <span>{isOtpSent ? 'Resend' : 'Send Code'}</span>
                       </>
                     )}
                   </button>
                 )}
               </div>
-            </div>
 
-            {/* Step 2: 이메일 바로 아래에 노출되는 6자리 인증번호 입력창 */}
-            {isSignUp && isOtpSent && !isEmailVerified && (
-              <div className="p-4 bg-blue-50/80 border border-blue-200 rounded-2xl space-y-2.5 animate-fadeIn">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-extrabold text-blue-900 flex items-center gap-1.5">
-                    <Key className="w-3.5 h-3.5 text-blue-600" />
-                    메일로 받으신 6자리 인증번호를 입력하세요 *
-                  </label>
-                  <span className="text-[10px] text-blue-600 font-semibold">유효시간 10분</span>
-                </div>
-
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      maxLength={6}
-                      value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
-                      placeholder="6자리 숫자 입력"
-                      className="w-full px-4 py-3 rounded-xl border border-blue-300 bg-white font-mono tracking-widest text-base font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none text-center text-slate-900"
-                    />
+              {/* [요청사항 반영] 이메일 입력창 바로 직하단에 노출되는 6자리 OTP 입력창 및 상태 메시지 */}
+              {isSignUp && isOtpSent && !isEmailVerified && (
+                <div className="mt-2.5 p-4 bg-blue-50/90 border border-blue-200 rounded-2xl space-y-2.5 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-extrabold text-blue-900 flex items-center gap-1.5">
+                      <Key className="w-3.5 h-3.5 text-blue-600" />
+                      Enter 6-digit verification code *
+                    </label>
+                    <span className="text-[10px] text-blue-600 font-semibold">Valid for 10 min</span>
                   </div>
 
-                  <button
-                    type="button"
-                    disabled={isVerifyingOtp || otpCode.length < 6}
-                    onClick={handleVerifyOtpCode}
-                    className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition flex-shrink-0 flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
-                  >
-                    {isVerifyingOtp ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <ShieldCheck className="w-4 h-4" />
-                        <span>인증번호 확인</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        maxLength={6}
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
+                        placeholder="6-Digit Number"
+                        className="w-full px-4 py-3 rounded-xl border border-blue-300 bg-white font-mono tracking-widest text-base font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none text-center text-slate-900"
+                      />
+                    </div>
 
-            {/* 이메일 인증 완료 상자 */}
-            {isEmailVerified && isSignUp && (
-              <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2">
-                <ShieldCheck className="w-4.5 h-4.5 text-emerald-600 flex-shrink-0" />
-                <span>이메일 6자리 인증이 완벽히 확인되었습니다! 아래 세부 정보를 입력해 주세요.</span>
-              </div>
-            )}
+                    <button
+                      type="button"
+                      disabled={isVerifyingOtp || otpCode.length < 6}
+                      onClick={handleVerifyOtpCode}
+                      className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition flex-shrink-0 flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
+                    >
+                      {isVerifyingOtp ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <ShieldCheck className="w-4 h-4" />
+                          <span>Verify Code</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 이메일 인증 성공 상자 (이메일 직하단 노출) */}
+              {isEmailVerified && isSignUp && (
+                <div className="mt-2.5 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2">
+                  <ShieldCheck className="w-4.5 h-4.5 text-emerald-600 flex-shrink-0" />
+                  <span>Email verified successfully! Please enter your company details below.</span>
+                </div>
+              )}
+            </div>
 
             {/* Step 3: 세부 정보 입력 */}
             {isSignUp && (

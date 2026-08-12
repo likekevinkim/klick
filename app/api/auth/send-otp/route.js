@@ -5,16 +5,16 @@ export const runtime = 'nodejs';
 
 export async function POST(request) {
   try {
-    // 1. Vercel 환경 변수 추출 및 공백/따옴표 제거
+    // 1. Vercel 환경 변수 추출 및 공백/따옴표 안전 정제
     const rawApiKey = process.env.RESEND_API_KEY || '';
     const apiKey = rawApiKey.replace(/["'\r\n]/g, '').trim();
 
     const keyPreview = apiKey ? `${apiKey.substring(0, 5)}...` : 'EMPTY';
 
     if (!apiKey) {
-      console.error('RESEND_API_KEY가 Vercel 환경 변수에 설정되지 않았습니다.');
+      console.error('RESEND_API_KEY is not defined in environment variables.');
       return NextResponse.json(
-        { error: 'Vercel 서버의 RESEND_API_KEY 환경 변수가 설정되지 않았습니다. Resend에서 Full Access 키 생성 후 Vercel Settings에 등록하고 Redeploy를 진행해 주세요.' },
+        { error: 'Server configuration error: RESEND_API_KEY is missing in environment variables.' },
         { status: 500 }
       );
     }
@@ -25,7 +25,7 @@ export async function POST(request) {
 
     if (!email || !email.includes('@')) {
       return NextResponse.json(
-        { error: '올바른 이메일 주소를 입력해 주세요.' },
+        { error: 'Please enter a valid email address.' },
         { status: 400 }
       );
     }
@@ -34,7 +34,7 @@ export async function POST(request) {
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10분 유효
 
-    // 4. 대표님 도메인(true-k.net)을 이용한 Resend Direct REST API 호출
+    // 4. Resend Direct REST API 직접 호출 (글로벌 영문 템플릿 적용)
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -44,15 +44,39 @@ export async function POST(request) {
       body: JSON.stringify({
         from: 'KLICK B2B <noreply@true-k.net>',
         to: [email],
-        subject: `[KLICK B2B] Your 6-Digit Email Verification Code: ${generatedOtp}`,
+        subject: `[KLICK B2B] Your 6-Digit Verification Code: ${generatedOtp}`,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
-            <h2 style="color: #0f172a; font-size: 20px; font-weight: bold; margin-bottom: 8px;">KLICK B2B Network</h2>
-            <p style="color: #475569; font-size: 14px; line-height: 1.5;">Welcome to KLICK B2B Network. Below is your 6-digit email verification code:</p>
-            <div style="background-color: #f1f5f9; padding: 20px; border-radius: 12px; text-align: center; margin: 24px 0;">
-              <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #2563eb;">${generatedOtp}</span>
+          <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+            <div style="margin-bottom: 24px;">
+              <span style="background-color: #eff6ff; color: #1d4ed8; padding: 6px 12px; border-radius: 9999px; font-size: 12px; font-weight: bold; border: 1px solid #bfdbfe;">
+                KLICK Global B2B Network
+              </span>
             </div>
-            <p style="color: #94a3b8; font-size: 12px;">This code is valid for 10 minutes. If you did not request this, please ignore this email.</p>
+            
+            <h2 style="color: #0f172a; font-size: 22px; font-weight: 800; margin-bottom: 12px; letter-spacing: -0.5px;">
+              Verify Your Email Address
+            </h2>
+            
+            <p style="color: #475569; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+              Thank you for registering with KLICK B2B. Please use the following 6-digit verification code to complete your registration process:
+            </p>
+            
+            <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 24px; border-radius: 12px; text-align: center; margin: 28px 0;">
+              <span style="font-family: monospace, Courier, monospace; font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #2563eb;">
+                ${generatedOtp}
+              </span>
+            </div>
+            
+            <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin-bottom: 8px;">
+              • This code is valid for <strong>10 minutes</strong>.<br />
+              • If you did not request this code, please safely ignore this email.
+            </p>
+            
+            <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 32px 0 24px 0;" />
+            
+            <p style="color: #94a3b8; font-size: 11px; text-align: center;">
+              © ${new Date().getFullYear()} KLICK Global B2B Network. All rights reserved.
+            </p>
           </div>
         `
       })
@@ -63,10 +87,17 @@ export async function POST(request) {
     if (!resendResponse.ok) {
       console.error('Resend REST API Error Response:', resendResult);
 
-      const errorMessage = resendResult?.message || 'Resend API 세션 연결 거부';
+      const errorMessage = resendResult?.message || 'Failed to communicate with Resend API.';
+
+      if (errorMessage.includes('only send testing emails')) {
+        return NextResponse.json(
+          { error: 'Resend Sandbox Restriction: Testing emails can only be sent to truek.work@gmail.com until domain session is propagated.' },
+          { status: 400 }
+        );
+      }
 
       return NextResponse.json(
-        { error: `Resend 발송 실패 [원인: ${errorMessage} / 인식된 Key: ${keyPreview}]` },
+        { error: `Email delivery failed [Reason: ${errorMessage} / Key: ${keyPreview}]` },
         { status: 500 }
       );
     }
@@ -74,7 +105,7 @@ export async function POST(request) {
     // 5. 서버리스 메모리 소실 방지를 위한 보안 쿠키 생성
     const response = NextResponse.json({
       success: true,
-      message: '인증번호가 메일함으로 발송되었습니다.'
+      message: 'Verification code has been sent to your email inbox.'
     });
 
     const sessionPayload = Buffer.from(JSON.stringify({
@@ -94,7 +125,7 @@ export async function POST(request) {
   } catch (err) {
     console.error('Send OTP Handler Exception Dump:', err);
     return NextResponse.json(
-      { error: `서버 실행 중 예외가 발생했습니다: ${err?.message || String(err)}` },
+      { error: `Internal Server Error: ${err?.message || String(err)}` },
       { status: 500 }
     );
   }
