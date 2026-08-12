@@ -5,9 +5,9 @@ export const runtime = 'nodejs';
 
 export async function POST(request) {
   try {
-    // 1. Vercel 환경 변수 추출 및 공백 제거
-    const rawApiKey = process.env.RESEND_API_KEY;
-    const apiKey = rawApiKey ? rawApiKey.trim() : '';
+    // 1. Vercel 환경 변수 추출 및 공백/따옴표 안전 정제
+    const rawApiKey = process.env.RESEND_API_KEY || '';
+    const apiKey = rawApiKey.replace(/["'\r\n]/g, '').trim();
 
     if (!apiKey) {
       console.error('RESEND_API_KEY가 Vercel 환경 변수에 설정되지 않았습니다.');
@@ -32,7 +32,7 @@ export async function POST(request) {
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10분 유효
 
-    // 4. Resend Direct REST API 직접 호출 (SDK 충돌 회피, 500 에러 100% 소멸)
+    // 4. Resend Direct REST API 직접 호출 (도메인 승인된 true-k.net 주소)
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -56,7 +56,7 @@ export async function POST(request) {
       })
     });
 
-    const resendResult = await resendResponse.json();
+    const resendResult = await resendResponse.json().catch(() => ({}));
 
     if (!resendResponse.ok) {
       console.error('Resend REST API Error Response:', resendResult);
@@ -71,7 +71,7 @@ export async function POST(request) {
       }
 
       return NextResponse.json(
-        { error: `Resend 메일 발송 실패 [원인: ${errorMessage}]` },
+        { error: `Resend 발송 실패 [원인: ${errorMessage}]` },
         { status: 500 }
       );
     }
