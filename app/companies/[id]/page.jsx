@@ -27,7 +27,8 @@ import {
   Image as ImageIcon,
   Edit3,
   Play,
-  Plus
+  Plus,
+  PlusCircle
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -57,10 +58,10 @@ export default function CompanyShowroomLandingPage() {
   const [editTagline, setEditTagline] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editBusinessType, setEditBusinessType] = useState('Direct Manufacturer');
-  const [editLocation, setEditLocation] = useState('Incheon, South Korea 🇰🇷');
-  const [editEstablishedYear, setEditEstablishedYear] = useState('1998');
-  const [editEmployeesCount, setEditEmployeesCount] = useState('50 - 100 Employees');
-  const [editFactorySize, setEditFactorySize] = useState('5,000 sq. meters');
+  const [editLocation, setEditLocation] = useState('South Korea 🇰🇷');
+  const [editEstablishedYear, setEditEstablishedYear] = useState('2024');
+  const [editEmployeesCount, setEditEmployeesCount] = useState('10 - 50 Employees');
+  const [editFactorySize, setEditFactorySize] = useState('1,000 sq. meters');
 
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
@@ -75,23 +76,6 @@ export default function CompanyShowroomLandingPage() {
 
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [selectedVideoUrl, setSelectedVideoUrl] = useState('');
-
-  const factoryVideos = [
-    {
-      id: 1,
-      title: 'CNC Precision Machining & Valve Assembly Line Tour',
-      duration: '02:15',
-      thumbnail: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-      video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
-    },
-    {
-      id: 2,
-      title: 'Zero-Defect Quality Control (QC) Pressure Testing Process',
-      duration: '01:45',
-      thumbnail: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=800&q=80',
-      video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
-    }
-  ];
 
   useEffect(() => {
     setMounted(true);
@@ -108,6 +92,7 @@ export default function CompanyShowroomLandingPage() {
 
       let fetchedCompany = null;
 
+      // 1. Supabase DB에서 실제 등록된 공장 데이터만 조회
       if (companyId) {
         const { data: dbCompany } = await supabase
           .from('companies')
@@ -118,79 +103,58 @@ export default function CompanyShowroomLandingPage() {
         if (dbCompany) fetchedCompany = dbCompany;
       }
 
+      // 본인 소유 권한 확인
       if (currentUser) {
         if (fetchedCompany && (fetchedCompany.user_id === currentUser.id || companyId === currentUser.id)) {
           setIsOwner(true);
-        } else if (currentUser.user_metadata?.role === 'seller') {
+        } else if (currentUser.user_metadata?.role === 'seller' && (companyId === currentUser.id || !fetchedCompany)) {
           setIsOwner(true);
         }
       }
 
-      if (!fetchedCompany) {
-        fetchedCompany = {
-          id: companyId || currentUser?.id || '1',
-          user_id: currentUser?.id || null,
-          company_name: currentUser?.user_metadata?.company_name_en || currentUser?.user_metadata?.company_name_ko || 'Hankook Precision Co., Ltd.',
-          company_name_ko: currentUser?.user_metadata?.company_name_ko || '(주)한국정밀공업',
-          company_name_en: currentUser?.user_metadata?.company_name_en || 'Hankook Precision Co., Ltd.',
-          tagline: 'Leading Manufacturer of High-Precision Hydraulic Valves & Industrial Automation Parts',
-          description: 'Established in 1998, Hankook Precision specializes in manufacturing ultra-durable hydraulic control valves, industrial automation components, and customized machinery parts.',
-          business_type: 'Direct Manufacturer',
-          location: 'Incheon, South Korea 🇰🇷',
-          established_year: '1998',
-          employees_count: '50 - 100 Employees',
-          factory_size: '5,000 sq. meters',
-          certifications: ['ISO 9001', 'CE Certified', 'IATF 16949', 'KOTRA Verified'],
-          gallery_images: [
-            'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80',
-            'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-            'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=800&q=80'
-          ]
-        };
+      // 2. 가짜 데이터 완전 제거: DB에 없으면 null 상태 유지
+      if (fetchedCompany) {
+        setCompany(fetchedCompany);
+
+        setEditCompanyNameKo(fetchedCompany.company_name_ko || '');
+        setEditCompanyNameEn(fetchedCompany.company_name_en || fetchedCompany.company_name || '');
+        setEditTagline(fetchedCompany.tagline || '');
+        setEditDescription(fetchedCompany.description || '');
+        setEditBusinessType(fetchedCompany.business_type || 'Direct Manufacturer');
+        setEditLocation(fetchedCompany.location || 'South Korea 🇰🇷');
+        setEditEstablishedYear(fetchedCompany.established_year || '2024');
+        setEditEmployeesCount(fetchedCompany.employees_count || '10 - 50 Employees');
+        setEditFactorySize(fetchedCompany.factory_size || '1,000 sq. meters');
+      } else {
+        setCompany(null);
+        // 로그인 유저의 회원가입 기본 정보가 있으면 폼 초기값으로만 세팅
+        if (currentUser) {
+          setEditCompanyNameKo(currentUser.user_metadata?.company_name_ko || '');
+          setEditCompanyNameEn(currentUser.user_metadata?.company_name_en || currentUser.user_metadata?.company_name || '');
+        }
       }
-
-      setCompany(fetchedCompany);
-
-      setEditCompanyNameKo(fetchedCompany.company_name_ko || '');
-      setEditCompanyNameEn(fetchedCompany.company_name_en || fetchedCompany.company_name || '');
-      setEditTagline(fetchedCompany.tagline || '');
-      setEditDescription(fetchedCompany.description || '');
-      setEditBusinessType(fetchedCompany.business_type || 'Direct Manufacturer');
-      setEditLocation(fetchedCompany.location || 'Incheon, South Korea 🇰🇷');
-      setEditEstablishedYear(fetchedCompany.established_year || '1998');
-      setEditEmployeesCount(fetchedCompany.employees_count || '50 - 100 Employees');
-      setEditFactorySize(fetchedCompany.factory_size || '5,000 sq. meters');
 
       if (autoEditParam === 'true') {
         setIsEditCompanyModalOpen(true);
       }
 
-      const { data: allProducts } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (allProducts && allProducts.length > 0) {
+      // 3. 해당 공장 소유의 실제 등록 제품만 조회 (가짜 데이터 제거)
+      if (currentUser?.id || companyId) {
         const targetUserId = currentUser?.id || companyId;
-        const matchedProducts = allProducts.filter(
-          p => p.user_id === targetUserId || p.company_id === companyId || (p.company_name && p.company_name.toLowerCase().includes((fetchedCompany.company_name_en || '').toLowerCase().slice(0, 5)))
-        );
-        setProducts(matchedProducts.length > 0 ? matchedProducts : allProducts);
+        const { data: matchedProducts } = await supabase
+          .from('products')
+          .select('*')
+          .or(`user_id.eq.${targetUserId},company_id.eq.${companyId}`)
+          .order('created_at', { ascending: false });
+
+        setProducts(matchedProducts || []);
       } else {
-        setProducts([
-          {
-            id: '1',
-            title_en: 'High-Precision Hydraulic Control Valve HV-300',
-            category: 'Industrial Machinery',
-            price: '145.00',
-            moq: '500 Units',
-            tagline: 'ISO 9001 certified industrial solution engineered with Korean precision technology.',
-            image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-          }
-        ]);
+        setProducts([]);
       }
     } catch (err) {
       console.error('Failed to fetch company details:', err);
+      setCompany(null);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -233,8 +197,8 @@ export default function CompanyShowroomLandingPage() {
         if (fallbackError) throw fallbackError;
       }
 
-      alert('공장 정보가 성공적으로 수정되었습니다!');
-      setCompany(prev => ({ ...prev, ...updatedPayload }));
+      alert('공장 정보가 성공적으로 저장되었습니다!');
+      setCompany(prev => ({ ...(prev || {}), ...updatedPayload }));
       setIsEditCompanyModalOpen(false);
     } catch (err) {
       console.error('Company save error:', err);
@@ -254,7 +218,7 @@ export default function CompanyShowroomLandingPage() {
 
     try {
       setIsSavingProduct(true);
-      const companyNameForProduct = company?.company_name_en || company?.company_name || 'Verified Korean Manufacturer';
+      const companyNameForProduct = company?.company_name_en || company?.company_name || user?.user_metadata?.company_name_en || 'Verified Korean Manufacturer';
 
       const newProductPayload = {
         user_id: user.id,
@@ -300,7 +264,7 @@ export default function CompanyShowroomLandingPage() {
   };
 
   const handleStartCompanyChat = () => {
-    const compName = encodeURIComponent(company?.company_name_en || company?.company_name || 'Hankook Precision Co., Ltd.');
+    const compName = encodeURIComponent(company?.company_name_en || company?.company_name || 'Korean Manufacturer');
     const title = encodeURIComponent('Factory Partnership & Wholesale Inquiry');
     router.push(`/chat?company=${compName}&title=${title}`);
   };
@@ -331,20 +295,20 @@ export default function CompanyShowroomLandingPage() {
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center gap-1.5 cursor-pointer"
               >
                 <Edit3 className="w-4 h-4" />
-                <span>Edit Factory Info & Specs</span>
+                <span>{company ? 'Edit Factory Info & Specs' : 'Register Factory Specs'}</span>
               </button>
             )}
           </div>
 
           <div className="space-y-3 max-w-4xl">
             <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-snug">
-              {company?.company_name_en || company?.company_name}
+              {company?.company_name_en || company?.company_name || user?.user_metadata?.company_name_en || user?.user_metadata?.company_name || 'My Factory Showroom'}
             </h1>
             {company?.company_name_ko && (
               <p className="text-slate-400 text-sm font-bold">상호명: {company.company_name_ko}</p>
             )}
             <p className="text-slate-300 text-base md:text-lg leading-relaxed font-medium">
-              {company?.tagline || 'Leading Manufacturer in South Korea'}
+              {company?.tagline || 'Please register your factory details and production capacity to attract global buyers.'}
             </p>
           </div>
 
@@ -353,7 +317,7 @@ export default function CompanyShowroomLandingPage() {
               <MapPin className="w-4 h-4 text-blue-400 flex-shrink-0" />
               <div>
                 <span className="text-slate-400 block text-[10px]">Location</span>
-                <span className="font-bold">{company?.location || 'South Korea'}</span>
+                <span className="font-bold">{company?.location || 'Not Specified'}</span>
               </div>
             </div>
 
@@ -361,7 +325,7 @@ export default function CompanyShowroomLandingPage() {
               <Calendar className="w-4 h-4 text-blue-400 flex-shrink-0" />
               <div>
                 <span className="text-slate-400 block text-[10px]">Established</span>
-                <span className="font-bold">{company?.established_year || '1998'} Year</span>
+                <span className="font-bold">{company?.established_year ? `${company.established_year} Year` : 'Not Specified'}</span>
               </div>
             </div>
 
@@ -369,7 +333,7 @@ export default function CompanyShowroomLandingPage() {
               <Users className="w-4 h-4 text-blue-400 flex-shrink-0" />
               <div>
                 <span className="text-slate-400 block text-[10px]">Employees</span>
-                <span className="font-bold">{company?.employees_count || '50+ Staff'}</span>
+                <span className="font-bold">{company?.employees_count || 'Not Specified'}</span>
               </div>
             </div>
 
@@ -377,7 +341,7 @@ export default function CompanyShowroomLandingPage() {
               <Layers className="w-4 h-4 text-blue-400 flex-shrink-0" />
               <div>
                 <span className="text-slate-400 block text-[10px]">Factory Area</span>
-                <span className="font-bold">{company?.factory_size || '5,000 sq.m'}</span>
+                <span className="font-bold">{company?.factory_size || 'Not Specified'}</span>
               </div>
             </div>
           </div>
@@ -457,51 +421,37 @@ export default function CompanyShowroomLandingPage() {
                     className="p-2 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-xl transition cursor-pointer text-xs font-bold flex items-center gap-1"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
-                    <span>Edit</span>
+                    <span>Edit Profile</span>
                   </button>
                 )}
               </div>
 
-              <div className="prose text-slate-600 text-sm leading-relaxed space-y-4 border-t border-slate-100 pt-4">
-                <p>{company?.description}</p>
-              </div>
-
-              {/* 비디오 투어 */}
-              <div className="border-t border-slate-100 pt-6 space-y-4">
-                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                  <Video className="w-4 h-4 text-blue-600" />
-                  Verified Factory Production Video Tour (공장 실사 비디오)
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {factoryVideos.map((vid) => (
-                    <div
-                      key={vid.id}
-                      onClick={() => handleOpenVideo(vid.video_url)}
-                      className="bg-slate-900 text-white rounded-2xl overflow-hidden border border-slate-800 shadow-md hover:shadow-xl transition cursor-pointer group space-y-2 relative"
+              {/* 공장 상세 소개가 없을 때 초기화된 Empty State */}
+              {!company?.description ? (
+                <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-3 p-6">
+                  <Building2 className="w-10 h-10 text-slate-300 mx-auto stroke-1" />
+                  <h3 className="text-sm font-bold text-slate-800">No Factory Specifications Registered Yet</h3>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    {isOwner 
+                      ? 'Register your production capabilities, factory size, and ISO certifications to receive direct buyer inquiries!'
+                      : 'This manufacturer has not provided detailed factory specifications yet.'}
+                  </p>
+                  {isOwner && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditCompanyModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition mt-2 cursor-pointer"
                     >
-                      <div className="w-full h-44 bg-slate-800 relative overflow-hidden flex items-center justify-center">
-                        <img src={vid.thumbnail} alt={vid.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300 opacity-80" />
-                        <div className="w-12 h-12 bg-blue-600/90 rounded-full flex items-center justify-center shadow-2xl group-hover:bg-blue-500 group-hover:scale-110 transition">
-                          <Play className="w-5 h-5 text-white ml-0.5 fill-white" />
-                        </div>
-                        <span className="absolute bottom-2.5 right-2.5 bg-black/80 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md">
-                          {vid.duration}
-                        </span>
-                      </div>
-
-                      <div className="p-3.5 space-y-1">
-                        <h4 className="text-xs font-extrabold text-slate-100 group-hover:text-blue-400 transition line-clamp-1">
-                          {vid.title}
-                        </h4>
-                        <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-                          <ShieldCheck className="w-3 h-3" /> Verified Audit Video
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                      <PlusCircle className="w-4 h-4" />
+                      <span>Register Factory Specifications</span>
+                    </button>
+                  )}
                 </div>
-              </div>
+              ) : (
+                <div className="prose text-slate-600 text-sm leading-relaxed space-y-4 border-t border-slate-100 pt-4">
+                  <p>{company.description}</p>
+                </div>
+              )}
 
               {/* 품질 인증서 */}
               <div className="border-t border-slate-100 pt-6 space-y-3">
@@ -510,7 +460,7 @@ export default function CompanyShowroomLandingPage() {
                   Quality Certifications & Licenses
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {company?.certifications && Array.isArray(company.certifications) ? (
+                  {company?.certifications && Array.isArray(company.certifications) && company.certifications.length > 0 ? (
                     company.certifications.map((cert, index) => (
                       <span
                         key={index}
@@ -521,8 +471,8 @@ export default function CompanyShowroomLandingPage() {
                       </span>
                     ))
                   ) : (
-                    <span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg">
-                      ISO 9001 / CE Certified
+                    <span className="text-xs text-slate-400 font-medium italic">
+                      No quality certifications registered yet.
                     </span>
                   )}
                 </div>
@@ -544,11 +494,7 @@ export default function CompanyShowroomLandingPage() {
                 <div className="space-y-2 text-xs text-slate-300 border-t border-slate-800 pt-3">
                   <div className="flex items-center gap-2">
                     <MapPin className="w-3.5 h-3.5 text-blue-400" />
-                    <span>{company?.location || 'Incheon, South Korea'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-3.5 h-3.5 text-blue-400" />
-                    <span>+82-32-123-4567 (Export Dept.)</span>
+                    <span>{company?.location || 'South Korea'}</span>
                   </div>
                 </div>
 
@@ -599,6 +545,18 @@ export default function CompanyShowroomLandingPage() {
                     ? 'Click "Add Showroom Product" above to publish your first export product!'
                     : 'This factory has not registered any public showroom catalog items.'}
                 </p>
+                {isOwner && (
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddProductModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add First Showroom Product</span>
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
