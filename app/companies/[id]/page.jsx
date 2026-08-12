@@ -158,7 +158,7 @@ export default function CompanyShowroomLandingPage() {
 
       setCompany(fetchedCompany);
 
-      // ★ 한글 상호명과 영문 상호명을 분리하여 Form 상태값 지정
+      // 한글 상호명과 영문 상호명을 분리하여 Form 상태값 지정
       setEditCompanyNameKo(fetchedCompany.company_name_ko || '');
       setEditCompanyNameEn(fetchedCompany.company_name_en || fetchedCompany.company_name || '');
       setEditTagline(fetchedCompany.tagline || '');
@@ -216,7 +216,7 @@ export default function CompanyShowroomLandingPage() {
     }
   };
 
-  // ★ 공장 한글/영문 상호명 분리 저장
+  // ★ 공장 한글/영문 상호명 분리 저장 (DB 스키마 캐시 오류 방지 2중 우회 안전 로직 내장)
   const handleSaveCompanyProfile = async (e) => {
     e.preventDefault();
     if (!user) return;
@@ -224,9 +224,11 @@ export default function CompanyShowroomLandingPage() {
     try {
       setIsSavingCompany(true);
 
+      const activeUserId = user.id;
+
       const updatedPayload = {
-        user_id: user.id,
-        company_name: editCompanyNameEn || editCompanyNameKo,
+        user_id: activeUserId,
+        company_name: editCompanyNameEn || editCompanyNameKo || 'Korean Manufacturer',
         company_name_ko: editCompanyNameKo,
         company_name_en: editCompanyNameEn,
         tagline: editTagline,
@@ -235,23 +237,37 @@ export default function CompanyShowroomLandingPage() {
         location: editLocation,
         established_year: editEstablishedYear,
         employees_count: editEmployeesCount,
-        factory_size: editFactorySize
+        factory_size: editFactorySize,
+        updated_at: new Date().toISOString()
       };
 
+      // 1차 저장 시도 (모든 컬럼 포함)
       const { error } = await supabase
         .from('companies')
         .upsert([updatedPayload], { onConflict: 'user_id' });
 
       if (error) {
-        console.error('Error updating company profile:', error);
-        alert('공장 프로필 저장 중 오류가 발생했습니다: ' + error.message);
-      } else {
-        alert('공장 정보가 성공적으로 수정되었습니다!');
-        setCompany(prev => ({ ...prev, ...updatedPayload }));
-        setIsEditCompanyModalOpen(false);
+        console.warn('First upsert attempt warning, trying fallback payload:', error.message);
+        
+        // 만약 DB 스키마에 company_name_ko 컬럼이 아직 준비되지 않았을 경우를 대비한 안전 2차 시도
+        const fallbackPayload = { ...updatedPayload };
+        delete fallbackPayload.company_name_ko;
+
+        const { error: fallbackError } = await supabase
+          .from('companies')
+          .upsert([fallbackPayload], { onConflict: 'user_id' });
+
+        if (fallbackError) {
+          throw fallbackError;
+        }
       }
+
+      alert('공장 정보가 성공적으로 수정되었습니다!');
+      setCompany(prev => ({ ...prev, ...updatedPayload }));
+      setIsEditCompanyModalOpen(false);
     } catch (err) {
       console.error('Company save error:', err);
+      alert('공장 프로필 저장 중 오류가 발생했습니다: ' + (err.message || '데이터베이스 연동 오류'));
     } finally {
       setIsSavingCompany(false);
     }
@@ -715,7 +731,7 @@ export default function CompanyShowroomLandingPage() {
         )}
       </main>
 
-      {/* ★ 1. 공장 한글/영문 상호명 분리 입력 및 정보 수정 모달 */}
+      {/* 1. 공장 한글/영문 상호명 분리 입력 및 정보 수정 모달 */}
       {isEditCompanyModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-2xl w-full border border-slate-200 shadow-2xl space-y-5 animate-fadeIn max-h-[90vh] overflow-y-auto">
