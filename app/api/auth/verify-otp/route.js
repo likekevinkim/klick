@@ -1,9 +1,11 @@
 // app/api/auth/verify-otp/route.js
 import { NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     const email = body?.email;
     const code = body?.code;
 
@@ -30,7 +32,7 @@ export async function POST(request) {
       storedData = JSON.parse(decodedPayload);
     } catch (parseErr) {
       return NextResponse.json(
-        { error: '인증 세션이 유효하지 않습니다. 다시 발송해 주세요.' },
+        { error: '인증 세션이 유효하지 않습니다. 인증번호를 다시 발송해 주세요.' },
         { status: 400 }
       );
     }
