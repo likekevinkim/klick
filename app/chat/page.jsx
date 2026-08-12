@@ -3,11 +3,20 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import Header from '@/components/Header';
+import GoogleTranslateScript from '@/components/GoogleTranslateScript';
 import B2bPaymentModal from '@/components/B2bPaymentModal';
 import ChatRoomItem from '@/components/chat/ChatRoomItem';
 import TradeDocModal from '@/components/chat/TradeDocModal';
 import SampleTrackingModal from '@/components/chat/SampleTrackingModal';
-import { Sparkles, Loader2, FileText, MessageSquare } from 'lucide-react';
+import { 
+  Sparkles, 
+  Loader2, 
+  FileText, 
+  MessageSquare, 
+  Globe, 
+  Languages, 
+  Info 
+} from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
@@ -27,6 +36,10 @@ function ChatContent() {
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
   const [loading, setLoading] = useState(true);
 
+  // 무료 실시간 번역 엔진 상태 (토큰 소비 0원)
+  const [autoTranslate, setAutoTranslate] = useState(true);
+  const [targetLang, setTargetLang] = useState('ko');
+
   // 모달 상태
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [quotePrice, setQuotePrice] = useState('145.00');
@@ -44,6 +57,15 @@ function ChatContent() {
   const [paymentQuoteData, setPaymentQuoteData] = useState(null);
 
   const messagesEndRef = useRef(null);
+
+  const languages = [
+    { code: 'ko', label: '한국어 (Korean)' },
+    { code: 'en', label: 'English (US)' },
+    { code: 'zh-CN', label: '中文 (Chinese)' },
+    { code: 'ja', label: '日本語 (Japanese)' },
+    { code: 'es', label: 'Español (Spanish)' },
+    { code: 'ar', label: 'العربية (Arabic)' },
+  ];
 
   useEffect(() => {
     setMounted(true);
@@ -68,6 +90,29 @@ function ChatContent() {
       supabase.removeChannel(msgChannel);
     };
   }, [paramProductId, paramCompany, paramTitle, paramSellerId]);
+
+  // 구글 번역 쿠키 제어를 통한 0원 무료 실시간 번역 엔진 트리거
+  useEffect(() => {
+    if (autoTranslate) {
+      triggerFreeGoogleTranslate(targetLang);
+    } else {
+      triggerFreeGoogleTranslate('auto');
+    }
+  }, [autoTranslate, targetLang, roomMessagesMap]);
+
+  const triggerFreeGoogleTranslate = (langCode) => {
+    if (typeof window === 'undefined') return;
+    const domain = window.location.hostname;
+
+    document.cookie = `googtrans=/auto/${langCode}; path=/;`;
+    document.cookie = `googtrans=/auto/${langCode}; path=/; domain=${domain};`;
+
+    const googleCombo = document.querySelector('.goog-te-combo');
+    if (googleCombo) {
+      googleCombo.value = langCode;
+      googleCombo.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  };
 
   const handleRealtimeMessageReceived = (newMsg) => {
     setRoomMessagesMap((prevMap) => {
@@ -115,7 +160,7 @@ function ChatContent() {
     }
   };
 
-  // ★ DB `is_read = false` 기준 안읽은 새 메시지 수만 정밀 계산
+  // DB `is_read = false` 기준 안읽은 새 메시지 수 정밀 계산 및 채팅방 로드
   const fetchChatRoomsAndInit = async (currentUserObj, currentRole) => {
     try {
       const { data: existingRooms } = await supabase
@@ -141,10 +186,10 @@ function ChatContent() {
             if (!map[msg.room_id]) map[msg.room_id] = [];
             map[msg.room_id].push(msg);
 
-            // 상대방이 보낸 메시지 중, is_read = false (안 읽음) 레코드만 안읽은 수 카운트
+            // 상대방이 보낸 메시지 중, is_read = false (안 읽음) 레코드만 카운트
             const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
             const isUnread = msg.sender_role === opponentRole && (msg.is_read === false || msg.is_read === null);
-            
+
             if (isUnread) {
               unreadMap[msg.room_id] = (unreadMap[msg.room_id] || 0) + 1;
             }
@@ -152,7 +197,7 @@ function ChatContent() {
 
           setRoomMessagesMap(map);
 
-          // 대화방 객체에 안읽은 메시지 수여
+          // 대화방 객체에 안읽은 메시지 수 부여
           currentRoomsList = currentRoomsList.map((r) => ({
             ...r,
             unread_count: unreadMap[r.id] || 0
@@ -225,7 +270,7 @@ function ChatContent() {
     }
   };
 
-  // ★ 해당 대화방의 상대방 메시지를 DB에서 `is_read = true`로 직접 UPDATE 처리
+  // 해당 대화방의 상대방 메시지를 DB에서 `is_read = true`로 직접 UPDATE 처리
   const markRoomMessagesAsRead = async (roomId, currentRole) => {
     try {
       const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
@@ -241,7 +286,7 @@ function ChatContent() {
     }
   };
 
-  // 대화방을 클릭하여 열었을 때 해당 대화방만 정밀 '읽음' 처리 및 수치 차감
+  // 대화방 토글 클릭 시 정밀 읽음 처리
   const handleToggleRoom = async (roomId) => {
     if (activeRoomId === roomId) {
       setActiveRoomId(null);
@@ -423,13 +468,21 @@ function ChatContent() {
   return (
     <div className="min-h-screen bg-[#F9FAFB] text-slate-900 pb-16 antialiased">
       <Header />
+      <GoogleTranslateScript />
 
       <main className="max-w-5xl mx-auto px-6 mt-8 space-y-6">
+        {/* 상단 무제한 무료 번역 컨트롤러 내장 헤더 바 */}
         <div className="bg-[#0F172A] text-white rounded-3xl p-6 md:p-8 shadow-md border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
-              <Sparkles className="w-3.5 h-3.5" /> KLICK Direct Accordion Chat Hub
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
+                <Sparkles className="w-3.5 h-3.5" /> KLICK Direct Accordion Chat Hub
+              </span>
+              <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-bold flex items-center gap-1">
+                <Globe className="w-3 h-3" /> 100% Free Translation (0 Tokens)
+              </span>
+            </div>
+
             <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">
               Real-time AI Multilingual Chat & Trade Document Hub
             </h1>
@@ -438,8 +491,36 @@ function ChatContent() {
             </p>
           </div>
 
-          <div className="text-xs text-slate-300 bg-slate-800/80 px-4 py-2 rounded-xl border border-slate-700">
-            Account Role: <span className="font-extrabold text-blue-400">{userRole === 'seller' ? 'Korean Seller' : 'Global Buyer'}</span>
+          {/* 무료 실시간 번역 컨트롤러 */}
+          <div className="flex items-center gap-3 bg-slate-800/90 p-2 rounded-2xl border border-slate-700/80">
+            <div className="flex items-center gap-1.5 pl-2">
+              <Languages className="w-4 h-4 text-blue-400" />
+              <span className="text-xs font-bold text-slate-300">My Lang:</span>
+            </div>
+
+            <select
+              value={targetLang}
+              onChange={(e) => setTargetLang(e.target.value)}
+              className="bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            >
+              {languages.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.label}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={() => setAutoTranslate(!autoTranslate)}
+              className={`px-3 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${
+                autoTranslate 
+                  ? 'bg-emerald-600 text-white shadow-md' 
+                  : 'bg-slate-700 text-slate-400 hover:text-white'
+              }`}
+            >
+              <span>{autoTranslate ? 'Auto ON' : 'OFF'}</span>
+            </button>
           </div>
         </div>
 
