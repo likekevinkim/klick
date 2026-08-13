@@ -3,7 +3,6 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import Header from '@/components/Header';
-import GoogleTranslateScript from '@/components/GoogleTranslateScript';
 import B2bPaymentModal from '@/components/B2bPaymentModal';
 import ChatRoomItem from '@/components/chat/ChatRoomItem';
 import TradeDocModal from '@/components/chat/TradeDocModal';
@@ -19,7 +18,7 @@ import {
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-// 실시간 AI 번역 엔진 헬퍼 함수
+// 실시간 AI 번역 API 헬퍼
 const translateTextWithApi = async (text, targetLanguage) => {
   if (!text || !text.trim()) return text;
   try {
@@ -118,7 +117,7 @@ function ChatContent() {
     };
   }, [paramProductId, paramCompany, paramTitle, paramSellerId]);
 
-  // 3. 내 언어(targetLang) 변경 시 현재 대화방 메시지들 선택 언어로 즉시 번역
+  // 3. 내 언어(targetLang) 변경 시 현재 대화방 메시지들 중 상대방 메시지만 선택 언어로 번역
   useEffect(() => {
     if (!activeRoomId || !roomMessagesMap[activeRoomId]) return;
 
@@ -126,7 +125,6 @@ function ChatContent() {
       const currentMsgs = roomMessagesMap[activeRoomId] || [];
       const translatedList = await Promise.all(
         currentMsgs.map(async (msg) => {
-          // 내가 작성한 메시지가 아닌 상대방 메시지일 때만 내 언어(targetLang)로 실시간 번역
           if (msg.sender_role !== userRole) {
             const trans = await translateTextWithApi(msg.message, targetLang);
             return { ...msg, translated_message: trans };
@@ -143,31 +141,13 @@ function ChatContent() {
 
     if (autoTranslate) {
       translateCurrentRoomMessages();
-      triggerFreeGoogleTranslate(targetLang);
-    } else {
-      triggerFreeGoogleTranslate('auto');
     }
   }, [targetLang, activeRoomId, autoTranslate]);
 
-  const triggerFreeGoogleTranslate = (langCode) => {
-    if (typeof window === 'undefined') return;
-    const domain = window.location.hostname;
-
-    document.cookie = `googtrans=/auto/${langCode}; path=/;`;
-    document.cookie = `googtrans=/auto/${langCode}; path=/; domain=${domain};`;
-
-    const googleCombo = document.querySelector('.goog-te-combo');
-    if (googleCombo) {
-      googleCombo.value = langCode;
-      googleCombo.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  };
-
-  // ★ 4. 상대방이 실시간 전송한 라이브 메세지 도착 시 수신자의 내 언어(targetLang)로 실시간 1차 번역
+  // 상대방이 보낸 실시간 메세지가 들어올 때 수신자의 내 언어(targetLang)로 번역
   const handleRealtimeMessageReceived = async (newMsg) => {
     let msgWithTrans = newMsg;
 
-    // 내가 보낸 말이 아닌 타인 메시지인 경우 바로 수신자의 선택 언어로 번역 결합
     if (newMsg.sender_role !== userRole) {
       const trans = await translateTextWithApi(newMsg.message, targetLang);
       msgWithTrans = { ...newMsg, translated_message: trans };
@@ -175,7 +155,6 @@ function ChatContent() {
 
     setRoomMessagesMap((prevMap) => {
       const roomMsgs = prevMap[newMsg.room_id] || [];
-      // 이미 로컬에서 추가되었거나 DB Realtime 중복 이벤트 방지
       if (roomMsgs.some((m) => m.id === newMsg.id || (m.created_at === newMsg.created_at && m.sender_role === newMsg.sender_role))) {
         return prevMap;
       }
@@ -279,7 +258,7 @@ function ChatContent() {
         }
       }
 
-      // URL 파라미터가 있거나 대화방이 존재할 때
+      // URL 파라미터 처리
       if (paramCompany || paramTitle) {
         const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product Inquiry';
         const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Verified Korean Company';
@@ -391,7 +370,7 @@ function ChatContent() {
     }
   };
 
-  // ★ 5. [중복 노출 방지] 내 메시지 입력 시 DB 저장 후 1회만 정확히 매핑
+  // 내 메시지 전송 시 원문 100% 보존하여 DB 저장
   const handleSendMessage = async (targetRoomId, text, attachedFile) => {
     let finalFilePayload = null;
     if (attachedFile) {
@@ -404,13 +383,12 @@ function ChatContent() {
     }
 
     try {
-      // 내 메시지는 작성한 진짜 원문(text) 그대로 전달
       const newMsgPayload = {
         room_id: targetRoomId,
         sender_id: user?.id ? user.id.toString() : 'guest_user',
         sender_role: userRole,
-        message: text,
-        translated_message: text, // 본인 전송 시 원문으로 매핑
+        message: text, // 내가 작성한 원문 그대로 보존
+        translated_message: text, 
         is_quote: false,
         is_read: false,
         file: finalFilePayload,
@@ -543,7 +521,6 @@ function ChatContent() {
   return (
     <div className="min-h-screen bg-[#F9FAFB] text-slate-900 pb-16 antialiased">
       <Header />
-      <GoogleTranslateScript />
 
       <main className="max-w-5xl mx-auto px-6 mt-8 space-y-6">
         <div className="bg-[#0F172A] text-white rounded-3xl p-6 md:p-8 shadow-md border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
