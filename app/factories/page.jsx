@@ -55,7 +55,7 @@ function FactoriesDirectoryContent() {
     try {
       setLoading(true);
 
-      // 1. Supabase DB에서 실제 등록된 회사(셀러) 전체 데이터 조회
+      // 1. Supabase DB에서 실제 등록된 회사(셀러) 전체 데이터 조회 (가짜 데이터 원천 차단)
       const { data: dbCompanies, error: compError } = await supabase
         .from('companies')
         .select('*')
