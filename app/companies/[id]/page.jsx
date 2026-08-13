@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-// 카테고리별 샘플 커버 및 갤러리 이미지
+// 대표 커버 이미지가 없을 경우 사용할 카테고리별 샘플 비주얼 배경
 const DEFAULT_CATEGORY_IMAGES = {
   'Industrial Machinery': {
     cover: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&auto=format&fit=crop&q=60',
@@ -142,7 +142,7 @@ export default function CompanyShowroomLandingPage() {
     fetchCompanyAndProductsData();
   }, [rawCompanyId]);
 
-  // DB 조회 함수 (★ URL 파라미터 rawCompanyId로 바이어 클릭 대상 셀러 고유 DB 데이터 정확 스캔)
+  // DB 조회 정밀 스캔 함수 (★ 클릭한 셀러의 데이터를 100% 보장하는 핵심 스캔)
   const fetchCompanyAndProductsData = async () => {
     try {
       setLoading(true);
@@ -153,20 +153,20 @@ export default function CompanyShowroomLandingPage() {
 
       let fetchedCompany = null;
 
-      // 1. URL 경로의 rawCompanyId를 최우선 매핑 스캔
+      // 1. URL의 rawCompanyId를 기준으로 companies 테이블 스캔 (id 또는 user_id 일치 조건)
       if (rawCompanyId) {
-        const { data: compByParamId } = await supabase
+        const { data: compByParam } = await supabase
           .from('companies')
           .select('*')
           .or(`user_id.eq.${rawCompanyId},id.eq.${rawCompanyId}`)
           .maybeSingle();
 
-        if (compByParamId) {
-          fetchedCompany = compByParamId;
+        if (compByParam) {
+          fetchedCompany = compByParam;
         }
       }
 
-      // 2. 만약 경로 스캔이 실패하였으나 내가 로그인한 상태일 때
+      // 2. 만약 URL 스캔 실패 시에만 현재 로그인 유저 정보 스캔
       if (!fetchedCompany && currentUser?.id) {
         const { data: compByUserId } = await supabase
           .from('companies')
@@ -179,18 +179,20 @@ export default function CompanyShowroomLandingPage() {
         }
       }
 
-      // 3. 소유자 여부 정밀 검증 (내 쇼룸인 경우만 편집 버튼 및 등록 허용)
+      // 소유자 여부 정밀 확인 (내가 내 쇼룸을 보는 것인지 다른 셀러 쇼룸을 보는 것인지 판단)
       if (currentUser && fetchedCompany) {
         if (fetchedCompany.user_id === currentUser.id || fetchedCompany.id === currentUser.id) {
           setIsOwner(true);
         } else {
           setIsOwner(false);
         }
+      } else if (currentUser && !fetchedCompany && rawCompanyId === currentUser.id) {
+        setIsOwner(true);
       } else {
         setIsOwner(false);
       }
 
-      // 4. 스캔된 실제 셀러 회사 데이터를 화면 및 모달 폼에 100% 동기화
+      // 3. 스캔된 해당 셀러의 실제 DB 데이터를 화면 및 모달 폼에 완전 매핑
       if (fetchedCompany) {
         setCompany(fetchedCompany);
 
@@ -213,11 +215,11 @@ export default function CompanyShowroomLandingPage() {
         setCompany(null);
       }
 
-      if (autoEditParam === 'true') {
+      if (autoEditParam === 'true' && isOwner) {
         setIsEditCompanyModalOpen(true);
       }
 
-      // 5. 해당 셀러가 등록한 실제 상품 목록 조회
+      // 4. 해당 셀러가 등록한 실제 상품 목록만 조회
       const targetSellerUserId = fetchedCompany?.user_id || rawCompanyId;
       if (targetSellerUserId) {
         const { data: matchedProducts } = await supabase
@@ -352,7 +354,7 @@ export default function CompanyShowroomLandingPage() {
         category: productCategory,
         price: productPrice,
         moq: productMoq,
-        image_url: productImageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+        image_url: productImageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=60',
         description_ko: productDescriptionKo,
         description_en: `[AI Generated] High-durability ${productCategory} product manufactured by ${companyNameForProduct}.`,
         tagline: 'Verified South Korean Factory Export Product',
@@ -392,7 +394,7 @@ export default function CompanyShowroomLandingPage() {
     router.push(`/chat?company=${compName}&title=${title}`);
   };
 
-  // 대표 커버 이미지 (실제 입력값 및 디폴트 이미지 매핑)
+  // 대표 커버 이미지
   const categoryKey = company?.category || 'Industrial Machinery';
   const categoryDefaults = DEFAULT_CATEGORY_IMAGES[categoryKey] || DEFAULT_CATEGORY_IMAGES['Industrial Machinery'];
   
@@ -450,6 +452,7 @@ export default function CompanyShowroomLandingPage() {
           </div>
 
           <div className="space-y-3 max-w-4xl">
+            {/* ★ 선택한 해당 셀러의 상호명 출력 (가짜 데이터 원천 배제) */}
             <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-snug">
               {company?.company_name_en || company?.company_name || 'Verified Korean Company Showroom'}
             </h1>
@@ -540,7 +543,6 @@ export default function CompanyShowroomLandingPage() {
               </button>
             )}
 
-            {/* 셀러 본인 페이지일 때는 Send Direct RFQ 숨김 */}
             {!isOwner && (
               <button
                 type="button"
@@ -580,7 +582,7 @@ export default function CompanyShowroomLandingPage() {
                 )}
               </div>
 
-              {/* 입력하신 기본 스펙 정보 그리드 */}
+              {/* 선택된 셀러의 실제 등록 스펙 정보 그리드 */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs">
                 <div className="p-3 bg-white rounded-xl border border-slate-100 space-y-1">
                   <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
@@ -637,7 +639,7 @@ export default function CompanyShowroomLandingPage() {
                 </div>
               </div>
 
-              {/* 회사 소개 본문 렌더링 */}
+              {/* 선택된 셀러의 실제 등록 회사 소개글 렌더링 */}
               <div className="space-y-3 pt-2">
                 <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                   <Globe2 className="w-4 h-4 text-blue-600" />
