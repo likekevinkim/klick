@@ -72,7 +72,7 @@ function ChatContent() {
 
     initChatSession();
 
-    // 실시간 DB 메시지 수신 채널 구독
+    // 실시간 DB 메시지 및 대화방 수신 채널 구독
     const msgChannel = supabase
       .channel('public:chat_messages_page_realtime')
       .on(
@@ -86,8 +86,20 @@ function ChatContent() {
       )
       .subscribe();
 
+    const roomChannel = supabase
+      .channel('public:chat_rooms_page_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'chat_rooms' },
+        () => {
+          if (user) fetchChatRoomsAndInit(user, userRole);
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(msgChannel);
+      supabase.removeChannel(roomChannel);
     };
   }, [paramProductId, paramCompany, paramTitle, paramSellerId]);
 
@@ -175,9 +187,9 @@ function ChatContent() {
 
       let query = supabase.from('chat_rooms').select('*');
       if (currentRole === 'seller') {
-        query = query.eq('seller_id', userIdStr);
+        query = query.or(`seller_id.eq.${userIdStr},seller_id.eq.${currentUserObj.id}`);
       } else {
-        query = query.eq('buyer_id', userIdStr);
+        query = query.or(`buyer_id.eq.${userIdStr},buyer_id.eq.${currentUserObj.id}`);
       }
 
       const { data: existingRooms } = await query.order('updated_at', { ascending: false });
@@ -231,9 +243,12 @@ function ChatContent() {
             product_title: companyTitle,
             buyer_id: userIdStr,
             buyer_name: currentUserObj?.email ? currentUserObj.email.split('@')[0] : 'Global Buyer',
-            seller_id: paramSellerId ? paramSellerId.toString() : null,
+            seller_id: paramSellerId ? paramSellerId.toString() : 'seller_default_id',
             seller_name: companySeller,
+            company_name: companySeller,
+            title: companyTitle,
             last_message: `Hello! I am inquiring about [${companyTitle}].`,
+            created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           };
 
@@ -269,8 +284,9 @@ function ChatContent() {
           setActiveRoomId(matchedRoom.id);
           await markRoomMessagesAsRead(matchedRoom.id, currentRole);
         }
-      } else {
-        setActiveRoomId(null);
+      } else if (currentRoomsList.length > 0 && !activeRoomId) {
+        setActiveRoomId(currentRoomsList[0].id);
+        await markRoomMessagesAsRead(currentRoomsList[0].id, currentRole);
       }
 
       setRooms(currentRoomsList);
@@ -317,7 +333,6 @@ function ChatContent() {
     }
   };
 
-  // 메시지 전송 시 언어 감지 기반으로 번역문 세팅
   const handleSendMessage = async (targetRoomId, text, attachedFile) => {
     let finalFilePayload = null;
     if (attachedFile) {
@@ -329,19 +344,14 @@ function ChatContent() {
       };
     }
 
-    // 언어 감지 (한국어 포함 여부)
     const isKorean = /[ㄱ-ㅎ|가-힣]/.test(text || '');
-    
-    // 단순 데모 및 구글 번역 엔진 지원을 위한 가공 (한국어 입력 시 영문 매핑 예시, 영어 입력 시 한글 매핑)
     let autoTrans = text;
     if (text.toLowerCase().trim() === 'hi') {
       autoTrans = '안녕';
     } else if (text.trim() === '안녕') {
       autoTrans = 'Hi';
-    } else if (isKorean) {
-      autoTrans = `${text}`; // 구글 번역 쿠키에 의해 영어로 자동 렌더링
     } else {
-      autoTrans = `${text}`; // 구글 번역 쿠키에 의해 한국어로 자동 렌더링
+      autoTrans = `${text}`;
     }
 
     const newMsgObj = {
@@ -478,8 +488,8 @@ function ChatContent() {
   const handleOpenPaymentModal = (msg, room) => {
     setPaymentQuoteData({
       amount: msg.quote_price ? msg.quote_price.split(' ')[0] : '145.00',
-      title: room.product_title,
-      sellerCompany: room.seller_name,
+      title: room.product_title || room.title,
+      sellerCompany: room.seller_name || room.company_name,
     });
     setIsPaymentModalOpen(true);
   };
