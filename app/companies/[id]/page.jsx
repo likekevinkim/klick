@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-// 대표 커버 이미지가 없을 경우 사용할 카테고리별 샘플 비주얼 배경
+// 카테고리별 샘플 커버 및 갤러리 이미지
 const DEFAULT_CATEGORY_IMAGES = {
   'Industrial Machinery': {
     cover: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&auto=format&fit=crop&q=60',
@@ -142,7 +142,7 @@ export default function CompanyShowroomLandingPage() {
     fetchCompanyAndProductsData();
   }, [rawCompanyId]);
 
-  // DB 조회 정밀 스캔 함수 (URL로 넘어온 유저 ID 기반 완벽 동기화)
+  // DB 조회 함수 (★ URL 파라미터 rawCompanyId로 바이어 클릭 대상 셀러 고유 DB 데이터 정확 스캔)
   const fetchCompanyAndProductsData = async () => {
     try {
       setLoading(true);
@@ -153,7 +153,7 @@ export default function CompanyShowroomLandingPage() {
 
       let fetchedCompany = null;
 
-      // 1. URL 경로 파라미터(rawCompanyId)로 DB 우선 스캔 (user_id 또는 고유 id 매칭)
+      // 1. URL 경로의 rawCompanyId를 최우선 매핑 스캔
       if (rawCompanyId) {
         const { data: compByParamId } = await supabase
           .from('companies')
@@ -166,7 +166,7 @@ export default function CompanyShowroomLandingPage() {
         }
       }
 
-      // 2. 만약 경로 스캔 실패 시 로그인한 유저 ID로 2차 스캔
+      // 2. 만약 경로 스캔이 실패하였으나 내가 로그인한 상태일 때
       if (!fetchedCompany && currentUser?.id) {
         const { data: compByUserId } = await supabase
           .from('companies')
@@ -179,12 +179,9 @@ export default function CompanyShowroomLandingPage() {
         }
       }
 
-      // 소유자 여부 정밀 확인 (내가 내 회사를 보는지 검증)
-      if (currentUser) {
-        if (
-          (fetchedCompany && (fetchedCompany.user_id === currentUser.id || fetchedCompany.id === currentUser.id)) ||
-          rawCompanyId === currentUser.id
-        ) {
+      // 3. 소유자 여부 정밀 검증 (내 쇼룸인 경우만 편집 버튼 및 등록 허용)
+      if (currentUser && fetchedCompany) {
+        if (fetchedCompany.user_id === currentUser.id || fetchedCompany.id === currentUser.id) {
           setIsOwner(true);
         } else {
           setIsOwner(false);
@@ -193,7 +190,7 @@ export default function CompanyShowroomLandingPage() {
         setIsOwner(false);
       }
 
-      // 3. 불러온 DB 데이터를 폼 및 화면 상태에 완전 매핑
+      // 4. 스캔된 실제 셀러 회사 데이터를 화면 및 모달 폼에 100% 동기화
       if (fetchedCompany) {
         setCompany(fetchedCompany);
 
@@ -214,23 +211,19 @@ export default function CompanyShowroomLandingPage() {
         setEditCertifications(fetchedCompany.certifications || []);
       } else {
         setCompany(null);
-        if (currentUser) {
-          setEditCompanyNameKo(currentUser.user_metadata?.company_name_ko || '');
-          setEditCompanyNameEn(currentUser.user_metadata?.company_name_en || currentUser.user_metadata?.company_name || '');
-        }
       }
 
       if (autoEditParam === 'true') {
         setIsEditCompanyModalOpen(true);
       }
 
-      // 4. 해당 회사 소유의 실제 등록 제품만 조회 (user_id / company_id 정밀 매칭)
-      const targetUserId = fetchedCompany?.user_id || rawCompanyId || currentUser?.id;
-      if (targetUserId) {
+      // 5. 해당 셀러가 등록한 실제 상품 목록 조회
+      const targetSellerUserId = fetchedCompany?.user_id || rawCompanyId;
+      if (targetSellerUserId) {
         const { data: matchedProducts } = await supabase
           .from('products')
           .select('*')
-          .or(`user_id.eq.${targetUserId},company_id.eq.${targetUserId}`)
+          .or(`user_id.eq.${targetSellerUserId},company_id.eq.${targetSellerUserId}`)
           .order('created_at', { ascending: false });
 
         setProducts(matchedProducts || []);
@@ -458,7 +451,7 @@ export default function CompanyShowroomLandingPage() {
 
           <div className="space-y-3 max-w-4xl">
             <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-snug">
-              {company?.company_name_en || company?.company_name || user?.user_metadata?.company_name_en || user?.user_metadata?.company_name || 'My Company Showroom'}
+              {company?.company_name_en || company?.company_name || 'Verified Korean Company Showroom'}
             </h1>
             {company?.company_name_ko && (
               <p className="text-slate-400 text-sm font-bold">Company Name (Korean): {company.company_name_ko}</p>

@@ -56,7 +56,7 @@ function FactoriesDirectoryContent() {
     try {
       setLoading(true);
 
-      // 1. Supabase DB에서 실제 등록된 회사(셀러) 전체 데이터 조회
+      // 1. Supabase DB에서 실제 등록된 회사(셀러) 전체 데이터 조회 (가짜 데이터 원천 차단)
       const { data: dbCompanies, error: compError } = await supabase
         .from('companies')
         .select('*')
@@ -67,10 +67,12 @@ function FactoriesDirectoryContent() {
       // 2. 등록된 라이브 상품 수 조회를 위해 전체 상품 데이터 가져오기
       const { data: dbProducts } = await supabase.from('products').select('company_id, user_id');
 
-      // 3. UI 렌더링 카드 매핑
+      // 3. UI 렌더링 카드 매핑 (셀러의 고유 user_id 및 id 확실히 정제)
       const mappedFactories = (dbCompanies || []).map(fac => {
+        const targetSellerId = fac.user_id || fac.id;
+
         const facProducts = (dbProducts || []).filter(
-          p => p.company_id === fac.user_id || p.company_id === fac.id || p.user_id === fac.user_id
+          p => p.company_id === targetSellerId || p.user_id === targetSellerId
         );
 
         const categoryKey = fac.category || 'Industrial Machinery';
@@ -86,9 +88,9 @@ function FactoriesDirectoryContent() {
         }
 
         return {
-          id: fac.id, // DB 고유 PK
-          user_id: fac.user_id || fac.id, // 라우팅 및 셀러 구분을 위한 고유 User UUID
-          company_name: fac.company_name_en || fac.company_name || fac.company_name_ko || 'Verified Korean Manufacturer',
+          id: fac.id, // DB PK
+          target_id: targetSellerId, // 쇼룸 직통 진입을 위한 셀러 고유 식별자 ID
+          company_name: fac.company_name_en || fac.company_name || fac.company_name_ko || 'Verified Korean Company',
           company_name_ko: fac.company_name_ko || '',
           category: categoryKey,
           location: fac.location || 'South Korea 🇰🇷',
@@ -231,11 +233,11 @@ function FactoriesDirectoryContent() {
             {filteredFactories.map((fac) => (
               <div
                 key={fac.id}
-                onClick={() => router.push(`/companies/${fac.user_id}`)} // ★ [핵심 교정] user_id로 직통 매핑 이동
+                onClick={() => router.push(`/companies/${fac.target_id}`)} // ★ 바이어 클릭 시 해당 셀러의 고유 쇼룸으로 정밀 이동
                 className="bg-white rounded-3xl border border-slate-200 hover:border-blue-500 hover:shadow-xl transition duration-300 overflow-hidden flex flex-col justify-between group cursor-pointer p-6 space-y-4"
               >
                 <div className="space-y-4">
-                  {/* 공장 커버 사진 */}
+                  {/* 커버 사진 */}
                   <div className="w-full h-44 bg-slate-100 rounded-2xl overflow-hidden relative border border-slate-100 flex items-center justify-center">
                     <img
                       src={fac.cover_image}
@@ -256,7 +258,7 @@ function FactoriesDirectoryContent() {
                     </span>
                   </div>
 
-                  {/* 공장 헤더 정보 */}
+                  {/* 헤더 정보 */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100">
