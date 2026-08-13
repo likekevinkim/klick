@@ -15,6 +15,15 @@ import {
   Truck,
   Sparkles
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+
+// 원문과 번역문이 동일하거나 내 언어로 적힌 메시지인지 판별하는 헬퍼 함수
+const isSameText = (str1, str2) => {
+  if (!str1 || !str2) return true;
+  const clean1 = str1.replace(/[\s\p{P}]/gu, '').toLowerCase();
+  const clean2 = str2.replace(/[\s\p{P}]/gu, '').toLowerCase();
+  return clean1 === clean2;
+};
 
 export default function ChatRoomItem({
   room,
@@ -185,9 +194,12 @@ export default function ChatRoomItem({
               messages.map((msg, index) => {
                 const isMine = msg.sender_role === userRole;
 
-                // 언어 표시 텍스트 결정 (내 언어와 메시지 발신자 언어에 따른 AI 번역 태그)
-                const isKoreanText = /[ㄱ-ㅎ|가-힣]/.test(msg.message || '');
-                const translateLabel = isKoreanText ? 'AI Translate' : 'AI 번역';
+                // ★ [핵심 교정]: 상대방 메시지이면서, 원문과 번역문이 다를 때만 AI 번역 출력
+                const showTranslation = 
+                  !isMine && 
+                  msg.translated_message && 
+                  msg.translated_message.trim() !== '' && 
+                  !isSameText(msg.message, msg.translated_message);
 
                 return (
                   <div
@@ -207,21 +219,22 @@ export default function ChatRoomItem({
                           : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
                       }`}
                     >
-                      {/* 1. 상단: 작성자가 입력한 [원문 텍스트] (예: Hi 또는 안녕) */}
+                      {/* 1. 상단: 원문 텍스트 */}
                       {msg.message && (
                         <p className="leading-relaxed font-semibold whitespace-pre-wrap">{msg.message}</p>
                       )}
 
-                      {/* 2. 하단: [AI 번역 : 번역문] (예: [AI 번역 : 안녕] 또는 [AI 번역 : Hi]) */}
-                      <div className={`pt-2 border-t text-xs space-y-0.5 ${
-                        isMine ? 'border-blue-400/50 text-blue-100' : 'border-slate-100 text-slate-500'
-                      }`}>
-                        <div className="flex items-center gap-1 text-[10px] font-extrabold opacity-90">
-                          <Sparkles className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                          <span>[{translateLabel} : {msg.translated_message || msg.message}]</span>
+                      {/* 2. 하단: [ AI translate : 번역문 ] (상대방 메시지 및 언어가 다를 때만 출력!) */}
+                      {showTranslation && (
+                        <div className="pt-2 border-t border-slate-100 text-[11px] font-bold text-blue-600 space-y-0.5">
+                          <div className="flex items-center gap-1 text-[10px] font-extrabold">
+                            <Sparkles className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                            <span>[ AI translate : {msg.translated_message} ]</span>
+                          </div>
                         </div>
-                      </div>
+                      )}
 
+                      {/* 첨부 파일 렌더링 */}
                       {msg.file && (
                         <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 mt-1 ${isMine ? 'bg-blue-700/60 border-blue-500' : 'bg-slate-50 border-slate-200'}`}>
                           <div className="flex items-center gap-2 truncate">
@@ -247,9 +260,10 @@ export default function ChatRoomItem({
                         </div>
                       )}
 
+                      {/* 견적서 카드 렌더링 */}
                       {msg.is_quote && (
                         <div className="p-3.5 bg-[#0F172A] text-white rounded-xl border border-slate-800 space-y-2 mt-2">
-                          <div className="flex items-center justify-between text-emerald-400 font-extrabold">
+                          <div className="flex items-center justify-between text-xs font-black text-emerald-400">
                             <span>Official FOB Quote</span>
                             <span>{msg.quote_price}</span>
                           </div>
@@ -287,6 +301,22 @@ export default function ChatRoomItem({
                         </div>
                       )}
                     </div>
+
+                    {/* 견적서 내역이 포함된 메시지일 때 공식 PI 문서 출력 버튼 */}
+                    {msg.is_quote && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenDocModal(msg, room)}
+                        className="text-[10px] font-extrabold text-blue-600 hover:underline flex items-center gap-1 px-1 cursor-pointer"
+                      >
+                        <FileText className="w-3 h-3" />
+                        <span>View Proforma Invoice (PI) Document</span>
+                      </button>
+                    )}
+
+                    <span className="text-[9px] text-slate-400 px-1">
+                      {msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                    </span>
                   </div>
                 );
               })

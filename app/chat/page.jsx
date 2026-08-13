@@ -88,7 +88,7 @@ function ChatContent() {
     setMounted(true);
     initChatSession();
 
-    // ★ 1. 실시간 메시지 수신 (Realtime Live Socket)
+    // 1. 실시간 메시지 수신 (Realtime Live Socket)
     const msgChannel = supabase
       .channel('public:chat_messages_page_realtime')
       .on(
@@ -100,7 +100,7 @@ function ChatContent() {
       )
       .subscribe();
 
-    // ★ 2. 실시간 대화방 수신
+    // 2. 실시간 대화방 수신
     const roomChannel = supabase
       .channel('public:chat_rooms_page_realtime')
       .on(
@@ -118,7 +118,7 @@ function ChatContent() {
     };
   }, [paramProductId, paramCompany, paramTitle, paramSellerId]);
 
-  // ★ 3. 내 언어(targetLang) 변경 시 현재 대화방 메시지들 선택 언어로 즉시 번역
+  // 3. 내 언어(targetLang) 변경 시 현재 대화방 메시지들 선택 언어로 즉시 번역
   useEffect(() => {
     if (!activeRoomId || !roomMessagesMap[activeRoomId]) return;
 
@@ -161,7 +161,6 @@ function ChatContent() {
 
   // 실시간 라이브 메시지 도착 처리
   const handleRealtimeMessageReceived = async (newMsg) => {
-    // 도착한 라이브 메시지를 내 언어로 즉시 동적 번역
     const trans = await translateTextWithApi(newMsg.message, targetLang);
     const msgWithTrans = { ...newMsg, translated_message: trans };
 
@@ -327,12 +326,10 @@ function ChatContent() {
         }
 
         if (matchedRoom) {
-          // ★ 아코디언 자동 펼침 세팅
           setActiveRoomId(matchedRoom.id);
           await markRoomMessagesAsRead(matchedRoom.id, currentRole);
         }
       } 
-      // ★ [핵심 교정] 대화방 목록이 존재할 때 첫번째 대화방 아코디언을 기본으로 자동으로 펼침(Open)
       else if (currentRoomsList.length > 0) {
         setActiveRoomId(currentRoomsList[0].id);
         await markRoomMessagesAsRead(currentRoomsList[0].id, currentRole);
@@ -382,7 +379,6 @@ function ChatContent() {
     }
   };
 
-  // 메시지 전송 시 선택한 언어로 동적 번역하여 저장
   const handleSendMessage = async (targetRoomId, text, attachedFile) => {
     let finalFilePayload = null;
     if (attachedFile) {
@@ -394,7 +390,6 @@ function ChatContent() {
       };
     }
 
-    // 선택된 언어로 실시간 번역
     const autoTrans = await translateTextWithApi(text, targetLang);
 
     const newMsgObj = {
