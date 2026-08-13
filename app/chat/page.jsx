@@ -88,7 +88,7 @@ function ChatContent() {
     setMounted(true);
     initChatSession();
 
-    // 1. 실시간 메시지 수신 (Realtime Live Socket)
+    // ★ 1. 실시간 메시지 수신 (Realtime Live Socket)
     const msgChannel = supabase
       .channel('public:chat_messages_page_realtime')
       .on(
@@ -100,7 +100,7 @@ function ChatContent() {
       )
       .subscribe();
 
-    // 2. 실시간 대화방 수신
+    // ★ 2. 실시간 대화방 수신
     const roomChannel = supabase
       .channel('public:chat_rooms_page_realtime')
       .on(
@@ -118,7 +118,7 @@ function ChatContent() {
     };
   }, [paramProductId, paramCompany, paramTitle, paramSellerId]);
 
-  // 3. 내 언어(targetLang) 변경 시 현재 대화방 메시지들 선택 언어로 즉시 번역
+  // ★ 3. 내 언어(targetLang) 변경 시 현재 대화방 메시지들 선택 언어로 즉시 번역
   useEffect(() => {
     if (!activeRoomId || !roomMessagesMap[activeRoomId]) return;
 
@@ -126,8 +126,12 @@ function ChatContent() {
       const currentMsgs = roomMessagesMap[activeRoomId] || [];
       const translatedList = await Promise.all(
         currentMsgs.map(async (msg) => {
-          const trans = await translateTextWithApi(msg.message, targetLang);
-          return { ...msg, translated_message: trans };
+          // 내가 작성한 말이 아닐 때만 수신된 타 언어 메시지 실시간 번역
+          if (msg.sender_role !== userRole) {
+            const trans = await translateTextWithApi(msg.message, targetLang);
+            return { ...msg, translated_message: trans };
+          }
+          return msg;
         })
       );
 
@@ -159,14 +163,22 @@ function ChatContent() {
     }
   };
 
-  // 실시간 라이브 메시지 도착 처리
+  // ★ 4. 상대방이 전송한 실시간 메세지가 들어올 때 수신자의 내 언어(targetLang)로 즉시 번역 적용
   const handleRealtimeMessageReceived = async (newMsg) => {
-    const trans = await translateTextWithApi(newMsg.message, targetLang);
-    const msgWithTrans = { ...newMsg, translated_message: trans };
+    let msgWithTrans = newMsg;
+
+    // 타인이 보낸 메시지인 경우 바로 수신자 선택 언어로 1차 직접 번역
+    if (newMsg.sender_role !== userRole) {
+      const trans = await translateTextWithApi(newMsg.message, targetLang);
+      msgWithTrans = { ...newMsg, translated_message: trans };
+    }
 
     setRoomMessagesMap((prevMap) => {
       const roomMsgs = prevMap[newMsg.room_id] || [];
-      if (roomMsgs.some((m) => m.id === newMsg.id)) return prevMap;
+      // 이미 수동 추가된 메시지이거나 DB Realtime 중복 도착 체크
+      if (roomMsgs.some((m) => m.id === newMsg.id || (m.created_at === newMsg.created_at && m.sender_role === newMsg.sender_role))) {
+        return prevMap;
+      }
       return {
         ...prevMap,
         [newMsg.room_id]: [...roomMsgs, msgWithTrans],
@@ -379,6 +391,7 @@ function ChatContent() {
     }
   };
 
+  // ★ 5. [중복 출력 해결의 핵심] 수동 State 추가 대신 DB INSERT 1회로만 깔끔하게 등록
   const handleSendMessage = async (targetRoomId, text, attachedFile) => {
     let finalFilePayload = null;
     if (attachedFile) {
@@ -390,51 +403,44 @@ function ChatContent() {
       };
     }
 
-    const autoTrans = await translateTextWithApi(text, targetLang);
-
-    const newMsgObj = {
-      id: Date.now(),
-      room_id: targetRoomId,
-      sender_id: user?.id ? user.id.toString() : 'guest_user',
-      sender_role: userRole,
-      message: text,
-      translated_message: autoTrans,
-      is_quote: false,
-      is_read: false,
-      file: finalFilePayload,
-      created_at: new Date().toISOString()
-    };
-
-    setRoomMessagesMap((prevMap) => ({
-      ...prevMap,
-      [targetRoomId]: [...(prevMap[targetRoomId] || []), newMsgObj],
-    }));
-
-    setRooms((prevRooms) =>
-      prevRooms.map((r) =>
-        r.id === targetRoomId
-          ? { ...r, last_message: text || attachedFile?.name || 'File sent', updated_at: new Date().toISOString() }
-          : r
-      )
-    );
-
     try {
-      const { error: msgInsertError } = await supabase.from('chat_messages').insert([{
+      const newMsgPayload = {
         room_id: targetRoomId,
-        sender_id: newMsgObj.sender_id,
-        sender_role: newMsgObj.sender_role,
-        message: newMsgObj.message,
-        translated_message: newMsgObj.translated_message,
+        sender_id: user?.id ? user.id.toString() : 'guest_user',
+        sender_role: userRole,
+        message: text,
+        translated_message: text, // 본인이 전송 시 원문 그대로 유지
         is_quote: false,
         is_read: false,
-        file: newMsgObj.file,
-        created_at: newMsgObj.created_at
-      }]);
+        file: finalFilePayload,
+        created_at: new Date().toISOString()
+      };
+
+      // 1) DB 저장 실행 후 리턴받은 단일 레코드 추가
+      const { data: insertedMsg, error: msgInsertError } = await supabase
+        .from('chat_messages')
+        .insert([newMsgPayload])
+        .select()
+        .single();
 
       if (msgInsertError) {
         console.error('Failed to insert message to Supabase:', msgInsertError);
+        return;
       }
 
+      // 2) 중복 방지를 위해 DB에서 성공 반환된 단일 객체만 로컬 상태에 갱신
+      if (insertedMsg) {
+        setRoomMessagesMap((prevMap) => {
+          const roomMsgs = prevMap[targetRoomId] || [];
+          if (roomMsgs.some((m) => m.id === insertedMsg.id)) return prevMap;
+          return {
+            ...prevMap,
+            [targetRoomId]: [...roomMsgs, insertedMsg],
+          };
+        });
+      }
+
+      // 3) 대화방 최신 메시지 업데이트
       await supabase
         .from('chat_rooms')
         .update({
@@ -442,6 +448,14 @@ function ChatContent() {
           updated_at: new Date().toISOString()
         })
         .eq('id', targetRoomId);
+
+      setRooms((prevRooms) =>
+        prevRooms.map((r) =>
+          r.id === targetRoomId
+            ? { ...r, last_message: text || attachedFile?.name || 'File sent', updated_at: new Date().toISOString() }
+            : r
+        )
+      );
     } catch (err) {
       console.error('DB Insert error:', err);
     }
@@ -450,40 +464,34 @@ function ChatContent() {
   const handleSendQuote = async () => {
     if (!activeRoomId) return;
 
-    const quoteMsgObj = {
-      id: Date.now(),
-      room_id: activeRoomId,
-      sender_id: user?.id ? user.id.toString() : 'guest_seller',
-      sender_role: 'seller',
-      message: `[Official B2B Quote Sent] ${quoteNote}`,
-      translated_message: `[공식 B2B 견적서 발송] ${quoteNote}`,
-      is_quote: true,
-      is_read: false,
-      quote_price: `${quotePrice} USD / Unit`,
-      quote_moq: quoteMoq,
-      created_at: new Date().toISOString()
-    };
-
-    setRoomMessagesMap((prevMap) => ({
-      ...prevMap,
-      [activeRoomId]: [...(prevMap[activeRoomId] || []), quoteMsgObj],
-    }));
-
-    setIsQuoteModalOpen(false);
-
     try {
-      await supabase.from('chat_messages').insert([{
+      const quoteMsgPayload = {
         room_id: activeRoomId,
-        sender_id: quoteMsgObj.sender_id,
+        sender_id: user?.id ? user.id.toString() : 'guest_seller',
         sender_role: 'seller',
-        message: quoteMsgObj.message,
-        translated_message: quoteMsgObj.translated_message,
+        message: `[Official B2B Quote Sent] ${quoteNote}`,
+        translated_message: `[Official B2B Quote Sent] ${quoteNote}`,
         is_quote: true,
         is_read: false,
-        quote_price: quoteMsgObj.quote_price,
-        quote_moq: quoteMsgObj.quote_moq,
-        created_at: quoteMsgObj.created_at
-      }]);
+        quote_price: `${quotePrice} USD / Unit`,
+        quote_moq: quoteMoq,
+        created_at: new Date().toISOString()
+      };
+
+      setIsQuoteModalOpen(false);
+
+      const { data: insertedQuoteMsg } = await supabase
+        .from('chat_messages')
+        .insert([quoteMsgPayload])
+        .select()
+        .single();
+
+      if (insertedQuoteMsg) {
+        setRoomMessagesMap((prevMap) => ({
+          ...prevMap,
+          [activeRoomId]: [...(prevMap[activeRoomId] || []), insertedQuoteMsg],
+        }));
+      }
 
       await supabase
         .from('chat_rooms')
