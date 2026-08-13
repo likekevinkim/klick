@@ -14,8 +14,7 @@ import {
   FileText, 
   MessageSquare, 
   Globe, 
-  Languages, 
-  Info 
+  Languages 
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -69,10 +68,9 @@ function ChatContent() {
 
   useEffect(() => {
     setMounted(true);
-
     initChatSession();
 
-    // 실시간 DB 메시지 및 대화방 수신 채널 구독
+    // 실시간 DB 메시지 수신 채널
     const msgChannel = supabase
       .channel('public:chat_messages_page_realtime')
       .on(
@@ -86,6 +84,7 @@ function ChatContent() {
       )
       .subscribe();
 
+    // 실시간 DB 대화방 수신 채널
     const roomChannel = supabase
       .channel('public:chat_rooms_page_realtime')
       .on(
@@ -176,6 +175,7 @@ function ChatContent() {
     }
   };
 
+  // ★ [핵심 교정] 셀러 ID를 seller_id 및 seller_name으로 완벽 매핑하는 로직
   const fetchChatRoomsAndInit = async (currentUserObj, currentRole) => {
     try {
       if (!currentUserObj) {
@@ -186,6 +186,8 @@ function ChatContent() {
       const userIdStr = currentUserObj.id.toString();
 
       let query = supabase.from('chat_rooms').select('*');
+
+      // 셀러 또는 바이어에 해당하는 대화방을 정확하게 스캔
       if (currentRole === 'seller') {
         query = query.or(`seller_id.eq.${userIdStr},seller_id.eq.${currentUserObj.id}`);
       } else {
@@ -229,21 +231,25 @@ function ChatContent() {
         }
       }
 
+      // ★ 바이어가 URL 파라미터로 문의를 보냈을 때 sellerId를 정확히 채워서 DB 생성
       if (paramCompany || paramTitle) {
-        const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product';
-        const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Hankook Precision Co., Ltd.';
+        const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product Inquiry';
+        const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Verified Korean Company';
 
         let matchedRoom = currentRoomsList.find(
-          (r) => r.product_title === companyTitle && r.seller_name === companySeller
+          (r) => (r.product_title === companyTitle || r.title === companyTitle) && 
+                 (r.seller_name === companySeller || r.seller_id === paramSellerId)
         );
 
         if (!matchedRoom) {
+          const targetSellerIdPayload = paramSellerId && paramSellerId.trim() !== '' ? paramSellerId : 'seller_default';
+
           const newRoomPayload = {
             product_id: paramProductId ? paramProductId.toString() : null,
             product_title: companyTitle,
             buyer_id: userIdStr,
             buyer_name: currentUserObj?.email ? currentUserObj.email.split('@')[0] : 'Global Buyer',
-            seller_id: paramSellerId ? paramSellerId.toString() : 'seller_default_id',
+            seller_id: targetSellerIdPayload, // 셀러의 진짜 user_id 적용
             seller_name: companySeller,
             company_name: companySeller,
             title: companyTitle,
@@ -344,7 +350,6 @@ function ChatContent() {
       };
     }
 
-    const isKorean = /[ㄱ-ㅎ|가-힣]/.test(text || '');
     let autoTrans = text;
     if (text.toLowerCase().trim() === 'hi') {
       autoTrans = '안녕';
@@ -563,7 +568,7 @@ function ChatContent() {
             <MessageSquare className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
             <h3 className="text-base font-bold text-slate-800">No Chat Inquiries Yet</h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              When a buyer clicks "Chat with Representative" on a product detail page, a direct real-time chat room with the seller will be created here!
+              When a buyer clicks "Contact Company" or "Send Direct RFQ" on a company showroom page, a direct real-time chat room with the seller will be created here!
             </p>
           </div>
         ) : (

@@ -102,7 +102,7 @@ export default function CompanyShowroomLandingPage() {
     fetchExactCompanyProfile();
   }, [routeParamId]);
 
-  // ★ [핵심 교정] 안전한 타입 검증 기반 DB 정밀 스캔 함수
+  // 안전한 타입 검증 기반 DB 정밀 스캔 함수
   const fetchExactCompanyProfile = async () => {
     try {
       setLoading(true);
@@ -248,7 +248,7 @@ export default function CompanyShowroomLandingPage() {
     }
   };
 
-  // Supabase DB 영구 저장 처리 (소유자 본인일 때만 실행)
+  // Supabase DB 영구 저장 처리 (셀러 본인일 때만 실행)
   const handleSaveCompanyProfile = async (e) => {
     e.preventDefault();
 
@@ -389,10 +389,12 @@ export default function CompanyShowroomLandingPage() {
     setIsVideoModalOpen(true);
   };
 
+  // ★ [핵심 교정] 셀러의 진짜 user_id를 sellerId 파라미터로 명확히 넘기는 채팅 이동 함수
   const handleStartCompanyChat = () => {
     const compName = encodeURIComponent(company?.company_name_en || company?.company_name || 'Korean Manufacturer');
     const title = encodeURIComponent('Company Partnership & Wholesale Inquiry');
-    router.push(`/chat?company=${compName}&title=${title}`);
+    const targetSellerId = company?.user_id || routeParamId || '';
+    router.push(`/chat?company=${compName}&title=${title}&sellerId=${targetSellerId}`);
   };
 
   const hasDescriptionData = company?.description && company.description.trim() !== '';
@@ -443,7 +445,6 @@ export default function CompanyShowroomLandingPage() {
           </div>
 
           <div className="space-y-3 max-w-4xl">
-            {/* DB에서 찾아낸 순수 실제 클릭 회사 이름 표출 */}
             <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-snug">
               {company?.company_name_en || company?.company_name_ko || company?.company_name || 'Unregistered Company Showroom'}
             </h1>
