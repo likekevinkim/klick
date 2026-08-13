@@ -152,23 +152,9 @@ export default function CompanyShowroomLandingPage() {
       setUser(currentUser);
 
       let fetchedCompany = null;
-      const targetUserId = currentUser?.id || rawCompanyId;
 
-      // 1. 로그인 유저 ID로 DB 직접 조회 (최우선)
-      if (currentUser?.id) {
-        const { data: compByUserId } = await supabase
-          .from('companies')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .maybeSingle();
-
-        if (compByUserId) {
-          fetchedCompany = compByUserId;
-        }
-      }
-
-      // 2. URL 파라미터 ID로 DB 조회 (보조)
-      if (!fetchedCompany && rawCompanyId) {
+      // 1. URL 파라미터 ID 또는 로그인 유저 ID 기반 DB 조회
+      if (rawCompanyId) {
         const { data: compByParamId } = await supabase
           .from('companies')
           .select('*')
@@ -180,13 +166,30 @@ export default function CompanyShowroomLandingPage() {
         }
       }
 
-      // 본인 소유 권한 체크
-      if (currentUser) {
-        if (fetchedCompany && (fetchedCompany.user_id === currentUser.id || rawCompanyId === currentUser.id)) {
-          setIsOwner(true);
-        } else if (currentUser.user_metadata?.role === 'seller') {
-          setIsOwner(true);
+      if (!fetchedCompany && currentUser?.id) {
+        const { data: compByUserId } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .maybeSingle();
+
+        if (compByUserId) {
+          fetchedCompany = compByUserId;
         }
+      }
+
+      // 소유자 여부 정밀 확인 (내가 내 회사를 보는지 검증)
+      if (currentUser) {
+        if (
+          (fetchedCompany && (fetchedCompany.user_id === currentUser.id || fetchedCompany.id === currentUser.id)) ||
+          rawCompanyId === currentUser.id
+        ) {
+          setIsOwner(true);
+        } else {
+          setIsOwner(false);
+        }
+      } else {
+        setIsOwner(false);
       }
 
       // 3. 불러온 DB 데이터를 폼 및 화면 상태에 완전 매핑
@@ -221,11 +224,12 @@ export default function CompanyShowroomLandingPage() {
       }
 
       // 4. 해당 회사 소유의 실제 등록 제품만 조회
+      const targetUserId = fetchedCompany?.user_id || currentUser?.id || rawCompanyId;
       if (targetUserId) {
         const { data: matchedProducts } = await supabase
           .from('products')
           .select('*')
-          .or(`user_id.eq.${targetUserId},company_id.eq.${rawCompanyId}`)
+          .or(`user_id.eq.${targetUserId},company_id.eq.${targetUserId}`)
           .order('created_at', { ascending: false });
 
         setProducts(matchedProducts || []);
@@ -394,7 +398,7 @@ export default function CompanyShowroomLandingPage() {
     router.push(`/chat?company=${compName}&title=${title}`);
   };
 
-  // 대표 커버 이미지 (실제 입력값 및 디폴트 이미지 매핑)
+  // 대표 커버 이미지
   const categoryKey = company?.category || 'Industrial Machinery';
   const categoryDefaults = DEFAULT_CATEGORY_IMAGES[categoryKey] || DEFAULT_CATEGORY_IMAGES['Industrial Machinery'];
   
@@ -542,23 +546,26 @@ export default function CompanyShowroomLandingPage() {
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={handleStartCompanyChat}
-              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>Send Direct RFQ</span>
-            </button>
+            {/* ★ [요구사항 1 반영] 셀러 본인 페이지에서는 Send Direct RFQ 숨김 */}
+            {!isOwner && (
+              <button
+                type="button"
+                onClick={handleStartCompanyChat}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Send Direct RFQ</span>
+              </button>
+            )}
           </div>
         </div>
       </section>
 
-      {/* 3. 탭별 컨텐츠 (우측 상단 샘플 뱃지 및 가짜 인증서 가지치기 완료) */}
+      {/* 3. 탭별 컨텐츠 */}
       <main className="max-w-6xl mx-auto px-6 mt-10">
         {activeTab === 'about' ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-8 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8">
+            <div className={`space-y-8 ${isOwner ? 'lg:col-span-12' : 'lg:col-span-8'} bg-white p-8 rounded-3xl border border-slate-200 shadow-sm`}>
               
               {/* 타이틀 및 Edit 버튼 */}
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -655,7 +662,7 @@ export default function CompanyShowroomLandingPage() {
                 )}
               </div>
 
-              {/* 비디오 투어 Stream (우측 상단 어색한 뱃지 제거) */}
+              {/* 비디오 투어 Stream */}
               <div className="border-t border-slate-100 pt-6 space-y-4">
                 <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                   <Video className="w-4 h-4 text-purple-600" />
@@ -678,7 +685,7 @@ export default function CompanyShowroomLandingPage() {
                 </div>
               </div>
 
-              {/* 갤러리 사진 (우측 상단 뱃지 및 Sample 워터마크 태그 완전 정제) */}
+              {/* 갤러리 사진 */}
               <div className="border-t border-slate-100 pt-6 space-y-3">
                 <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                   <ImageIcon className="w-4 h-4 text-emerald-600" />
@@ -694,7 +701,7 @@ export default function CompanyShowroomLandingPage() {
                 </div>
               </div>
 
-              {/* ★ [요구사항 반영] 품질 인증서 (우측 상단 뱃지 및 가짜 샘플 박스 완전 제거) */}
+              {/* 품질 인증서 */}
               <div className="border-t border-slate-100 pt-6 space-y-3">
                 <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                   <Award className="w-4 h-4 text-amber-500" />
@@ -713,7 +720,6 @@ export default function CompanyShowroomLandingPage() {
                       </span>
                     ))
                   ) : (
-                    /* 인증서 미등록 시 가짜 샘플 태그 없이 단일 텍스트로만 표출 */
                     <p className="text-xs text-slate-400 font-medium italic py-1">
                       No official certifications registered yet.
                     </p>
@@ -723,35 +729,37 @@ export default function CompanyShowroomLandingPage() {
 
             </div>
 
-            {/* 우측 인적사항 카드 */}
-            <div className="lg:col-span-4 space-y-6">
-              <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 space-y-4 shadow-md">
-                <h3 className="text-base font-extrabold flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-emerald-400" />
-                  Direct Contact
-                </h3>
+            {/* ★ [요구사항 1 반영] 바이어나 제3자 방문객일 때만 우측 Contact Company 카드 출력 */}
+            {!isOwner && (
+              <div className="lg:col-span-4 space-y-6">
+                <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 space-y-4 shadow-md sticky top-24">
+                  <h3 className="text-base font-extrabold flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-emerald-400" />
+                    Direct Contact
+                  </h3>
 
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Send a direct inquiry to our export sales team for custom production, OEM requests, and wholesale quotations.
-                </p>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Send a direct inquiry to our export sales team for custom production, OEM requests, and wholesale quotations.
+                  </p>
 
-                <div className="space-y-2 text-xs text-slate-300 border-t border-slate-800 pt-3">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-3.5 h-3.5 text-blue-400" />
-                    <span>{company?.location || 'Incheon, South Korea'}</span>
+                  <div className="space-y-2 text-xs text-slate-300 border-t border-slate-800 pt-3">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-3.5 h-3.5 text-blue-400" />
+                      <span>{company?.location || 'Incheon, South Korea'}</span>
+                    </div>
                   </div>
-                </div>
 
-                <button
-                  type="button"
-                  onClick={handleStartCompanyChat}
-                  className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Send className="w-4 h-4" />
-                  <span>Contact Company</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleStartCompanyChat}
+                    className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>Contact Company</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         ) : (
           /* [Showroom 탭] */

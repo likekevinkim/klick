@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-// 대표 커버 이미지가 없을 경우 카테고리별로 자동 적용되는 고화질 B2B 기본 커버 이미지 매핑
+// 대표 커버 이미지가 없을 경우 카테고리별 기본 이미지 매핑
 const DEFAULT_CATEGORY_IMAGES = {
   'Industrial Machinery': 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&auto=format&fit=crop&q=60',
   'K-Beauty & Cosmetics': 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&auto=format&fit=crop&q=60',
@@ -56,18 +56,18 @@ function FactoriesDirectoryContent() {
     try {
       setLoading(true);
 
-      // 1. Supabase DB에서 실제 등록된 회사(셀러) 데이터 조회 (가짜 데이터 원천 제거)
+      // 1. Supabase DB에서 실제 등록된 회사(셀러) 전체 데이터 조회 (가짜 데이터 원천 차단)
       const { data: dbCompanies, error: compError } = await supabase
         .from('companies')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('updated_at', { ascending: false });
 
       if (compError) throw compError;
 
-      // 2. 공장별 등록된 상품 개수 매핑을 위해 상품 데이터 조회
+      // 2. 등록된 라이브 상품 수 조회를 위해 전체 상품 데이터 가져오기
       const { data: dbProducts } = await supabase.from('products').select('company_id, user_id');
 
-      // 3. UI 렌더링에 맞게 데이터 매핑 (카테고리별 기본 커버 이미지 매핑 포함)
+      // 3. UI 렌더링 카드 매핑
       const mappedFactories = (dbCompanies || []).map(fac => {
         const facProducts = (dbProducts || []).filter(
           p => p.company_id === fac.user_id || p.company_id === fac.id || p.user_id === fac.user_id
@@ -76,25 +76,23 @@ function FactoriesDirectoryContent() {
         const categoryKey = fac.category || 'Industrial Machinery';
         const fallbackImg = DEFAULT_CATEGORY_IMAGES[categoryKey] || DEFAULT_CATEGORY_IMAGES['Industrial Machinery'];
 
-        // 인증서 배열 또는 문자열 매핑
-        let certText = 'ISO 9001, CE Certified';
+        let certText = 'No official certifications registered yet.';
         if (fac.certifications) {
-          if (Array.isArray(fac.certifications)) {
-            certText = fac.certifications.length > 0 ? fac.certifications.join(', ') : 'ISO 9001 Certified';
-          } else {
+          if (Array.isArray(fac.certifications) && fac.certifications.length > 0) {
+            certText = fac.certifications.join(', ');
+          } else if (typeof fac.certifications === 'string' && fac.certifications.trim() !== '') {
             certText = fac.certifications;
           }
         }
 
         return {
-          id: fac.user_id || fac.id, // 라우팅을 위한 고유 ID
+          id: fac.user_id || fac.id,
           company_name: fac.company_name_en || fac.company_name || fac.company_name_ko || 'Verified Korean Manufacturer',
           company_name_ko: fac.company_name_ko || '',
           category: categoryKey,
           location: fac.location || 'South Korea 🇰🇷',
           certifications: certText,
           description: fac.tagline || fac.description || 'Verified manufacturer registered on KLICK B2B Network.',
-          // 커버 이미지가 없거나 비어있는 경우 카테고리별 기본 이미지 할당
           cover_image: fac.cover_image && fac.cover_image.trim() !== '' ? fac.cover_image : fallbackImg,
           established: fac.established_year || fac.established || (fac.created_at ? new Date(fac.created_at).getFullYear().toString() : '2024'),
           product_count: facProducts.length,
@@ -105,7 +103,7 @@ function FactoriesDirectoryContent() {
       setFactories(mappedFactories);
     } catch (err) {
       console.error('Failed to load factory directory from Supabase:', err);
-      setFactories([]); // 에러 발생 시 빈 상태 유도
+      setFactories([]);
     } finally {
       setLoading(false);
     }
@@ -127,7 +125,7 @@ function FactoriesDirectoryContent() {
     <div className="min-h-screen bg-[#F9FAFB] text-slate-900 pb-24 antialiased">
       <Header />
 
-      {/* 상단 팩토리 탐색 히어로 배너 */}
+      {/* 상단 탐색 히어로 배너 */}
       <section className="bg-[#0F172A] text-white relative overflow-hidden border-b border-slate-800 py-14 px-6">
         <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
 
@@ -236,7 +234,7 @@ function FactoriesDirectoryContent() {
                 className="bg-white rounded-3xl border border-slate-200 hover:border-blue-500 hover:shadow-xl transition duration-300 overflow-hidden flex flex-col justify-between group cursor-pointer p-6 space-y-4"
               >
                 <div className="space-y-4">
-                  {/* 공장 커버 사진 (미등록 시 카테고리 디폴트 적용) */}
+                  {/* 공장 커버 사진 */}
                   <div className="w-full h-44 bg-slate-100 rounded-2xl overflow-hidden relative border border-slate-100 flex items-center justify-center">
                     <img
                       src={fac.cover_image}
@@ -244,7 +242,7 @@ function FactoriesDirectoryContent() {
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                       onError={(e) => {
                         const fallbackKey = fac.category || 'Industrial Machinery';
-                        e.currentTarget.src = DEFAULT_CATEGORY_IMAGES[fallbackKey] || DEFAULT_CATEGORY_IMAGES['Industrial Machinery'];
+                        e.currentTarget.src = DEFAULT_CATEGORY_IMAGES[fallbackKey]?.cover || DEFAULT_CATEGORY_IMAGES['Industrial Machinery'].cover;
                       }}
                     />
 
