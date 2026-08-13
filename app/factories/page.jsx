@@ -56,7 +56,7 @@ function FactoriesDirectoryContent() {
     try {
       setLoading(true);
 
-      // 1. Supabase DB에서 실제 등록된 회사(셀러) 전체 데이터 조회 (가짜 데이터 원천 차단)
+      // 1. Supabase DB에서 실제 등록된 회사(셀러) 전체 데이터 조회
       const { data: dbCompanies, error: compError } = await supabase
         .from('companies')
         .select('*')
@@ -86,7 +86,8 @@ function FactoriesDirectoryContent() {
         }
 
         return {
-          id: fac.user_id || fac.id,
+          id: fac.id, // DB 고유 PK
+          user_id: fac.user_id || fac.id, // 라우팅 및 셀러 구분을 위한 고유 User UUID
           company_name: fac.company_name_en || fac.company_name || fac.company_name_ko || 'Verified Korean Manufacturer',
           company_name_ko: fac.company_name_ko || '',
           category: categoryKey,
@@ -230,7 +231,7 @@ function FactoriesDirectoryContent() {
             {filteredFactories.map((fac) => (
               <div
                 key={fac.id}
-                onClick={() => router.push(`/companies/${fac.id}`)}
+                onClick={() => router.push(`/companies/${fac.user_id}`)} // ★ [핵심 교정] user_id로 직통 매핑 이동
                 className="bg-white rounded-3xl border border-slate-200 hover:border-blue-500 hover:shadow-xl transition duration-300 overflow-hidden flex flex-col justify-between group cursor-pointer p-6 space-y-4"
               >
                 <div className="space-y-4">
@@ -242,7 +243,7 @@ function FactoriesDirectoryContent() {
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                       onError={(e) => {
                         const fallbackKey = fac.category || 'Industrial Machinery';
-                        e.currentTarget.src = DEFAULT_CATEGORY_IMAGES[fallbackKey]?.cover || DEFAULT_CATEGORY_IMAGES['Industrial Machinery'].cover;
+                        e.currentTarget.src = DEFAULT_CATEGORY_IMAGES[fallbackKey] || DEFAULT_CATEGORY_IMAGES['Industrial Machinery'];
                       }}
                     />
 

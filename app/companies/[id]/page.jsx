@@ -142,7 +142,7 @@ export default function CompanyShowroomLandingPage() {
     fetchCompanyAndProductsData();
   }, [rawCompanyId]);
 
-  // DB 조회 정밀 스캔 함수
+  // DB 조회 정밀 스캔 함수 (URL로 넘어온 유저 ID 기반 완벽 동기화)
   const fetchCompanyAndProductsData = async () => {
     try {
       setLoading(true);
@@ -153,12 +153,12 @@ export default function CompanyShowroomLandingPage() {
 
       let fetchedCompany = null;
 
-      // 1. URL 파라미터 ID 또는 로그인 유저 ID 기반 DB 조회
+      // 1. URL 경로 파라미터(rawCompanyId)로 DB 우선 스캔 (user_id 또는 고유 id 매칭)
       if (rawCompanyId) {
         const { data: compByParamId } = await supabase
           .from('companies')
           .select('*')
-          .or(`id.eq.${rawCompanyId},user_id.eq.${rawCompanyId}`)
+          .or(`user_id.eq.${rawCompanyId},id.eq.${rawCompanyId}`)
           .maybeSingle();
 
         if (compByParamId) {
@@ -166,6 +166,7 @@ export default function CompanyShowroomLandingPage() {
         }
       }
 
+      // 2. 만약 경로 스캔 실패 시 로그인한 유저 ID로 2차 스캔
       if (!fetchedCompany && currentUser?.id) {
         const { data: compByUserId } = await supabase
           .from('companies')
@@ -223,8 +224,8 @@ export default function CompanyShowroomLandingPage() {
         setIsEditCompanyModalOpen(true);
       }
 
-      // 4. 해당 회사 소유의 실제 등록 제품만 조회
-      const targetUserId = fetchedCompany?.user_id || currentUser?.id || rawCompanyId;
+      // 4. 해당 회사 소유의 실제 등록 제품만 조회 (user_id / company_id 정밀 매칭)
+      const targetUserId = fetchedCompany?.user_id || rawCompanyId || currentUser?.id;
       if (targetUserId) {
         const { data: matchedProducts } = await supabase
           .from('products')
@@ -398,7 +399,7 @@ export default function CompanyShowroomLandingPage() {
     router.push(`/chat?company=${compName}&title=${title}`);
   };
 
-  // 대표 커버 이미지
+  // 대표 커버 이미지 (실제 입력값 및 디폴트 이미지 매핑)
   const categoryKey = company?.category || 'Industrial Machinery';
   const categoryDefaults = DEFAULT_CATEGORY_IMAGES[categoryKey] || DEFAULT_CATEGORY_IMAGES['Industrial Machinery'];
   
@@ -546,7 +547,7 @@ export default function CompanyShowroomLandingPage() {
               </button>
             )}
 
-            {/* ★ [요구사항 1 반영] 셀러 본인 페이지에서는 Send Direct RFQ 숨김 */}
+            {/* 셀러 본인 페이지일 때는 Send Direct RFQ 숨김 */}
             {!isOwner && (
               <button
                 type="button"
@@ -729,7 +730,7 @@ export default function CompanyShowroomLandingPage() {
 
             </div>
 
-            {/* ★ [요구사항 1 반영] 바이어나 제3자 방문객일 때만 우측 Contact Company 카드 출력 */}
+            {/* 바이어나 제3자 방문객일 때만 우측 Contact Company 카드 출력 */}
             {!isOwner && (
               <div className="lg:col-span-4 space-y-6">
                 <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 space-y-4 shadow-md sticky top-24">
