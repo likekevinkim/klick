@@ -27,18 +27,29 @@ import {
   Edit3,
   Play,
   Plus,
-  PlusCircle,
   Globe2,
   Briefcase
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+
+// Helper: UUID 문자열 판별 함수
+const isUuid = (str) => {
+  if (!str || typeof str !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
+};
+
+// Helper: Integer 문자열 판별 함수
+const isInteger = (str) => {
+  if (!str) return false;
+  return /^\d+$/.test(str.toString());
+};
 
 export default function CompanyShowroomLandingPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // URL에서 전달된 회사 식별자 (user_id 또는 companies.id)
+  // URL에서 전달된 파라미터 ID
   const routeParamId = params?.id;
   const autoEditParam = searchParams.get('edit');
 
@@ -91,7 +102,7 @@ export default function CompanyShowroomLandingPage() {
     fetchExactCompanyProfile();
   }, [routeParamId]);
 
-  // ★ [핵심 교정] URL의 routeParamId를 최우선 기준으로 DB에서 해당 셀러 정보 스캔
+  // ★ [핵심 교정] 안전한 타입 검증 기반 DB 정밀 스캔 함수
   const fetchExactCompanyProfile = async () => {
     try {
       setLoading(true);
@@ -102,46 +113,88 @@ export default function CompanyShowroomLandingPage() {
 
       let fetchedCompany = null;
 
-      // 1. URL로 전달된 routeParamId로 DB 검색 (user_id 또는 id 일치 조건)
       if (routeParamId) {
-        const { data: matchedCompany, error: searchErr } = await supabase
-          .from('companies')
-          .select('*')
-          .or(`user_id.eq.${routeParamId},id.eq.${routeParamId}`)
-          .maybeSingle();
+        // 1. routeParamId가 UUID 형식일 때 안전하게 user_id 및 id 순차 조회
+        if (isUuid(routeParamId)) {
+          try {
+            const { data: byUserId } = await supabase
+              .from('companies')
+              .select('*')
+              .eq('user_id', routeParamId)
+              .maybeSingle();
 
-        if (!searchErr && matchedCompany) {
-          fetchedCompany = matchedCompany;
+            if (byUserId) fetchedCompany = byUserId;
+          } catch (e) {
+            console.warn('user_id UUID scan skipped:', e);
+          }
+
+          if (!fetchedCompany) {
+            try {
+              const { data: byId } = await supabase
+                .from('companies')
+                .select('*')
+                .eq('id', routeParamId)
+                .maybeSingle();
+
+              if (byId) fetchedCompany = byId;
+            } catch (e) {
+              console.warn('id UUID scan skipped:', e);
+            }
+          }
+        } 
+        // 2. routeParamId가 숫자(Integer) 형식일 때 안전하게 id 조회
+        else if (isInteger(routeParamId)) {
+          try {
+            const { data: byIntId } = await supabase
+              .from('companies')
+              .select('*')
+              .eq('id', parseInt(routeParamId, 10))
+              .maybeSingle();
+
+            if (byIntId) fetchedCompany = byIntId;
+          } catch (e) {
+            console.warn('integer id scan skipped:', e);
+          }
+        } 
+        // 3. 기타 일반 문자열 형식일 때 안전하게 id 조회
+        else {
+          try {
+            const { data: byStrId } = await supabase
+              .from('companies')
+              .select('*')
+              .eq('id', routeParamId)
+              .maybeSingle();
+
+            if (byStrId) fetchedCompany = byStrId;
+          } catch (e) {
+            console.warn('string id scan skipped:', e);
+          }
         }
       }
 
-      // 2. 만약 URL 검색 결과가 없는데, 현재 내가 로그인되어 있고 내 쇼룸 주소로 온 경우
-      if (!fetchedCompany && currentUser?.id) {
-        const { data: myCompany } = await supabase
-          .from('companies')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .maybeSingle();
+      // 4. 내 소유 쇼룸 접속 시 fallback
+      if (!fetchedCompany && currentUser?.id && routeParamId === currentUser.id) {
+        try {
+          const { data: myCompany } = await supabase
+            .from('companies')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .maybeSingle();
 
-        if (myCompany) {
-          fetchedCompany = myCompany;
+          if (myCompany) fetchedCompany = myCompany;
+        } catch (e) {
+          console.warn('myCompany scan skipped:', e);
         }
       }
 
-      // 3. 소유자 권한 판별 (현재 로그인 사용자와 조회된 회사의 user_id가 일치할 때만 isOwner = true)
+      // 5. 소유자(편집 권한) 여부 정밀 확인
       if (currentUser && fetchedCompany) {
-        if (fetchedCompany.user_id === currentUser.id || fetchedCompany.id === currentUser.id) {
-          setIsOwner(true);
-        } else {
-          setIsOwner(false);
-        }
-      } else if (currentUser && !fetchedCompany && routeParamId === currentUser.id) {
-        setIsOwner(true);
+        setIsOwner(fetchedCompany.user_id === currentUser.id);
       } else {
         setIsOwner(false);
       }
 
-      // 4. DB에서 찾아낸 순수 실제 레코드만 화면 및 모달 Form 상태에 매핑 (가짜 데이터 원천 제거)
+      // 6. DB에서 스캔한 클릭 회사의 실제 데이터만 화면 및 Form에 매핑
       if (fetchedCompany) {
         setCompany(fetchedCompany);
 
@@ -168,21 +221,26 @@ export default function CompanyShowroomLandingPage() {
         setIsEditCompanyModalOpen(true);
       }
 
-      // 5. 조회된 셀러의 등록 상품만 DB에서 스캔
-      const targetSellerUserId = fetchedCompany?.user_id || routeParamId;
+      // 7. 조회된 셀러의 등록 상품만 DB 스캔
+      const targetSellerUserId = fetchedCompany?.user_id || fetchedCompany?.id || routeParamId;
       if (targetSellerUserId) {
-        const { data: matchedProducts } = await supabase
-          .from('products')
-          .select('*')
-          .or(`user_id.eq.${targetSellerUserId},company_id.eq.${targetSellerUserId}`)
-          .order('created_at', { ascending: false });
+        try {
+          const { data: matchedProducts } = await supabase
+            .from('products')
+            .select('*')
+            .or(`user_id.eq.${targetSellerUserId},company_id.eq.${targetSellerUserId}`)
+            .order('created_at', { ascending: false });
 
-        setProducts(matchedProducts || []);
+          setProducts(matchedProducts || []);
+        } catch (e) {
+          console.warn('products scan skipped:', e);
+          setProducts([]);
+        }
       } else {
         setProducts([]);
       }
     } catch (err) {
-      console.error('Failed to fetch exact company profile:', err);
+      console.error('Unexpected error in fetchExactCompanyProfile:', err);
       setCompany(null);
       setProducts([]);
     } finally {
@@ -190,7 +248,7 @@ export default function CompanyShowroomLandingPage() {
     }
   };
 
-  // ★ Supabase DB 영구 저장 처리 (소유자 본인일 때만 실행)
+  // Supabase DB 영구 저장 처리 (소유자 본인일 때만 실행)
   const handleSaveCompanyProfile = async (e) => {
     e.preventDefault();
 
@@ -228,7 +286,6 @@ export default function CompanyShowroomLandingPage() {
         updated_at: new Date().toISOString()
       };
 
-      // 기존 레코드 존재 여부 확인 후 UPDATE / INSERT
       const { data: existingComp } = await supabase
         .from('companies')
         .select('id, user_id')
@@ -298,7 +355,7 @@ export default function CompanyShowroomLandingPage() {
         category: productCategory,
         price: productPrice,
         moq: productMoq,
-        image_url: productImageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+        image_url: productImageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=60',
         description_ko: productDescriptionKo,
         description_en: `[AI Generated] High-durability ${productCategory} product manufactured by ${companyNameForProduct}.`,
         tagline: 'Verified South Korean Factory Export Product',
@@ -338,6 +395,9 @@ export default function CompanyShowroomLandingPage() {
     router.push(`/chat?company=${compName}&title=${title}`);
   };
 
+  const hasDescriptionData = company?.description && company.description.trim() !== '';
+  const hasCustomCertifications = company?.certifications && Array.isArray(company.certifications) && company.certifications.length > 0;
+
   if (!mounted) return null;
 
   return (
@@ -346,7 +406,6 @@ export default function CompanyShowroomLandingPage() {
 
       {/* 1. 회사 히어로 배너 */}
       <section className="bg-slate-900 text-white relative overflow-hidden border-b border-slate-800 pt-12 pb-16 px-6">
-        {/* 셀러가 등록한 실제 cover_image가 있을 때만 배경 이미지 표시 */}
         {company?.cover_image && (
           <div className="absolute inset-0 opacity-25">
             <img src={company.cover_image} alt="Company Cover Background" className="w-full h-full object-cover" />
@@ -371,7 +430,6 @@ export default function CompanyShowroomLandingPage() {
               )}
             </div>
 
-            {/* 소유자(셀러 본인)일 때만 수정 버튼 노출 */}
             {isOwner && (
               <button
                 type="button"
@@ -385,9 +443,9 @@ export default function CompanyShowroomLandingPage() {
           </div>
 
           <div className="space-y-3 max-w-4xl">
-            {/* 클릭한 해당 셀러의 순수 실제 상호명 출력 */}
+            {/* DB에서 찾아낸 순수 실제 클릭 회사 이름 표출 */}
             <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-snug">
-              {company?.company_name_en || company?.company_name || 'Verified Korean Company Showroom'}
+              {company?.company_name_en || company?.company_name_ko || company?.company_name || 'Unregistered Company Showroom'}
             </h1>
             {company?.company_name_ko && (
               <p className="text-slate-400 text-sm font-bold">Company Name (Korean): {company.company_name_ko}</p>
@@ -399,7 +457,6 @@ export default function CompanyShowroomLandingPage() {
             )}
           </div>
 
-          {/* 스탯 정보 */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-slate-800 text-xs text-slate-300">
             <div className="flex items-center gap-2.5">
               <MapPin className="w-4 h-4 text-blue-400 flex-shrink-0" />
@@ -479,7 +536,6 @@ export default function CompanyShowroomLandingPage() {
               </button>
             )}
 
-            {/* 바이어 및 타인이 볼 때만 Send Direct RFQ 노출 */}
             {!isOwner && (
               <button
                 type="button"
@@ -494,7 +550,7 @@ export default function CompanyShowroomLandingPage() {
         </div>
       </section>
 
-      {/* 3. 탭별 컨텐츠 (순수 DB 데이터만 렌더링) */}
+      {/* 3. 탭별 컨텐츠 */}
       <main className="max-w-6xl mx-auto px-6 mt-10">
         {activeTab === 'about' ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -583,7 +639,7 @@ export default function CompanyShowroomLandingPage() {
                   Detailed Overview
                 </h3>
 
-                {company?.description && company.description.trim() !== '' ? (
+                {hasDescriptionData ? (
                   <div 
                     className="prose text-slate-700 text-sm leading-relaxed max-w-none p-5 bg-slate-50/70 rounded-2xl border border-slate-100 font-medium"
                     dangerouslySetInnerHTML={{ __html: company.description }}
@@ -595,7 +651,7 @@ export default function CompanyShowroomLandingPage() {
                 )}
               </div>
 
-              {/* 비디오 투어 (실제 등록된 video_url이 있을 때만 재생 카드 출력) */}
+              {/* 비디오 투어 Stream */}
               {company?.video_url && company.video_url.trim() !== '' && (
                 <div className="border-t border-slate-100 pt-6 space-y-4">
                   <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
@@ -622,7 +678,7 @@ export default function CompanyShowroomLandingPage() {
                 </div>
               )}
 
-              {/* 갤러리 사진 (실제 등록된 gallery_images 배열이 있을 때만 출력) */}
+              {/* 갤러리 사진 */}
               {company?.gallery_images && Array.isArray(company.gallery_images) && company.gallery_images.length > 0 && (
                 <div className="border-t border-slate-100 pt-6 space-y-3">
                   <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
@@ -648,7 +704,7 @@ export default function CompanyShowroomLandingPage() {
                 </h3>
 
                 <div className="flex flex-wrap gap-2">
-                  {company?.certifications && Array.isArray(company.certifications) && company.certifications.length > 0 ? (
+                  {hasCustomCertifications ? (
                     company.certifications.map((cert, index) => (
                       <span
                         key={index}
