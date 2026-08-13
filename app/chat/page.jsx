@@ -19,6 +19,24 @@ import {
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
+// 실시간 AI 번역 엔진 헬퍼 함수
+const translateTextWithApi = async (text, targetLanguage) => {
+  if (!text || !text.trim()) return text;
+  try {
+    const res = await fetch(
+      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLanguage}&dt=t&q=${encodeURIComponent(text)}`
+    );
+    const data = await res.json();
+    if (data && data[0] && Array.isArray(data[0])) {
+      return data[0].map((item) => item[0]).join('');
+    }
+    return text;
+  } catch (e) {
+    console.error('Translation error:', e);
+    return text;
+  }
+};
+
 function ChatContent() {
   const searchParams = useSearchParams();
   const paramProductId = searchParams.get('productId');
@@ -35,7 +53,7 @@ function ChatContent() {
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // 무료 실시간 번역 엔진 상태
+  // 무료 실시간 번역 엔진 상태 (내 언어)
   const [autoTranslate, setAutoTranslate] = useState(true);
   const [targetLang, setTargetLang] = useState('ko');
 
@@ -70,21 +88,19 @@ function ChatContent() {
     setMounted(true);
     initChatSession();
 
-    // 실시간 DB 메시지 수신 채널
+    // ★ 1. 실시간 메시지 수신 (Realtime Live Socket)
     const msgChannel = supabase
       .channel('public:chat_messages_page_realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'chat_messages' },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            handleRealtimeMessageReceived(payload.new);
-          }
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        async (payload) => {
+          handleRealtimeMessageReceived(payload.new);
         }
       )
       .subscribe();
 
-    // 실시간 DB 대화방 수신 채널
+    // ★ 2. 실시간 대화방 수신
     const roomChannel = supabase
       .channel('public:chat_rooms_page_realtime')
       .on(
@@ -102,13 +118,32 @@ function ChatContent() {
     };
   }, [paramProductId, paramCompany, paramTitle, paramSellerId]);
 
+  // ★ 3. 내 언어(targetLang) 변경 시 현재 대화방 메시지들 선택 언어로 즉시 번역
   useEffect(() => {
+    if (!activeRoomId || !roomMessagesMap[activeRoomId]) return;
+
+    const translateCurrentRoomMessages = async () => {
+      const currentMsgs = roomMessagesMap[activeRoomId] || [];
+      const translatedList = await Promise.all(
+        currentMsgs.map(async (msg) => {
+          const trans = await translateTextWithApi(msg.message, targetLang);
+          return { ...msg, translated_message: trans };
+        })
+      );
+
+      setRoomMessagesMap((prev) => ({
+        ...prev,
+        [activeRoomId]: translatedList,
+      }));
+    };
+
     if (autoTranslate) {
+      translateCurrentRoomMessages();
       triggerFreeGoogleTranslate(targetLang);
     } else {
       triggerFreeGoogleTranslate('auto');
     }
-  }, [autoTranslate, targetLang, roomMessagesMap]);
+  }, [targetLang, activeRoomId, autoTranslate]);
 
   const triggerFreeGoogleTranslate = (langCode) => {
     if (typeof window === 'undefined') return;
@@ -124,13 +159,18 @@ function ChatContent() {
     }
   };
 
-  const handleRealtimeMessageReceived = (newMsg) => {
+  // 실시간 라이브 메시지 도착 처리
+  const handleRealtimeMessageReceived = async (newMsg) => {
+    // 도착한 라이브 메시지를 내 언어로 즉시 동적 번역
+    const trans = await translateTextWithApi(newMsg.message, targetLang);
+    const msgWithTrans = { ...newMsg, translated_message: trans };
+
     setRoomMessagesMap((prevMap) => {
       const roomMsgs = prevMap[newMsg.room_id] || [];
       if (roomMsgs.some((m) => m.id === newMsg.id)) return prevMap;
       return {
         ...prevMap,
-        [newMsg.room_id]: [...roomMsgs, newMsg],
+        [newMsg.room_id]: [...roomMsgs, msgWithTrans],
       };
     });
 
@@ -175,7 +215,6 @@ function ChatContent() {
     }
   };
 
-  // ★ [핵심 교정] 셀러 ID를 seller_id 및 seller_name으로 완벽 매핑하는 로직
   const fetchChatRoomsAndInit = async (currentUserObj, currentRole) => {
     try {
       if (!currentUserObj) {
@@ -186,8 +225,6 @@ function ChatContent() {
       const userIdStr = currentUserObj.id.toString();
 
       let query = supabase.from('chat_rooms').select('*');
-
-      // 셀러 또는 바이어에 해당하는 대화방을 정확하게 스캔
       if (currentRole === 'seller') {
         query = query.or(`seller_id.eq.${userIdStr},seller_id.eq.${currentUserObj.id}`);
       } else {
@@ -231,7 +268,7 @@ function ChatContent() {
         }
       }
 
-      // ★ 바이어가 URL 파라미터로 문의를 보냈을 때 sellerId를 정확히 채워서 DB 생성
+      // URL 파라미터가 있거나 대화방이 존재할 때
       if (paramCompany || paramTitle) {
         const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product Inquiry';
         const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Verified Korean Company';
@@ -249,7 +286,7 @@ function ChatContent() {
             product_title: companyTitle,
             buyer_id: userIdStr,
             buyer_name: currentUserObj?.email ? currentUserObj.email.split('@')[0] : 'Global Buyer',
-            seller_id: targetSellerIdPayload, // 셀러의 진짜 user_id 적용
+            seller_id: targetSellerIdPayload,
             seller_name: companySeller,
             company_name: companySeller,
             title: companyTitle,
@@ -267,12 +304,15 @@ function ChatContent() {
             matchedRoom = { ...createdRoomData[0], unread_count: 0 };
             currentRoomsList = [matchedRoom, ...currentRoomsList];
 
+            const initialMsgText = `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`;
+            const initialTrans = await translateTextWithApi(initialMsgText, targetLang);
+
             const initialMsg = {
               room_id: matchedRoom.id,
               sender_id: userIdStr,
               sender_role: 'buyer',
-              message: `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`,
-              translated_message: `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`,
+              message: initialMsgText,
+              translated_message: initialTrans,
               is_quote: false,
               is_read: false,
               created_at: new Date().toISOString()
@@ -287,10 +327,13 @@ function ChatContent() {
         }
 
         if (matchedRoom) {
+          // ★ 아코디언 자동 펼침 세팅
           setActiveRoomId(matchedRoom.id);
           await markRoomMessagesAsRead(matchedRoom.id, currentRole);
         }
-      } else if (currentRoomsList.length > 0 && !activeRoomId) {
+      } 
+      // ★ [핵심 교정] 대화방 목록이 존재할 때 첫번째 대화방 아코디언을 기본으로 자동으로 펼침(Open)
+      else if (currentRoomsList.length > 0) {
         setActiveRoomId(currentRoomsList[0].id);
         await markRoomMessagesAsRead(currentRoomsList[0].id, currentRole);
       }
@@ -339,6 +382,7 @@ function ChatContent() {
     }
   };
 
+  // 메시지 전송 시 선택한 언어로 동적 번역하여 저장
   const handleSendMessage = async (targetRoomId, text, attachedFile) => {
     let finalFilePayload = null;
     if (attachedFile) {
@@ -350,14 +394,8 @@ function ChatContent() {
       };
     }
 
-    let autoTrans = text;
-    if (text.toLowerCase().trim() === 'hi') {
-      autoTrans = '안녕';
-    } else if (text.trim() === '안녕') {
-      autoTrans = 'Hi';
-    } else {
-      autoTrans = `${text}`;
-    }
+    // 선택된 언어로 실시간 번역
+    const autoTrans = await translateTextWithApi(text, targetLang);
 
     const newMsgObj = {
       id: Date.now(),
@@ -514,7 +552,7 @@ function ChatContent() {
                 <Sparkles className="w-3.5 h-3.5" /> KLICK Direct Accordion Chat Hub
               </span>
               <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-bold flex items-center gap-1">
-                <Globe className="w-3 h-3" /> 100% Free Translation (0 Tokens)
+                <Globe className="w-3 h-3" /> 100% Free Realtime Translation
               </span>
             </div>
 
