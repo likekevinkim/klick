@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-// 원문과 번역문이 거의 동일한지 판단하는 헬퍼
+// 원문과 번역문이 거의 동일한지 판단하는 헬퍼 함수
 const isSameText = (str1, str2) => {
   if (!str1 || !str2) return true;
   const clean1 = str1.replace(/[\s\p{P}]/gu, '').toLowerCase();
@@ -83,7 +83,7 @@ export default function ChatRoomItem({
       }
     } catch (err) {
       console.error('File upload error:', err);
-      alert('파일 업로드 실패: ' + (err.message || '스토리지 오류'));
+      alert('파일 업로드 실패: ' + (err.message || '스토리지 연결 오류'));
     } finally {
       setUploadingFile(false);
     }
@@ -118,7 +118,7 @@ export default function ChatRoomItem({
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm transition hover:border-blue-400">
-      {/* 아코디언 헤더 */}
+      {/* 1. 대화방 아코디언 헤더 */}
       <div
         onClick={onToggle}
         className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/80 transition select-none"
@@ -156,7 +156,7 @@ export default function ChatRoomItem({
         </div>
       </div>
 
-      {/* 대화방 아코디언 내용 구역 */}
+      {/* 2. 대화방 아코디언 내용 구역 */}
       {isOpen && (
         <div className="border-t border-slate-100 bg-slate-50/50 p-5 space-y-4 animate-fadeIn">
           <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200/60">
@@ -183,7 +183,7 @@ export default function ChatRoomItem({
             </div>
 
             <span className="text-[10px] text-slate-400 font-bold">
-              AI Real-time Live Multilingual Translation Active
+              AI Real-time Multilingual Translation Active
             </span>
           </div>
 
@@ -191,13 +191,15 @@ export default function ChatRoomItem({
           <div className="max-h-[380px] overflow-y-auto space-y-3.5 pr-2">
             {messages.length === 0 ? (
               <div className="text-center py-8 text-xs text-slate-400 font-medium">
-                아직 오간 메시지가 없습니다. 첫 메시지를 전송해보세요!
+                아직 오간 메시지가 없습니다. 메시지를 보내 첫 대화를 시작해보세요!
               </div>
             ) : (
               messages.map((msg, index) => {
                 const isMine = msg.sender_role === userRole;
 
-                // 상대방 메시지이면서, 원문과 번역문이 다를 때만 AI 번역 출력
+                // ★ [완벽 원칙 적용]
+                // 1) 내가 작성한 글일 때는 절대로 하단 AI 번역 줄을 보여주지 않고 원문 1줄만 보입니다.
+                // 2) 상대방 메시지이면서 원문과 번역문이 다를 때만 하단에 [ AI translate : 번역문 ]이 출력됩니다.
                 const showTranslation = 
                   !isMine && 
                   msg.translated_message && 
@@ -222,12 +224,12 @@ export default function ChatRoomItem({
                           : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
                       }`}
                     >
-                      {/* 원문 텍스트 */}
+                      {/* 1. 상단: 내가 작성한 진짜 원문 텍스트 (예: "뭐가 필요하세요") */}
                       {msg.message && (
                         <p className="leading-relaxed font-semibold whitespace-pre-wrap">{msg.message}</p>
                       )}
 
-                      {/* 상대방 메시지일 경우 실시간 AI 번역 표출 */}
+                      {/* 2. 하단: 상대방 화면에서만 노출되는 [ AI translate : 번역문 ] */}
                       {showTranslation && (
                         <div className="pt-2 border-t border-slate-100 text-[11px] font-bold text-blue-600 space-y-0.5">
                           <div className="flex items-center gap-1 text-[10px] font-extrabold">
@@ -237,7 +239,7 @@ export default function ChatRoomItem({
                         </div>
                       )}
 
-                      {/* 첨부 파일 */}
+                      {/* 첨부 파일 렌더링 */}
                       {msg.file && (
                         <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 mt-1 ${isMine ? 'bg-blue-700/60 border-blue-500' : 'bg-slate-50 border-slate-200'}`}>
                           <div className="flex items-center gap-2 truncate">
@@ -263,7 +265,7 @@ export default function ChatRoomItem({
                         </div>
                       )}
 
-                      {/* 견적서 카드가 전송된 경우 */}
+                      {/* 견적서 카드 렌더링 */}
                       {msg.is_quote && (
                         <div className="p-3.5 bg-[#0F172A] text-white rounded-xl border border-slate-800 space-y-2 mt-2">
                           <div className="flex items-center justify-between text-xs font-black text-emerald-400">
@@ -326,7 +328,7 @@ export default function ChatRoomItem({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* 대화방 입력창 */}
+          {/* 대화방 내부 하단 입력창 */}
           <div className="bg-white rounded-2xl border border-slate-200 p-3 space-y-2 shadow-sm pt-2">
             {attachedFile && (
               <div className="px-3.5 py-1.5 bg-blue-50 border border-blue-100 flex items-center justify-between text-xs rounded-xl">
@@ -372,7 +374,7 @@ export default function ChatRoomItem({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="p-2 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-xl transition cursor-pointer border border-slate-200"
-                title="Attach Document"
+                title="Attach Document / Spec Sheet"
               >
                 <Paperclip className="w-4 h-4" />
               </button>
@@ -381,7 +383,7 @@ export default function ChatRoomItem({
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
                 className="p-2 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-600 text-slate-600 rounded-xl transition cursor-pointer border border-slate-200"
-                title="Attach Image"
+                title="Attach Image / Catalog"
               >
                 <ImageIcon className="w-4 h-4" />
               </button>
