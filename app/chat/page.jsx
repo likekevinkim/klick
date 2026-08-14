@@ -12,29 +12,10 @@ import {
   Loader2, 
   FileText, 
   MessageSquare, 
-  Globe, 
-  Languages 
+  Globe 
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-
-// 실시간 AI 번역 API 헬퍼
-const translateTextWithApi = async (text, targetLanguage) => {
-  if (!text || !text.trim()) return text;
-  try {
-    const res = await fetch(
-      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLanguage}&dt=t&q=${encodeURIComponent(text)}`
-    );
-    const data = await res.json();
-    if (data && data[0] && Array.isArray(data[0])) {
-      return data[0].map((item) => item[0]).join('');
-    }
-    return text;
-  } catch (e) {
-    console.error('Translation error:', e);
-    return text;
-  }
-};
 
 function ChatContent() {
   const searchParams = useSearchParams();
@@ -51,10 +32,6 @@ function ChatContent() {
   const [activeRoomId, setActiveRoomId] = useState(null);
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
   const [loading, setLoading] = useState(true);
-
-  // 무료 실시간 번역 엔진 상태 (내 언어)
-  const [autoTranslate, setAutoTranslate] = useState(true);
-  const [targetLang, setTargetLang] = useState('ko');
 
   // 모달 상태
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
@@ -74,15 +51,6 @@ function ChatContent() {
 
   const messagesEndRef = useRef(null);
 
-  const languages = [
-    { code: 'ko', label: '한국어 (Korean)' },
-    { code: 'en', label: 'English (US)' },
-    { code: 'zh-CN', label: '中文 (Chinese)' },
-    { code: 'ja', label: '日本語 (Japanese)' },
-    { code: 'es', label: 'Español (Spanish)' },
-    { code: 'ar', label: 'العربية (Arabic)' },
-  ];
-
   useEffect(() => {
     setMounted(true);
     initChatSession();
@@ -93,7 +61,7 @@ function ChatContent() {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-        async (payload) => {
+        (payload) => {
           handleRealtimeMessageReceived(payload.new);
         }
       )
@@ -117,42 +85,8 @@ function ChatContent() {
     };
   }, [paramProductId, paramCompany, paramTitle, paramSellerId]);
 
-  // 3. 내 언어(targetLang) 변경 시 현재 대화방 메시지들 중 상대방 메시지만 선택 언어로 번역
-  useEffect(() => {
-    if (!activeRoomId || !roomMessagesMap[activeRoomId]) return;
-
-    const translateCurrentRoomMessages = async () => {
-      const currentMsgs = roomMessagesMap[activeRoomId] || [];
-      const translatedList = await Promise.all(
-        currentMsgs.map(async (msg) => {
-          if (msg.sender_role !== userRole) {
-            const trans = await translateTextWithApi(msg.message, targetLang);
-            return { ...msg, translated_message: trans };
-          }
-          return msg;
-        })
-      );
-
-      setRoomMessagesMap((prev) => ({
-        ...prev,
-        [activeRoomId]: translatedList,
-      }));
-    };
-
-    if (autoTranslate) {
-      translateCurrentRoomMessages();
-    }
-  }, [targetLang, activeRoomId, autoTranslate]);
-
-  // 상대방이 보낸 실시간 메세지가 들어올 때 수신자의 내 언어(targetLang)로 번역
-  const handleRealtimeMessageReceived = async (newMsg) => {
-    let msgWithTrans = newMsg;
-
-    if (newMsg.sender_role !== userRole) {
-      const trans = await translateTextWithApi(newMsg.message, targetLang);
-      msgWithTrans = { ...newMsg, translated_message: trans };
-    }
-
+  // 상대방이 실시간 전송한 라이브 메세지 도착 시 수신
+  const handleRealtimeMessageReceived = (newMsg) => {
     setRoomMessagesMap((prevMap) => {
       const roomMsgs = prevMap[newMsg.room_id] || [];
       if (roomMsgs.some((m) => m.id === newMsg.id || (m.created_at === newMsg.created_at && m.sender_role === newMsg.sender_role))) {
@@ -160,7 +94,7 @@ function ChatContent() {
       }
       return {
         ...prevMap,
-        [newMsg.room_id]: [...roomMsgs, msgWithTrans],
+        [newMsg.room_id]: [...roomMsgs, newMsg],
       };
     });
 
@@ -295,14 +229,13 @@ function ChatContent() {
             currentRoomsList = [matchedRoom, ...currentRoomsList];
 
             const initialMsgText = `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`;
-            const initialTrans = await translateTextWithApi(initialMsgText, targetLang);
 
             const initialMsg = {
               room_id: matchedRoom.id,
               sender_id: userIdStr,
               sender_role: 'buyer',
               message: initialMsgText,
-              translated_message: initialTrans,
+              translated_message: initialMsgText,
               is_quote: false,
               is_read: false,
               created_at: new Date().toISOString()
@@ -530,7 +463,7 @@ function ChatContent() {
                 <Sparkles className="w-3.5 h-3.5" /> KLICK Direct Accordion Chat Hub
               </span>
               <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-bold flex items-center gap-1">
-                <Globe className="w-3 h-3" /> 100% Free Realtime Translation
+                <Globe className="w-3 h-3" /> Auto Header Language Translation
               </span>
             </div>
 
@@ -540,37 +473,6 @@ function ChatContent() {
             <p className="text-xs text-slate-400">
               Negotiate with global buyers and generate official trade documents (PI, Commercial Invoice, Packing List).
             </p>
-          </div>
-
-          <div className="flex items-center gap-3 bg-slate-800/90 p-2 rounded-2xl border border-slate-700/80">
-            <div className="flex items-center gap-1.5 pl-2">
-              <Languages className="w-4 h-4 text-blue-400" />
-              <span className="text-xs font-bold text-slate-300">My Lang:</span>
-            </div>
-
-            <select
-              value={targetLang}
-              onChange={(e) => setTargetLang(e.target.value)}
-              className="bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-            >
-              {languages.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.label}
-                </option>
-              ))}
-            </select>
-
-            <button
-              type="button"
-              onClick={() => setAutoTranslate(!autoTranslate)}
-              className={`px-3 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${
-                autoTranslate 
-                  ? 'bg-emerald-600 text-white shadow-md' 
-                  : 'bg-slate-700 text-slate-400 hover:text-white'
-              }`}
-            >
-              <span>{autoTranslate ? 'Auto ON' : 'OFF'}</span>
-            </button>
           </div>
         </div>
 
@@ -596,7 +498,6 @@ function ChatContent() {
                 isOpen={activeRoomId === room.id}
                 userRole={userRole}
                 messages={roomMessagesMap[room.id] || []}
-                targetLang={targetLang}
                 onToggle={() => handleToggleRoom(room.id)}
                 onOpenQuoteModal={() => setIsQuoteModalOpen(true)}
                 onOpenDocModal={handleOpenDocModal}

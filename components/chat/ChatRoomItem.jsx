@@ -12,25 +12,15 @@ import {
   Image as ImageIcon, 
   X, 
   CreditCard, 
-  Truck,
-  Sparkles
+  Truck
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-
-// 원문과 번역문이 거의 동일한지 판단하는 헬퍼 함수
-const isSameText = (str1, str2) => {
-  if (!str1 || !str2) return true;
-  const clean1 = str1.replace(/[\s\p{P}]/gu, '').toLowerCase();
-  const clean2 = str2.replace(/[\s\p{P}]/gu, '').toLowerCase();
-  return clean1 === clean2;
-};
 
 export default function ChatRoomItem({
   room,
   isOpen,
   userRole,
   messages,
-  targetLang = 'ko',
   onToggle,
   onOpenQuoteModal,
   onOpenDocModal,
@@ -46,7 +36,7 @@ export default function ChatRoomItem({
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
 
-  // 메시지 목록 갱신 시 자동 스크롤
+  // 메시지 목록 갱신 시 자동 스크롤 최하단 이동
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -156,7 +146,7 @@ export default function ChatRoomItem({
         </div>
       </div>
 
-      {/* 2. 대화방 아코디언 내용 구역 */}
+      {/* 2. 대화방 아코디언 내용 구역 (notranslate로 구글 자동변환 차단) */}
       {isOpen && (
         <div className="border-t border-slate-100 bg-slate-50/50 p-5 space-y-4 animate-fadeIn">
           <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200/60">
@@ -183,12 +173,12 @@ export default function ChatRoomItem({
             </div>
 
             <span className="text-[10px] text-slate-400 font-bold">
-              AI Real-time Multilingual Translation Active
+              Direct B2B Trade Channel
             </span>
           </div>
 
-          {/* 대화 메시지 내역 스크롤 박스 */}
-          <div className="max-h-[380px] overflow-y-auto space-y-3.5 pr-2">
+          {/* 대화 메시지 내역 스크롤 박스 (notranslate로 작성자가 보낸 원문 100% 보존) */}
+          <div className="max-h-[380px] overflow-y-auto space-y-3.5 pr-2 notranslate">
             {messages.length === 0 ? (
               <div className="text-center py-8 text-xs text-slate-400 font-medium">
                 아직 오간 메시지가 없습니다. 메시지를 보내 첫 대화를 시작해보세요!
@@ -196,15 +186,6 @@ export default function ChatRoomItem({
             ) : (
               messages.map((msg, index) => {
                 const isMine = msg.sender_role === userRole;
-
-                // ★ [완벽 원칙 적용]
-                // 1) 내가 작성한 글일 때는 절대로 하단 AI 번역 줄을 보여주지 않고 원문 1줄만 보입니다.
-                // 2) 상대방 메시지이면서 원문과 번역문이 다를 때만 하단에 [ AI translate : 번역문 ]이 출력됩니다.
-                const showTranslation = 
-                  !isMine && 
-                  msg.translated_message && 
-                  msg.translated_message.trim() !== '' && 
-                  !isSameText(msg.message, msg.translated_message);
 
                 return (
                   <div
@@ -218,25 +199,15 @@ export default function ChatRoomItem({
                     </div>
 
                     <div
-                      className={`p-4 rounded-2xl max-w-[85%] sm:max-w-[75%] space-y-2 text-xs shadow-sm ${
+                      className={`p-4 rounded-2xl max-w-[85%] sm:max-w-[75%] space-y-2 text-xs shadow-sm notranslate ${
                         isMine
                           ? 'bg-blue-600 text-white rounded-tr-none'
                           : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
                       }`}
                     >
-                      {/* 1. 상단: 내가 작성한 진짜 원문 텍스트 (예: "뭐가 필요하세요") */}
+                      {/* 순수 원문 메시지만 100% 가공없이 출력 */}
                       {msg.message && (
-                        <p className="leading-relaxed font-semibold whitespace-pre-wrap">{msg.message}</p>
-                      )}
-
-                      {/* 2. 하단: 상대방 화면에서만 노출되는 [ AI translate : 번역문 ] */}
-                      {showTranslation && (
-                        <div className="pt-2 border-t border-slate-100 text-[11px] font-bold text-blue-600 space-y-0.5">
-                          <div className="flex items-center gap-1 text-[10px] font-extrabold">
-                            <Sparkles className="w-3 h-3 text-amber-500 flex-shrink-0" />
-                            <span>[ AI translate : {msg.translated_message} ]</span>
-                          </div>
-                        </div>
+                        <p className="leading-relaxed font-semibold whitespace-pre-wrap notranslate">{msg.message}</p>
                       )}
 
                       {/* 첨부 파일 렌더링 */}
