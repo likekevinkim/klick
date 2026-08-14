@@ -13,11 +13,12 @@ import {
   X, 
   CreditCard, 
   Truck,
-  Sparkles
+  Sparkles,
+  FileCheck
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-// 원문과 번역문이 거의 동일한지 판단하는 헬퍼 함수
+// Helper to check if original and translated text are virtually identical
 const isSameText = (str1, str2) => {
   if (!str1 || !str2) return true;
   const clean1 = str1.replace(/[\s\p{P}]/gu, '').toLowerCase();
@@ -30,7 +31,7 @@ export default function ChatRoomItem({
   isOpen,
   userRole,
   messages,
-  targetLang = 'ko',
+  targetLang = 'en',
   onToggle,
   onOpenQuoteModal,
   onOpenDocModal,
@@ -46,7 +47,7 @@ export default function ChatRoomItem({
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
 
-  // 메시지 목록 갱신 시 자동 스크롤 최하단 이동
+  // Auto scroll to bottom when messages update
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -83,7 +84,7 @@ export default function ChatRoomItem({
       }
     } catch (err) {
       console.error('File upload error:', err);
-      alert('파일 업로드 실패: ' + (err.message || '스토리지 연결 오류'));
+      alert('File upload failed: ' + (err.message || 'Storage connection error'));
     } finally {
       setUploadingFile(false);
     }
@@ -116,14 +117,14 @@ export default function ChatRoomItem({
     }
   };
 
-  // 바이어 이메일 아이디 대신 바이어 프로필 담당자 이름/상호명 표시
+  // Bind partner name correctly (Contact Person Kevin)
   const partnerName = userRole === 'seller' 
-    ? (room.buyer_profile_name || room.buyer_name || 'Global Buyer') 
+    ? (room.buyer_profile_name || room.buyer_contact_person || room.buyer_name || 'Global Buyer') 
     : (room.seller_name || room.company_name || 'Korean Manufacturer');
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm transition hover:border-blue-400">
-      {/* 1. 대화방 아코디언 헤더 */}
+      {/* 1. Accordion Header */}
       <div
         onClick={onToggle}
         className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/80 transition select-none"
@@ -143,7 +144,7 @@ export default function ChatRoomItem({
           </div>
 
           <h3 className="text-sm font-extrabold text-slate-900 line-clamp-1">
-            {room.product_title || room.title || 'B2B Trade Discussion'}
+            Direct Trade Channel with {partnerName}
           </h3>
         </div>
 
@@ -157,48 +158,72 @@ export default function ChatRoomItem({
         </div>
       </div>
 
-      {/* 2. 대화방 아코디언 내용 구역 */}
+      {/* 2. Accordion Expanded Content */}
       {isOpen && (
         <div className="border-t border-slate-100 bg-slate-50/50 p-5 space-y-4 animate-fadeIn">
+          
+          {/* 상단 툴바 버튼: 셀러와 바이어의 역할을 완벽 분리 */}
           <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200/60">
             <div className="flex items-center gap-2">
-              {userRole === 'seller' && (
+              {/* 셀러(Seller) 역할일 때: 견적서 발송 + 서류(PI/PL/BL) 작성 버튼 표출 */}
+              {userRole === 'seller' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={onOpenQuoteModal}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Send Official Quotation</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onOpenDocModal(null, room)}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <FileCheck className="w-3.5 h-3.5" />
+                    <span>Generate Trade Docs (PI / PL / BL)</span>
+                  </button>
+                </>
+              ) : (
+                /* 바이어(Buyer) 역할일 때: 셀러에게 RFQ 문의 요청 버튼 표출 */
                 <button
                   type="button"
-                  onClick={onOpenQuoteModal}
+                  onClick={() => onSendMessage(room.id, "[RFQ Request] Please provide the official Proforma Invoice (PI) and FOB pricing.", null)}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <FileText className="w-3.5 h-3.5" />
-                  <span>B2B 견적 요청(RFQ) 보내기</span>
+                  <span>Send RFQ Inquiry</span>
                 </button>
               )}
 
+              {/* 공통: 화물 및 샘플 물류 추적 버튼 */}
               <button
                 type="button"
                 onClick={() => onOpenSampleModal(room)}
                 className="px-3 py-1.5 bg-[#0F172A] hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer"
               >
                 <Truck className="w-3.5 h-3.5 text-amber-400" />
-                <span>샘플 추적</span>
+                <span>Product Tracking</span>
               </button>
             </div>
 
             <span className="text-[10px] text-slate-400 font-bold">
-              AI 실시간 다국어 양방향 번역 활성화
+              AI Real-time Multilingual Dual Translation Active
             </span>
           </div>
 
-          {/* 대화 메시지 내역 스크롤 박스 (notranslate 속성으로 브라우저 무단 변형 차단) */}
+          {/* Message Thread (notranslate prevents external script text mutation) */}
           <div className="max-h-[380px] overflow-y-auto space-y-3.5 pr-2 notranslate">
             {messages.length === 0 ? (
               <div className="text-center py-8 text-xs text-slate-400 font-medium">
-                아직 오간 메시지가 없습니다. 메시지를 보내 첫 대화를 시작해보세요!
+                No messages yet. Send a message to start trading!
               </div>
             ) : (
               messages.map((msg, index) => {
                 const isMine = msg.sender_role === userRole;
 
-                // 원문과 번역문이 다르고 번역문이 존재할 때 하단 AI 번역 줄 표출
                 const showTranslation = 
                   msg.translated_message && 
                   msg.translated_message.trim() !== '' && 
@@ -222,12 +247,12 @@ export default function ChatRoomItem({
                           : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
                       }`}
                     >
-                      {/* 1. 상단: 원문 텍스트 (100% 원본 보존) */}
+                      {/* Original Message */}
                       {msg.message && (
                         <p className="leading-relaxed font-semibold whitespace-pre-wrap notranslate">{msg.message}</p>
                       )}
 
-                      {/* 2. 하단: 상대방 언어로 번역된 [ AI translate : 번역문 ] */}
+                      {/* AI Translate Line */}
                       {showTranslation && (
                         <div className={`pt-2 border-t text-[11px] font-bold space-y-0.5 notranslate ${
                           isMine ? 'border-blue-400/50 text-blue-100' : 'border-slate-100 text-blue-600'
@@ -239,7 +264,7 @@ export default function ChatRoomItem({
                         </div>
                       )}
 
-                      {/* 첨부 파일 렌더링 */}
+                      {/* File Attachment */}
                       {msg.file && (
                         <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 mt-1 ${isMine ? 'bg-blue-700/60 border-blue-500' : 'bg-slate-50 border-slate-200'}`}>
                           <div className="flex items-center gap-2 truncate">
@@ -260,19 +285,19 @@ export default function ChatRoomItem({
                             rel="noreferrer"
                             className="px-2.5 py-1 bg-white text-slate-900 font-extrabold text-[10px] rounded-lg shadow transition hover:bg-slate-100 cursor-pointer flex-shrink-0"
                           >
-                            보기
+                            View
                           </a>
                         </div>
                       )}
 
-                      {/* 견적서 카드 렌더링 */}
+                      {/* Official Quotation Card */}
                       {msg.is_quote && (
                         <div className="p-3.5 bg-[#0F172A] text-white rounded-xl border border-slate-800 space-y-2 mt-2">
                           <div className="flex items-center justify-between text-xs font-black text-emerald-400">
-                            <span>공식 FOB 견적서</span>
+                            <span>Official FOB Quotation</span>
                             <span>{msg.quote_price}</span>
                           </div>
-                          <div className="text-[10px] text-slate-400 font-bold">최소주문수량(MOQ): {msg.quote_moq}</div>
+                          <div className="text-[10px] text-slate-400 font-bold">MOQ: {msg.quote_moq}</div>
 
                           <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800">
                             <button
@@ -281,7 +306,7 @@ export default function ChatRoomItem({
                               className="py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-[10px] rounded-lg transition flex items-center justify-center gap-1 cursor-pointer"
                             >
                               <FileText className="w-3 h-3 text-blue-400" />
-                              <span>무역 서류 (PI/CI)</span>
+                              <span>Trade Docs (PI/CI/BL)</span>
                             </button>
 
                             {userRole === 'buyer' ? (
@@ -291,7 +316,7 @@ export default function ChatRoomItem({
                                 className="py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] rounded-lg shadow transition flex items-center justify-center gap-1 cursor-pointer"
                               >
                                 <CreditCard className="w-3 h-3" />
-                                <span>에스크로 결제</span>
+                                <span>Pay Escrow</span>
                               </button>
                             ) : (
                               <button
@@ -299,7 +324,7 @@ export default function ChatRoomItem({
                                 onClick={() => onOpenDocModal(msg, room)}
                                 className="py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-[10px] rounded-lg shadow transition flex items-center justify-center gap-1 cursor-pointer"
                               >
-                                <span>주문 스펙 수정</span>
+                                <span>Edit Trade Docs</span>
                               </button>
                             )}
                           </div>
@@ -314,7 +339,7 @@ export default function ChatRoomItem({
                         className="text-[10px] font-extrabold text-blue-600 hover:underline flex items-center gap-1 px-1 cursor-pointer"
                       >
                         <FileText className="w-3 h-3" />
-                        <span>견적 송장(Proforma Invoice) 문서 보기</span>
+                        <span>View Official Trade Document (PI/PL/BL)</span>
                       </button>
                     )}
 
@@ -328,7 +353,7 @@ export default function ChatRoomItem({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* 대화방 내부 하단 입력창 */}
+          {/* Bottom Input Bar */}
           <div className="bg-white rounded-2xl border border-slate-200 p-3 space-y-2 shadow-sm pt-2">
             {attachedFile && (
               <div className="px-3.5 py-1.5 bg-blue-50 border border-blue-100 flex items-center justify-between text-xs rounded-xl">
@@ -338,7 +363,7 @@ export default function ChatRoomItem({
                   ) : (
                     <FileText className="w-3.5 h-3.5 text-blue-600" />
                   )}
-                  <span className="text-[10px]">첨부됨:</span>
+                  <span className="text-[10px]">Attached:</span>
                   <span className="font-extrabold text-blue-600 text-[10px] truncate max-w-[180px]">
                     {attachedFile.name} ({attachedFile.size})
                   </span>
@@ -374,7 +399,7 @@ export default function ChatRoomItem({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="p-2 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-xl transition cursor-pointer border border-slate-200"
-                title="서류/사양서 첨부"
+                title="Attach Document / Spec Sheet"
               >
                 <Paperclip className="w-4 h-4" />
               </button>
@@ -383,12 +408,11 @@ export default function ChatRoomItem({
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
                 className="p-2 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-600 text-slate-600 rounded-xl transition cursor-pointer border border-slate-200"
-                title="이미지/카탈로그 첨부"
+                title="Attach Image / Catalog"
               >
                 <ImageIcon className="w-4 h-4" />
               </button>
 
-              {/* 입력창 placeholder 완전히 제거 */}
               <input
                 type="text"
                 value={inputText}
@@ -403,7 +427,7 @@ export default function ChatRoomItem({
                 disabled={(!inputText.trim() && !attachedFile) || uploadingFile}
                 className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
               >
-                <span>보내기</span>
+                <span>Send</span>
                 <Send className="w-3.5 h-3.5" />
               </button>
             </form>
