@@ -115,12 +115,12 @@ export default function ChatRoomItem({
     }
   };
 
-  // 바이어 프로필 담당자 이름(Kevin) 바인딩
+  // 바이어 이름/회사명 1순위 바인딩 (이메일 ID 절대 배제)
   const partnerName = userRole === 'seller' 
-    ? (room.buyer_profile_name || room.buyer_contact_person || room.buyer_name || 'Global Buyer') 
+    ? (room.buyer_profile_name || room.buyer_contact_person || room.buyer_company_name || 'Global Buyer') 
     : (room.seller_name || room.company_name || 'Korean Manufacturer');
 
-  const productName = room.product_title || room.title || 'High Precision Industrial Component';
+  const productName = room.product_title || room.title || '';
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm transition hover:border-blue-400">
@@ -163,7 +163,6 @@ export default function ChatRoomItem({
         <div className="border-t border-slate-100 bg-slate-50/50 p-5 space-y-4 animate-fadeIn">
           <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200/60">
             <div className="flex items-center gap-2">
-              {/* 셀러와 바이어 컨트롤 버튼 역할 분리 */}
               {userRole === 'seller' ? (
                 <>
                   <button
@@ -286,7 +285,7 @@ export default function ChatRoomItem({
                         </div>
                       )}
 
-                      {/* Official Quotation Card (품명 정밀 연동) */}
+                      {/* Official Quotation Card */}
                       {msg.is_quote && (
                         <div className="p-3.5 bg-[#0F172A] text-white rounded-xl border border-slate-800 space-y-2 mt-2">
                           <div className="flex items-center justify-between text-xs font-black text-emerald-400">
@@ -294,10 +293,12 @@ export default function ChatRoomItem({
                             <span>{msg.quote_price}</span>
                           </div>
                           
-                          {/* 품명(Product Name) 명시 */}
-                          <div className="text-xs font-extrabold text-blue-300">
-                            Product Name: {msg.product_name || productName}
-                          </div>
+                          {/* 품명 표시 (예시 문장 배제) */}
+                          {(msg.product_name || productName) && (
+                            <div className="text-xs font-extrabold text-blue-300">
+                              Product Name: {msg.product_name || productName}
+                            </div>
+                          )}
 
                           <div className="text-[10px] text-slate-400 font-bold">MOQ: {msg.quote_moq}</div>
 

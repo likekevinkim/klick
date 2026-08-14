@@ -72,7 +72,7 @@ function ChatContent() {
   // Global default language English
   const [targetLang, setTargetLang] = useState('en');
 
-  // Snapshots for async callbacks
+  // Ref snapshots for async callbacks
   const userRef = useRef(null);
   const userRoleRef = useRef('seller');
   const targetLangRef = useRef('en');
@@ -88,12 +88,12 @@ function ChatContent() {
   useEffect(() => { roomMessagesMapRef.current = roomMessagesMap; }, [roomMessagesMap]);
   useEffect(() => { activeRoomIdRef.current = activeRoomId; }, [activeRoomId]);
 
-  // Modal States & Quotation Form Fields
+  // Modal States & Quotation Form Fields (예시 문장 전면 제거)
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
-  const [quoteProductName, setQuoteProductName] = useState('Hydraulic Control Valve HV-300 Series'); // 품명 필드 추가
+  const [quoteProductName, setQuoteProductName] = useState(''); // 품명 필드 (기본 빈 값)
   const [quotePrice, setQuotePrice] = useState('145.00');
   const [quoteMoq, setQuoteMoq] = useState('500 Units');
-  const [quoteNote, setQuoteNote] = useState('Includes FOB shipping to Incheon Port. Lead time 14 days.');
+  const [quoteNote, setQuoteNote] = useState(''); // 예시 문장 제거 (빈 값)
 
   const [isDocModalOpen, setIsQuoteDocModalOpen] = useState(false);
   const [selectedMsgForDoc, setSelectedMsgForDoc] = useState(null);
@@ -288,6 +288,7 @@ function ChatContent() {
     }
   };
 
+  // 바이어 프로필 담당자 실명(contact_person) 및 회사명(company_name) 정밀 바인딩
   const fetchChatRoomsAndInit = async (currentUserObj, currentRole) => {
     try {
       if (!currentUserObj) {
@@ -323,22 +324,22 @@ function ChatContent() {
             .in('user_id', buyerUserIds);
 
           const profileMap = {};
+          const companyMap = {};
 
           (buyerProfiles || []).forEach((p) => {
             if (p.contact_person) profileMap[p.user_id] = p.contact_person;
-            else if (p.company_name) profileMap[p.user_id] = p.company_name;
+            if (p.company_name) companyMap[p.user_id] = p.company_name;
           });
 
           (rawBuyers || []).forEach((b) => {
-            if (!profileMap[b.user_id]) {
-              if (b.contact_person) profileMap[b.user_id] = b.contact_person;
-              else if (b.company_name) profileMap[b.user_id] = b.company_name;
-            }
+            if (!profileMap[b.user_id] && b.contact_person) profileMap[b.user_id] = b.contact_person;
+            if (!companyMap[b.user_id] && b.company_name) companyMap[b.user_id] = b.company_name;
           });
 
           currentRoomsList = currentRoomsList.map((r) => ({
             ...r,
-            buyer_profile_name: profileMap[r.buyer_id] || r.buyer_name || 'Global Buyer'
+            buyer_profile_name: profileMap[r.buyer_id] || r.buyer_name || 'Global Buyer',
+            buyer_company_name: companyMap[r.buyer_id] || ''
           }));
         }
 
@@ -410,7 +411,7 @@ function ChatContent() {
             title: companyTitle,
             seller_lang: 'ko',
             buyer_lang: 'en',
-            last_message: `Hello! I am inquiring about [${companyTitle}].`,
+            last_message: `Inquiry initialized.`,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           };
@@ -568,19 +569,19 @@ function ChatContent() {
     }
   };
 
-  // ★ 품명(Product Name)을 포함한 견적서 전송
+  // 품명(Product Name) 포함 견적서 전송
   const handleSendQuote = async () => {
     if (!activeRoomId) return;
 
     try {
       const activeRoomObj = roomsRef.current.find(r => r.id === activeRoomId);
-      const targetProdName = quoteProductName || activeRoomObj?.product_title || activeRoomObj?.title || 'High Precision Industrial Component';
+      const targetProdName = quoteProductName || activeRoomObj?.product_title || activeRoomObj?.title || '';
 
       const quoteMsgPayload = {
         room_id: activeRoomId,
         sender_id: user?.id ? user.id.toString() : 'guest_seller',
         sender_role: 'seller',
-        product_name: targetProdName, // 품명 영구 기록
+        product_name: targetProdName,
         message: `[Official B2B Quotation Sent] ${quoteNote}`,
         translated_message: `[Official B2B Quotation Sent] ${quoteNote}`,
         is_quote: true,
@@ -715,7 +716,7 @@ function ChatContent() {
         )}
       </main>
 
-      {/* Quotation Modal - 품명(Product Name) 입력 필드 추가 */}
+      {/* Quotation Modal (예시 문장 전면 제거) */}
       {isQuoteModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6">
@@ -729,12 +730,12 @@ function ChatContent() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Product Name (품명)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Product Name</label>
                 <input
                   type="text"
                   value={quoteProductName}
                   onChange={(e) => setQuoteProductName(e.target.value)}
-                  placeholder="e.g. Hydraulic Control Valve HV-300 Series"
+                  placeholder=""
                   required
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
@@ -747,7 +748,7 @@ function ChatContent() {
                     type="text"
                     value={quotePrice}
                     onChange={(e) => setQuotePrice(e.target.value)}
-                    placeholder="145.00"
+                    placeholder=""
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold"
                   />
                 </div>
@@ -758,7 +759,7 @@ function ChatContent() {
                     type="text"
                     value={quoteMoq}
                     onChange={(e) => setQuoteMoq(e.target.value)}
-                    placeholder="500 Units"
+                    placeholder=""
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold"
                   />
                 </div>
@@ -770,6 +771,7 @@ function ChatContent() {
                   rows={3}
                   value={quoteNote}
                   onChange={(e) => setQuoteNote(e.target.value)}
+                  placeholder=""
                   className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
                 />
               </div>
