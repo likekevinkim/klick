@@ -67,7 +67,7 @@ function BuyerProfileContent() {
   const [description, setDescription] = useState('');
   const [email, setEmail] = useState('');
 
-  // RFQ List State (가짜 데이터 제거 완료)
+  // RFQ List State (Fully initialized without mock sample data)
   const [myRfqs, setMyRfqs] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -132,7 +132,7 @@ function BuyerProfileContent() {
         setDescription(profile.description || description);
       }
 
-      // 2. Fetch Buyer's Real Active RFQs from DB (가짜 샘플 데이터 백업 철거)
+      // 2. Fetch Buyer's Real Active RFQs from DB (가짜 샘플 카드 철거)
       if (userIdStr) {
         const { data: rfqList } = await supabase
           .from('public_rfqs')
@@ -178,7 +178,7 @@ function BuyerProfileContent() {
         .getPublicUrl(filePath);
 
       if (publicUrlData?.publicUrl) {
-        setAttachedFile({
+        setRfqAttachment({
           name: file.name,
           size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
           type: file.type.includes('image') ? 'image' : 'drawing',
@@ -436,7 +436,7 @@ function BuyerProfileContent() {
             </div>
           </div>
 
-          {/* 2. My Active RFQs & Post New RFQ Trigger (초기화 완료) */}
+          {/* 2. My Active RFQs & Post New RFQ Trigger */}
           <div className="lg:col-span-5 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
             <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
               <div>
@@ -464,7 +464,6 @@ function BuyerProfileContent() {
                   <p className="text-xs text-slate-400">Loading active RFQs from database...</p>
                 </div>
               ) : myRfqs.length === 0 ? (
-                /* 가짜 데이터 초기화 후 노출되는 깨끗한 무데이터 상태 안내 카드 */
                 <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-3 p-6">
                   <FileText className="w-10 h-10 text-slate-300 mx-auto stroke-1" />
                   <p className="text-xs text-slate-500 font-semibold">No active RFQs posted yet.</p>
