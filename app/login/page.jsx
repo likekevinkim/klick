@@ -171,7 +171,7 @@ function AuthPageContent() {
     }
   };
 
-  // Step 3: Complete registration and submit form
+  // Step 3: Complete registration or Sign In with strict role verification
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -202,6 +202,7 @@ function AuthPageContent() {
               company_name: userRole === 'seller' ? (companyNameEn || companyNameKo) : buyerCompanyNameEn,
               company_name_en: userRole === 'seller' ? companyNameEn : buyerCompanyNameEn,
               company_name_ko: companyNameKo,
+              contact_person: userRole === 'seller' ? companyNameEn : buyerName,
               buyer_name: userRole === 'buyer' ? buyerName : '',
               is_new_user: true
             }
@@ -215,54 +216,104 @@ function AuthPageContent() {
         if (activeUserId) {
           try {
             if (userRole === 'seller') {
-              await supabase.from('companies').upsert([
+              await supabase.from('seller_profiles').upsert([
                 {
                   user_id: activeUserId,
                   company_name: companyNameEn || companyNameKo || 'Hankook Precision Co., Ltd.',
                   company_name_en: companyNameEn,
                   company_name_ko: companyNameKo,
-                  description: `Official Global B2B Showroom of ${companyNameEn || companyNameKo}.`,
-                  business_type: 'Direct Manufacturer',
-                  location: 'South Korea',
+                  contact_person: companyNameEn || 'Seller Contact',
+                  country: 'Republic of Korea',
+                  updated_at: new Date().toISOString()
                 },
               ], { onConflict: 'user_id' });
             } else {
-              await supabase.from('buyers').upsert([
+              await supabase.from('buyer_profiles').upsert([
                 {
-                  auth_user_id: activeUserId,
-                  buyer_name: buyerName || 'Global Buyer',
-                  company_name_en: buyerCompanyNameEn,
-                  buyer_email: email,
+                  user_id: activeUserId,
+                  contact_person: buyerName || 'Kevin',
+                  buyer_name: buyerName || 'Kevin',
+                  company_name: buyerCompanyNameEn || 'Global Sourcing LLC',
                   country: country,
-                  interest_category: category,
+                  updated_at: new Date().toISOString()
                 },
-              ], { onConflict: 'auth_user_id' });
+              ], { onConflict: 'user_id' });
             }
           } catch (dbErr) {
             console.warn('Metadata DB Insert skipped:', dbErr);
           }
         }
 
-        localStorage.setItem('klick_show_onboarding', 'true');
-        setSuccessMessage('Registration completed successfully! Redirecting to home page...');
+        setSuccessMessage('Registration completed successfully! Redirecting to login...');
 
         setTimeout(() => {
-          router.push('/');
+          setIsSignUp(false);
+          setIsOtpSent(false);
+          setIsEmailVerified(false);
+          setOtpCode('');
         }, 1200);
       } else {
+        // ★ 로그인 시도 및 역할 정밀 검증
         const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+          email: email.trim(),
+          password: password,
         });
 
         if (error) throw error;
 
-        await supabase.auth.getSession();
-        setSuccessMessage('Successfully signed in! Redirecting...');
+        if (data?.user) {
+          const userIdStr = data.user.id.toString();
+          const userMetaRole = data.user.user_metadata?.role;
 
-        setTimeout(() => {
-          router.push('/');
-        }, 400);
+          let actualRole = userMetaRole;
+
+          // 메타데이터에 없을 경우 DB 테이블 조회로 역할 2차 판별
+          if (!actualRole) {
+            const { data: sellerProf } = await supabase
+              .from('seller_profiles')
+              .select('user_id')
+              .eq('user_id', userIdStr)
+              .maybeSingle();
+
+            if (sellerProf) {
+              actualRole = 'seller';
+            } else {
+              const { data: buyerProf } = await supabase
+                .from('buyer_profiles')
+                .select('user_id')
+                .eq('user_id', userIdStr)
+                .maybeSingle();
+
+              if (buyerProf) {
+                actualRole = 'buyer';
+              }
+            }
+          }
+
+          if (!actualRole) {
+            actualRole = userRole;
+          }
+
+          // ★ [핵심 역할 교차 로그인 방지]: 선택된 탭(userRole)과 계정 진짜 역할(actualRole) 비교
+          if (userRole !== actualRole) {
+            await supabase.auth.signOut(); // 로그인 해제
+            setIsLoading(false);
+            setErrorMessage(
+              `Account Role Mismatch! This account is registered as [${actualRole.toUpperCase()}]. Please switch to the ${actualRole === 'seller' ? 'Korean Seller' : 'Global Buyer'} tab to log in.`
+            );
+            return;
+          }
+
+          setSuccessMessage(`Successfully signed in as ${actualRole === 'seller' ? 'Seller' : 'Buyer'}! Redirecting...`);
+
+          setTimeout(() => {
+            if (actualRole === 'seller') {
+              router.push('/chat');
+            } else {
+              router.push('/buyer/profile');
+            }
+          }, 600);
+        }
       }
     } catch (error) {
       console.error('Auth Error:', error);
@@ -462,7 +513,6 @@ function AuthPageContent() {
                 </div>
               )}
 
-              {/* [요구사항 반영] 6자리 OTP 입력박스 바로 직하단에 노출되는 녹색 성공 / 빨간색 에러 메시지 상자 */}
               {isSignUp && emailStatusMessage.text && (
                 <div className={`mt-2.5 p-3.5 rounded-xl text-xs flex items-center gap-2 font-medium animate-fadeIn ${
                   emailStatusMessage.type === 'success' 
@@ -479,7 +529,7 @@ function AuthPageContent() {
               )}
             </div>
 
-            {/* Step 3: Company Details (English Primary & Korean Secondary) */}
+            {/* Step 3: Company Details */}
             {isSignUp && (
               <>
                 {userRole === 'seller' ? (
