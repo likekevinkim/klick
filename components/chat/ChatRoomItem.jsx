@@ -198,7 +198,10 @@ export default function ChatRoomItem({
                 const isMine = msg.sender_role === userRole;
 
                 // ★ [양방향 AI 번역 표출 핵심 규칙]:
-                // 원문과 번역문이 다르고, 번역문이 존재하면 내가 보낸 글이든 상대방 글이든 하단에 [ AI translate : ... ] 표출!
+                // 부모(page.jsx)가 "보는 사람" 기준으로 이미 방향을 맞춰서 translated_message를 계산해 줌:
+                //   - 내가 쓴 메시지(isMine)의 translated_message = 상대방 언어로 번역된 텍스트
+                //   - 상대방이 쓴 메시지의 translated_message = 내 언어로 번역된 텍스트
+                // 여기서는 원문과 번역문이 다를 때만 [ AI translate : ... ] 를 표출하면 됨
                 const showTranslation = 
                   msg.translated_message && 
                   msg.translated_message.trim() !== '' && 
