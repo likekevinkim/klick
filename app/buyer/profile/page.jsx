@@ -57,30 +57,30 @@ function BuyerProfileContent() {
   // Settings Modal Toggle
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  // Buyer Profile State Fields (Kevin / Global Sourcing LLC)
-  const [contactPerson, setContactPerson] = useState('Kevin');
-  const [companyName, setCompanyName] = useState('Global Sourcing LLC'); // 회사명 표기 상태
+  // Buyer Profile State Fields
+  const [contactPerson, setContactPerson] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [country, setCountry] = useState('United States');
   const [businessType, setBusinessType] = useState('Wholesaler / Distributor');
-  const [websiteUrl, setWebsiteUrl] = useState('https://globalsourcingllc.com');
+  const [websiteUrl, setWebsiteUrl] = useState('');
   const [interestCategory, setInterestCategory] = useState('Industrial Machinery');
-  const [description, setDescription] = useState('Leading North American importer and wholesale distributor specializing in Korean high-precision industrial components and hydraulic machinery parts.');
-  const [email, setEmail] = useState('john.smith@globalsourcingllc.com');
+  const [description, setDescription] = useState('');
+  const [email, setEmail] = useState('');
 
-  // RFQ List State
+  // RFQ List State (가짜 데이터 제거 완료)
   const [myRfqs, setMyRfqs] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // RFQ Modal State
+  // New RFQ Modal State
   const [isRfqModalOpen, setIsRfqModalOpen] = useState(false);
   const [isSubmittingRfq, setIsSubmittingRfq] = useState(false);
   const [rfqProductName, setRfqProductName] = useState('');
   const [rfqTitle, setRfqTitle] = useState('');
   const [rfqCategory, setRfqCategory] = useState('Industrial Machinery');
-  const [rfqTargetPrice, setRfqTargetPrice] = useState('$130 - $145 USD');
-  const [rfqMoq, setRfqMoq] = useState('500 Units');
+  const [rfqTargetPrice, setRfqTargetPrice] = useState('');
+  const [rfqMoq, setRfqMoq] = useState('');
   const [rfqDetails, setRfqDetails] = useState('');
 
   // Drawing File Attachment State
@@ -102,7 +102,7 @@ function BuyerProfileContent() {
 
       if (session?.user) {
         setUser(session.user);
-        buyerEmail = session.user.email || email;
+        buyerEmail = session.user.email || '';
         setEmail(buyerEmail);
 
         const meta = session.user.user_metadata || {};
@@ -132,51 +132,31 @@ function BuyerProfileContent() {
         setDescription(profile.description || description);
       }
 
-      // 2. Fetch Buyer's Active RFQs
-      let rfqQuery = supabase.from('public_rfqs').select('*');
+      // 2. Fetch Buyer's Real Active RFQs from DB (가짜 샘플 데이터 백업 철거)
       if (userIdStr) {
-        rfqQuery = rfqQuery.eq('user_id', userIdStr);
-      }
+        const { data: rfqList } = await supabase
+          .from('public_rfqs')
+          .select('*')
+          .eq('user_id', userIdStr)
+          .order('created_at', { ascending: false });
 
-      const { data: rfqList } = await rfqQuery.order('created_at', { ascending: false });
-
-      if (rfqList && rfqList.length > 0) {
-        setMyRfqs(rfqList);
+        if (rfqList) {
+          setMyRfqs(rfqList);
+        } else {
+          setMyRfqs([]);
+        }
       } else {
-        // Fallback default sample RFQs
-        setMyRfqs([
-          {
-            id: '1',
-            product_name: 'Hydraulic Control Valve HV-300 Series',
-            title: 'Request for Quotation: Hydraulic Control Valve HV-300 Series',
-            category: 'Industrial Machinery',
-            moq: '500 Units',
-            target_price: '$130 - $145 USD',
-            status: 'Active',
-            quote_count: 3,
-            created_at: '2026-08-14T09:00:00.000Z',
-          },
-          {
-            id: '2',
-            product_name: 'Organic K-Beauty Repair Serum',
-            title: 'Organic K-Beauty Repair Serum (Private Label OEM)',
-            category: 'K-Beauty & Cosmetics',
-            moq: '2,000 Units',
-            target_price: '$10 - $12 USD',
-            status: 'Quoted',
-            quote_count: 5,
-            created_at: '2026-08-13T14:00:00.000Z',
-          },
-        ]);
+        setMyRfqs([]);
       }
     } catch (error) {
-      console.error('Failed to load buyer profile:', error);
-    } finally {
+      console.error('Failed to load buyer profile data:', error);
+      setMyRfqs([]);
+    } fontally {
       setLoading(false);
     }
   };
 
-  // Drawing Upload Handler
+  // Drawing File Upload Handler
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -198,7 +178,7 @@ function BuyerProfileContent() {
         .getPublicUrl(filePath);
 
       if (publicUrlData?.publicUrl) {
-        setRfqAttachment({
+        setAttachedFile({
           name: file.name,
           size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
           type: file.type.includes('image') ? 'image' : 'drawing',
@@ -226,7 +206,7 @@ function BuyerProfileContent() {
         user_id: userIdStr,
         contact_person: contactPerson,
         buyer_name: contactPerson,
-        company_name: companyName, // 회사 이름 영구 수록
+        company_name: companyName,
         country: country,
         business_type: businessType,
         website_url: websiteUrl,
@@ -266,7 +246,7 @@ function BuyerProfileContent() {
 
       const newRfqPayload = {
         user_id: userIdStr,
-        buyer_name: contactPerson || 'Kevin',
+        buyer_name: contactPerson || 'Global Buyer',
         company_name: companyName || 'Global Buyer',
         product_name: rfqProductName || rfqTitle,
         title: rfqTitle,
@@ -295,9 +275,11 @@ function BuyerProfileContent() {
       setIsRfqModalOpen(false);
       setRfqProductName('');
       setRfqTitle('');
+      setRfqTargetPrice('');
+      setRfqMoq('');
       setRfqDetails('');
       setRfqAttachment(null);
-      alert('New public RFQ with product drawings published successfully to Korean Suppliers!');
+      alert('New public RFQ published successfully to Korean Suppliers!');
     } catch (err) {
       console.error('Create RFQ error:', err);
       alert('Failed to publish RFQ: ' + (err.message || 'Database error'));
@@ -313,7 +295,7 @@ function BuyerProfileContent() {
       <Header />
 
       <main className="max-w-6xl mx-auto px-6 mt-10 space-y-8">
-        {/* Top Hero Banner - 1. 회사 이름 상단 대형 표기 구역 */}
+        {/* Top Hero Banner */}
         <div className="bg-slate-900 text-white rounded-3xl p-8 md:p-10 shadow-xl border border-slate-800 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -323,7 +305,6 @@ function BuyerProfileContent() {
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Verified Global Buyer Sourcing Hub
               </span>
 
-              {/* ★ 회사 이름 대형 최우선 표기: Global Sourcing LLC (United States) */}
               <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight">
                 {companyName ? `${companyName} (${country})` : `Buyer (${country})`}
               </h1>
@@ -331,14 +312,16 @@ function BuyerProfileContent() {
               <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 font-medium">
                 <span className="flex items-center gap-1.5">
                   <User className="w-4 h-4 text-blue-400" />
-                  <span>Contact Person: <strong className="text-white">{contactPerson}</strong></span>
+                  <span>Contact Person: <strong className="text-white">{contactPerson || 'Buyer'}</strong></span>
                 </span>
                 <span className="flex items-center gap-1">
                   <MapPin className="w-4 h-4 text-emerald-400" /> {country}
                 </span>
-                <span className="flex items-center gap-1">
-                  <Mail className="w-4 h-4 text-purple-400" /> {email}
-                </span>
+                {email && (
+                  <span className="flex items-center gap-1">
+                    <Mail className="w-4 h-4 text-purple-400" /> {email}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -385,17 +368,16 @@ function BuyerProfileContent() {
               </button>
             </div>
 
-            {/* Profile Info Grid - 2. 회사 이름 카드 표기 구역 */}
+            {/* Profile Info Grid */}
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Contact Person</span>
                 <span className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
                   <User className="w-4 h-4 text-blue-600" />
-                  {contactPerson}
+                  {contactPerson || 'Not Specified'}
                 </span>
               </div>
 
-              {/* ★ Company Name (회사명 - 선택값) 항목 */}
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Company Name (Optional)</span>
                 <span className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
@@ -454,7 +436,7 @@ function BuyerProfileContent() {
             </div>
           </div>
 
-          {/* 2. My Active RFQs & Post New RFQ Modal Trigger */}
+          {/* 2. My Active RFQs & Post New RFQ Trigger (초기화 완료) */}
           <div className="lg:col-span-5 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
             <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
               <div>
@@ -482,6 +464,7 @@ function BuyerProfileContent() {
                   <p className="text-xs text-slate-400">Loading active RFQs from database...</p>
                 </div>
               ) : myRfqs.length === 0 ? (
+                /* 가짜 데이터 초기화 후 노출되는 깨끗한 무데이터 상태 안내 카드 */
                 <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-3 p-6">
                   <FileText className="w-10 h-10 text-slate-300 mx-auto stroke-1" />
                   <p className="text-xs text-slate-500 font-semibold">No active RFQs posted yet.</p>
@@ -533,12 +516,12 @@ function BuyerProfileContent() {
                     )}
 
                     <p className="text-[11px] text-slate-500">
-                      Target Price: <span className="font-bold text-emerald-600">{rfq.target_price || rfq.price || '$145 USD'}</span> | MOQ: <span className="font-bold text-slate-800">{rfq.target_quantity || rfq.moq || '500 Units'}</span>
+                      Target Price: <span className="font-bold text-emerald-600">{rfq.target_price || 'Negotiable'}</span> | MOQ: <span className="font-bold text-slate-800">{rfq.moq || rfq.target_quantity || '1 Unit'}</span>
                     </p>
 
                     <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
                       <span className="font-bold text-blue-600 bg-blue-50/80 px-2 py-0.5 rounded-md">
-                        {rfq.quote_count || rfq.quotes_count || 3} Factory Quotes
+                        {rfq.quote_count || 0} Factory Quotes
                       </span>
 
                       <Link
@@ -567,7 +550,7 @@ function BuyerProfileContent() {
         </div>
       </main>
 
-      {/* Modal 1: Buyer Profile Settings Edit Modal - 3. 회사 이름 수정 필드 */}
+      {/* Modal 1: Buyer Profile Settings Edit Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-fadeIn">
@@ -602,7 +585,6 @@ function BuyerProfileContent() {
                   />
                 </div>
 
-                {/* ★ 회사명(Company Name - 선택값) 입력 수정 폼 */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Company Name (Optional)</label>
                   <input
@@ -618,7 +600,6 @@ function BuyerProfileContent() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Country / Region</label>
-
                   <select
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
@@ -739,7 +720,7 @@ function BuyerProfileContent() {
                   type="text"
                   value={rfqProductName}
                   onChange={(e) => setRfqProductName(e.target.value)}
-                  placeholder="e.g. Hydraulic Control Valve HV-300"
+                  placeholder=""
                   required
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold"
                 />
@@ -751,7 +732,7 @@ function BuyerProfileContent() {
                   type="text"
                   value={rfqTitle}
                   onChange={(e) => setRfqTitle(e.target.value)}
-                  placeholder="e.g. Request for Quotation: High Precision Control Valve OEM"
+                  placeholder=""
                   required
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold"
                 />
@@ -779,7 +760,7 @@ function BuyerProfileContent() {
                     type="text"
                     value={rfqTargetPrice}
                     onChange={(e) => setRfqTargetPrice(e.target.value)}
-                    placeholder="$130 - $145 USD"
+                    placeholder=""
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
                   />
                 </div>
@@ -791,11 +772,12 @@ function BuyerProfileContent() {
                   type="text"
                   value={rfqMoq}
                   onChange={(e) => setRfqMoq(e.target.value)}
-                  placeholder="500 Units"
+                  placeholder=""
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
                 />
               </div>
 
+              {/* 제품 사진 및 CAD/블루프린트 도면 첨부 파일 업로더 */}
               <div>
                 <label className="block text-slate-700 font-extrabold mb-1">Attach Product Drawing or Specification Photo</label>
                 <input
@@ -815,7 +797,7 @@ function BuyerProfileContent() {
                     <button
                       type="button"
                       onClick={() => setRfqAttachment(null)}
-                      className="text-rose-600 hover:underline text-[10px] font-bold"
+                      className="text-rose-600 hover:underline text-[10px] font-bold cursor-pointer"
                     >
                       Remove
                     </button>
@@ -845,7 +827,7 @@ function BuyerProfileContent() {
                   rows={3}
                   value={rfqDetails}
                   onChange={(e) => setRfqDetails(e.target.value)}
-                  placeholder="Provide material specs, certifications required, packaging terms, and lead time requirements..."
+                  placeholder=""
                   className="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
                 />
               </div>
