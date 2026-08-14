@@ -12,15 +12,25 @@ import {
   Image as ImageIcon, 
   X, 
   CreditCard, 
-  Truck
+  Truck,
+  Sparkles
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+
+// 원문과 번역문이 거의 동일한지 판단하는 헬퍼 함수
+const isSameText = (str1, str2) => {
+  if (!str1 || !str2) return true;
+  const clean1 = str1.replace(/[\s\p{P}]/gu, '').toLowerCase();
+  const clean2 = str2.replace(/[\s\p{P}]/gu, '').toLowerCase();
+  return clean1 === clean2;
+};
 
 export default function ChatRoomItem({
   room,
   isOpen,
   userRole,
   messages,
+  targetLang = 'ko',
   onToggle,
   onOpenQuoteModal,
   onOpenDocModal,
@@ -146,7 +156,7 @@ export default function ChatRoomItem({
         </div>
       </div>
 
-      {/* 2. 대화방 아코디언 내용 구역 (notranslate로 구글 자동변환 차단) */}
+      {/* 2. 대화방 아코디언 내용 구역 */}
       {isOpen && (
         <div className="border-t border-slate-100 bg-slate-50/50 p-5 space-y-4 animate-fadeIn">
           <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200/60">
@@ -173,11 +183,11 @@ export default function ChatRoomItem({
             </div>
 
             <span className="text-[10px] text-slate-400 font-bold">
-              Direct B2B Trade Channel
+              AI Real-time Multilingual Dual-Text Translation Active
             </span>
           </div>
 
-          {/* 대화 메시지 내역 스크롤 박스 (notranslate로 작성자가 보낸 원문 100% 보존) */}
+          {/* 대화 메시지 내역 스크롤 박스 (notranslate로 구글 스크립트의 원문 변형 원천 차단) */}
           <div className="max-h-[380px] overflow-y-auto space-y-3.5 pr-2 notranslate">
             {messages.length === 0 ? (
               <div className="text-center py-8 text-xs text-slate-400 font-medium">
@@ -186,6 +196,13 @@ export default function ChatRoomItem({
             ) : (
               messages.map((msg, index) => {
                 const isMine = msg.sender_role === userRole;
+
+                // 상대방 메시지이면서 원문과 번역문이 다를 때 하단 AI 번역 줄 출력
+                const showTranslation = 
+                  !isMine && 
+                  msg.translated_message && 
+                  msg.translated_message.trim() !== '' && 
+                  !isSameText(msg.message, msg.translated_message);
 
                 return (
                   <div
@@ -205,9 +222,19 @@ export default function ChatRoomItem({
                           : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
                       }`}
                     >
-                      {/* 순수 원문 메시지만 100% 가공없이 출력 */}
+                      {/* 1. 상단: 작성자가 입력한 [원문 텍스트] (예: 상대방이 보낸 "Hi" 또는 "What is MOQ?") */}
                       {msg.message && (
                         <p className="leading-relaxed font-semibold whitespace-pre-wrap notranslate">{msg.message}</p>
+                      )}
+
+                      {/* 2. 하단: [ AI translate : 수신자의 언어로 번역된 텍스트 ] (예: [ AI translate : 안녕 ]) */}
+                      {showTranslation && (
+                        <div className="pt-2 border-t border-slate-100 text-[11px] font-bold text-blue-600 space-y-0.5 notranslate">
+                          <div className="flex items-center gap-1 text-[10px] font-extrabold">
+                            <Sparkles className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                            <span>[ AI translate : {msg.translated_message} ]</span>
+                          </div>
+                        </div>
                       )}
 
                       {/* 첨부 파일 렌더링 */}
