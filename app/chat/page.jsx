@@ -52,7 +52,7 @@ function ChatContent() {
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // 수신자 기본 지원 언어
+  // 내 언어 설정 (기본값: 한국어)
   const [targetLang, setTargetLang] = useState('ko');
 
   // 모달 상태
@@ -86,7 +86,7 @@ function ChatContent() {
     setMounted(true);
     initChatSession();
 
-    // 1. 실시간 메시지 수신 (Realtime Live Socket)
+    // ★ 1. 실시간 메시지 수신 (Realtime Live Socket)
     const msgChannel = supabase
       .channel('public:chat_messages_page_realtime')
       .on(
@@ -98,7 +98,7 @@ function ChatContent() {
       )
       .subscribe();
 
-    // 2. 실시간 대화방 수신
+    // ★ 2. 실시간 대화방 수신
     const roomChannel = supabase
       .channel('public:chat_rooms_page_realtime')
       .on(
@@ -116,7 +116,7 @@ function ChatContent() {
     };
   }, [paramProductId, paramCompany, paramTitle, paramSellerId]);
 
-  // 3. 내 언어(targetLang) 변경 시 현재 대화방 메시지 중 상대방 메시지만 내 언어로 즉시 번역
+  // ★ 3. 내 언어(targetLang) 변경 시 현재 대화방 메시지 양방향 정밀 번역
   useEffect(() => {
     if (!activeRoomId || !roomMessagesMap[activeRoomId]) return;
 
@@ -124,11 +124,10 @@ function ChatContent() {
       const currentMsgs = roomMessagesMap[activeRoomId] || [];
       const translatedList = await Promise.all(
         currentMsgs.map(async (msg) => {
-          if (msg.sender_role !== userRole) {
-            const trans = await translateTextWithApi(msg.message, targetLang);
-            return { ...msg, translated_message: trans };
-          }
-          return msg;
+          // 내가 작성한 글이거나 상대방 글이더라도 수신자 언어로 AI 번역 생성
+          const destinationLang = msg.sender_role === 'seller' ? (userRole === 'seller' ? 'en' : 'ko') : (userRole === 'buyer' ? 'ko' : 'en');
+          const trans = await translateTextWithApi(msg.message, destinationLang);
+          return { ...msg, translated_message: trans };
         })
       );
 
@@ -141,14 +140,12 @@ function ChatContent() {
     translateCurrentRoomMessages();
   }, [targetLang, activeRoomId]);
 
-  // ★ 상대방이 전송한 실시간 라이브 메세지가 들어올 때 수신자의 내 언어(targetLang)로 실시간 번역
+  // ★ 4. 상대방이 전송한 실시간 라이브 메세지가 들어올 때 즉시 양방향 번역 적용
   const handleRealtimeMessageReceived = async (newMsg) => {
-    let msgWithTrans = newMsg;
-
-    if (newMsg.sender_role !== userRole) {
-      const trans = await translateTextWithApi(newMsg.message, targetLang);
-      msgWithTrans = { ...newMsg, translated_message: trans };
-    }
+    // 상대방 언어로 번역
+    const destinationLang = userRole === 'seller' ? 'ko' : 'en';
+    const trans = await translateTextWithApi(newMsg.message, destinationLang);
+    const msgWithTrans = { ...newMsg, translated_message: trans };
 
     setRoomMessagesMap((prevMap) => {
       const roomMsgs = prevMap[newMsg.room_id] || [];
@@ -292,7 +289,7 @@ function ChatContent() {
             currentRoomsList = [matchedRoom, ...currentRoomsList];
 
             const initialMsgText = `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`;
-            const initialTrans = await translateTextWithApi(initialMsgText, targetLang);
+            const initialTrans = await translateTextWithApi(initialMsgText, 'ko');
 
             const initialMsg = {
               room_id: matchedRoom.id,
@@ -367,7 +364,7 @@ function ChatContent() {
     }
   };
 
-  // 내 메시지 전송 시 원문 100% 보존하여 DB 저장
+  // ★ 5. 메시지 전송 시 상대방 언어(영문/한글)로 AI 사전 번역하여 DB에 원문 및 번역문 동시 기록
   const handleSendMessage = async (targetRoomId, text, attachedFile) => {
     let finalFilePayload = null;
     if (attachedFile) {
@@ -380,12 +377,16 @@ function ChatContent() {
     }
 
     try {
+      // 상대방이 받게 될 언어 미리 지정 (셀러 전송 ➔ 영문 번역 / 바이어 전송 ➔ 한글 번역)
+      const targetOpponentLang = userRole === 'seller' ? 'en' : 'ko';
+      const autoTrans = await translateTextWithApi(text, targetOpponentLang);
+
       const newMsgPayload = {
         room_id: targetRoomId,
         sender_id: user?.id ? user.id.toString() : 'guest_user',
         sender_role: userRole,
-        message: text, // 내가 작성한 원문 그대로 100% 보존
-        translated_message: text,
+        message: text, // 내가 입력한 원문 100% 보존
+        translated_message: autoTrans, // 상대방을 위한 번역 텍스트
         is_quote: false,
         is_read: false,
         file: finalFilePayload,
@@ -443,7 +444,7 @@ function ChatContent() {
         sender_id: user?.id ? user.id.toString() : 'guest_seller',
         sender_role: 'seller',
         message: `[Official B2B Quote Sent] ${quoteNote}`,
-        translated_message: `[Official B2B Quote Sent] ${quoteNote}`,
+        translated_message: `[공식 B2B 견적서 발송] ${quoteNote}`,
         is_quote: true,
         is_read: false,
         quote_price: `${quotePrice} USD / Unit`,
