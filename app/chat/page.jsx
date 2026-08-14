@@ -12,8 +12,7 @@ import {
   Loader2, 
   FileText, 
   MessageSquare, 
-  Globe, 
-  Languages 
+  Globe
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -36,6 +35,28 @@ const translateTextWithApi = async (text, targetLanguage) => {
   }
 };
 
+// ★ 사이트 전역 구글 번역 위젯이 선택한 언어를 읽어오는 헬퍼
+// 구글 번역 위젯(Website Translator)은 보통 `googtrans` 쿠키에 "/원본언어/대상언어" 형식으로
+// 현재 선택된 언어를 저장함 (예: "/en/ko" → 사용자가 한국어를 선택함)
+// 쿠키를 못 찾을 경우 localStorage의 'googtrans' 키도 백업으로 확인함
+const getCookie = (name) => {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : null;
+};
+
+const getSiteTranslateLang = (fallback) => {
+  const raw = getCookie('googtrans') || (typeof window !== 'undefined' ? window.localStorage.getItem('googtrans') : null);
+  if (!raw) return fallback;
+
+  // "/en/ko" -> ['en', 'ko'] / "/auto/ko" -> ['auto', 'ko']
+  const parts = raw.split('/').filter(Boolean);
+  const target = parts[1];
+
+  if (target && target !== 'auto') return target;
+  return fallback;
+};
+
 function ChatContent() {
   const searchParams = useSearchParams();
   const paramProductId = searchParams.get('productId');
@@ -52,19 +73,18 @@ function ChatContent() {
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // 내 언어 설정 (기본값: 한국어) - "내가 읽고 쓰는 언어"를 의미함
+  // 내 언어 설정 - 더 이상 드롭다운으로 직접 고르지 않고, 사이트 전역 구글 번역 위젯의
+  // 선택값을 자동으로 따라감 (기본값: 한국어)
   const [targetLang, setTargetLang] = useState('ko');
 
-  // ★ 비동기 콜백(realtime 구독 등) 안에서도 항상 최신 값을 참조하기 위한 ref들
-  // (React state는 클로저에 갇히기 때문에, 구독 콜백처럼 한 번만 설정되는 함수 안에서는
-  //  상태가 바뀌어도 옛날 값을 참조하는 문제가 생길 수 있어 ref로 최신값을 따로 들고 있음)
+  // ★ 비동기 콜백(realtime 구독, setInterval 등) 안에서도 항상 최신 값을 참조하기 위한 ref들
   const userRef = useRef(null);
   const userRoleRef = useRef('seller');
   const targetLangRef = useRef('ko');
   const roomsRef = useRef([]);
   const roomMessagesMapRef = useRef({});
   const activeRoomIdRef = useRef(null);
-  const initializedLangRef = useRef(false);
+  const lastPersistedLangRef = useRef(null);
 
   useEffect(() => { userRef.current = user; }, [user]);
   useEffect(() => { userRoleRef.current = userRole; }, [userRole]);
@@ -91,21 +111,62 @@ function ChatContent() {
 
   const messagesEndRef = useRef(null);
 
-  const languages = [
-    { code: 'ko', label: '한국어 (Korean)' },
-    { code: 'en', label: 'English (US)' },
-    { code: 'zh-CN', label: '中文 (Chinese)' },
-    { code: 'ja', label: '日本語 (Japanese)' },
-    { code: 'es', label: 'Español (Spanish)' },
-    { code: 'ar', label: 'العربية (Arabic)' },
-  ];
-
   // ★ 채팅방(room) 레코드에서 "상대방"의 언어를 읽어오는 헬퍼
   // chat_rooms 테이블에 seller_lang / buyer_lang (text) 컬럼이 있어야 정확히 동작하며,
-  // 컬럼이 없거나 값이 비어있으면 기존과 동일한 기본값(seller=ko, buyer=en 상대)으로 대체됨
+  // 컬럼이 없거나 값이 비어있으면 기본값(seller=ko, buyer=en 상대)으로 대체됨
   const getOpponentLang = (room, role) => {
     if (role === 'seller') return room?.buyer_lang || 'en';
     return room?.seller_lang || 'ko';
+  };
+
+  // ★ 사이트 전역 구글 번역 선택값을 1초 간격으로 감지해서 targetLang에 자동 반영
+  useEffect(() => {
+    const detect = () => {
+      const fallback = userRoleRef.current === 'seller' ? 'ko' : 'en';
+      const detected = getSiteTranslateLang(fallback);
+      if (detected && detected !== targetLangRef.current) {
+        setTargetLang(detected);
+      }
+    };
+
+    detect();
+    const interval = setInterval(detect, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ★ 감지된 내 언어(targetLang)를 chat_rooms의 내 역할 언어 컬럼에 자동 저장
+  // (상대방이 "내 언어"를 알아야 내가 보낸 메시지를 내 언어로 번역해서 보여줄 수 있기 때문)
+  useEffect(() => {
+    if (!user || rooms.length === 0) return;
+    if (lastPersistedLangRef.current === targetLang) return;
+    persistMyLang(targetLang);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetLang, rooms.length, user]);
+
+  const persistMyLang = async (newLang) => {
+    try {
+      const langField = userRoleRef.current === 'seller' ? 'seller_lang' : 'buyer_lang';
+      const roomIds = roomsRef.current.map((r) => r.id);
+      if (roomIds.length === 0) return;
+
+      const { error } = await supabase
+        .from('chat_rooms')
+        .update({ [langField]: newLang })
+        .in('id', roomIds);
+
+      if (error) {
+        console.error(
+          '언어 설정 저장 실패 (chat_rooms 테이블에 seller_lang / buyer_lang 컬럼이 있는지 확인하세요):',
+          error
+        );
+        return;
+      }
+
+      lastPersistedLangRef.current = newLang;
+      setRooms((prev) => prev.map((r) => ({ ...r, [langField]: newLang })));
+    } catch (err) {
+      console.error('Failed to persist language preference:', err);
+    }
   };
 
   useEffect(() => {
@@ -324,14 +385,6 @@ function ChatContent() {
         }
       }
 
-      // ★ 최초 1회만: 내 언어(targetLang) 초기값을 room에 저장된 내 언어 설정값 또는 역할 기본값으로 세팅
-      if (!initializedLangRef.current) {
-        initializedLangRef.current = true;
-        const langField = currentRole === 'seller' ? 'seller_lang' : 'buyer_lang';
-        const existingPref = currentRoomsList.find((r) => r[langField])?.[langField];
-        setTargetLang(existingPref || (currentRole === 'seller' ? 'ko' : 'en'));
-      }
-
       // URL 파라미터 처리
       if (paramCompany || paramTitle) {
         const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product Inquiry';
@@ -442,38 +495,6 @@ function ChatContent() {
     } else {
       setActiveRoomId(roomId);
       await markRoomMessagesAsRead(roomId, userRole);
-    }
-  };
-
-  // ★ 내 언어(targetLang) 변경 시: 로컬 상태 갱신 + chat_rooms의 내 역할 언어 컬럼에 영구 저장
-  // (상대방이 "상대방의 언어"를 알 수 있어야 내 메시지를 상대방 언어로 보여줄 수 있기 때문)
-  const handleLangChange = async (newLang) => {
-    setTargetLang(newLang);
-
-    const currentUser = userRef.current;
-    const currentRooms = roomsRef.current;
-    if (!currentUser || currentRooms.length === 0) return;
-
-    try {
-      const langField = userRoleRef.current === 'seller' ? 'seller_lang' : 'buyer_lang';
-      const roomIds = currentRooms.map((r) => r.id);
-
-      const { error } = await supabase
-        .from('chat_rooms')
-        .update({ [langField]: newLang })
-        .in('id', roomIds);
-
-      if (error) {
-        console.error(
-          '언어 설정 저장 실패 (chat_rooms 테이블에 seller_lang / buyer_lang 컬럼이 있는지 확인하세요):',
-          error
-        );
-        return;
-      }
-
-      setRooms((prev) => prev.map((r) => ({ ...r, [langField]: newLang })));
-    } catch (err) {
-      console.error('Failed to persist language preference:', err);
     }
   };
 
@@ -653,25 +674,6 @@ function ChatContent() {
             <p className="text-xs text-slate-400">
               Negotiate with global buyers and generate official trade documents (PI, Commercial Invoice, Packing List).
             </p>
-          </div>
-
-          <div className="flex items-center gap-3 bg-slate-800/90 p-2 rounded-2xl border border-slate-700/80">
-            <div className="flex items-center gap-1.5 pl-2">
-              <Languages className="w-4 h-4 text-blue-400" />
-              <span className="text-xs font-bold text-slate-300">My Lang:</span>
-            </div>
-
-            <select
-              value={targetLang}
-              onChange={(e) => handleLangChange(e.target.value)}
-              className="bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-            >
-              {languages.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.label}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
 
