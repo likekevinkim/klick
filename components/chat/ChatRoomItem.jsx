@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-// Helper to check if original and translated text are virtually identical
 const isSameText = (str1, str2) => {
   if (!str1 || !str2) return true;
   const clean1 = str1.replace(/[\s\p{P}]/gu, '').toLowerCase();
@@ -47,7 +46,6 @@ export default function ChatRoomItem({
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
 
-  // Auto scroll to bottom when messages update
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -117,10 +115,12 @@ export default function ChatRoomItem({
     }
   };
 
-  // Bind partner name correctly (Contact Person Kevin)
+  // 바이어 프로필 담당자 이름(Kevin) 바인딩
   const partnerName = userRole === 'seller' 
     ? (room.buyer_profile_name || room.buyer_contact_person || room.buyer_name || 'Global Buyer') 
     : (room.seller_name || room.company_name || 'Korean Manufacturer');
+
+  const productName = room.product_title || room.title || 'High Precision Industrial Component';
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm transition hover:border-blue-400">
@@ -161,11 +161,9 @@ export default function ChatRoomItem({
       {/* 2. Accordion Expanded Content */}
       {isOpen && (
         <div className="border-t border-slate-100 bg-slate-50/50 p-5 space-y-4 animate-fadeIn">
-          
-          {/* 상단 툴바 버튼: 셀러와 바이어의 역할을 완벽 분리 */}
           <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200/60">
             <div className="flex items-center gap-2">
-              {/* 셀러(Seller) 역할일 때: 견적서 발송 + 서류(PI/PL/BL) 작성 버튼 표출 */}
+              {/* 셀러와 바이어 컨트롤 버튼 역할 분리 */}
               {userRole === 'seller' ? (
                 <>
                   <button
@@ -187,7 +185,6 @@ export default function ChatRoomItem({
                   </button>
                 </>
               ) : (
-                /* 바이어(Buyer) 역할일 때: 셀러에게 RFQ 문의 요청 버튼 표출 */
                 <button
                   type="button"
                   onClick={() => onSendMessage(room.id, "[RFQ Request] Please provide the official Proforma Invoice (PI) and FOB pricing.", null)}
@@ -198,7 +195,6 @@ export default function ChatRoomItem({
                 </button>
               )}
 
-              {/* 공통: 화물 및 샘플 물류 추적 버튼 */}
               <button
                 type="button"
                 onClick={() => onOpenSampleModal(room)}
@@ -214,7 +210,7 @@ export default function ChatRoomItem({
             </span>
           </div>
 
-          {/* Message Thread (notranslate prevents external script text mutation) */}
+          {/* Message Thread */}
           <div className="max-h-[380px] overflow-y-auto space-y-3.5 pr-2 notranslate">
             {messages.length === 0 ? (
               <div className="text-center py-8 text-xs text-slate-400 font-medium">
@@ -290,13 +286,19 @@ export default function ChatRoomItem({
                         </div>
                       )}
 
-                      {/* Official Quotation Card */}
+                      {/* Official Quotation Card (품명 정밀 연동) */}
                       {msg.is_quote && (
                         <div className="p-3.5 bg-[#0F172A] text-white rounded-xl border border-slate-800 space-y-2 mt-2">
                           <div className="flex items-center justify-between text-xs font-black text-emerald-400">
                             <span>Official FOB Quotation</span>
                             <span>{msg.quote_price}</span>
                           </div>
+                          
+                          {/* 품명(Product Name) 명시 */}
+                          <div className="text-xs font-extrabold text-blue-300">
+                            Product Name: {msg.product_name || productName}
+                          </div>
+
                           <div className="text-[10px] text-slate-400 font-bold">MOQ: {msg.quote_moq}</div>
 
                           <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800">
@@ -324,7 +326,7 @@ export default function ChatRoomItem({
                                 onClick={() => onOpenDocModal(msg, room)}
                                 className="py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-[10px] rounded-lg shadow transition flex items-center justify-center gap-1 cursor-pointer"
                               >
-                                <span>Edit Trade Docs</span>
+                                <span>Edit Order Specs</span>
                               </button>
                             )}
                           </div>

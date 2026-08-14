@@ -35,7 +35,7 @@ const translateTextWithApi = async (text, targetLanguage) => {
   }
 };
 
-// Read Global Google Translate Cookie Helper
+// Global Google Translate Cookie Helper
 const getCookie = (name) => {
   if (typeof document === 'undefined') return null;
   const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
@@ -65,10 +65,7 @@ function ChatContent() {
   const [userRole, setUserRole] = useState('seller');
 
   const [rooms, setRooms] = useState([]);
-  
-  // ★ 2번 수정: 채팅 아코디언 기본값 접힘(null) 세팅
   const [activeRoomId, setActiveRoomId] = useState(null);
-
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
   const [loading, setLoading] = useState(true);
 
@@ -91,8 +88,9 @@ function ChatContent() {
   useEffect(() => { roomMessagesMapRef.current = roomMessagesMap; }, [roomMessagesMap]);
   useEffect(() => { activeRoomIdRef.current = activeRoomId; }, [activeRoomId]);
 
-  // Modals State
+  // Modal States & Quotation Form Fields
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+  const [quoteProductName, setQuoteProductName] = useState('Hydraulic Control Valve HV-300 Series'); // 품명 필드 추가
   const [quotePrice, setQuotePrice] = useState('145.00');
   const [quoteMoq, setQuoteMoq] = useState('500 Units');
   const [quoteNote, setQuoteNote] = useState('Includes FOB shipping to Incheon Port. Lead time 14 days.');
@@ -290,7 +288,6 @@ function ChatContent() {
     }
   };
 
-  // ★ 2번 수정: buyer_profiles & buyers 테이블 동시 스캔으로 contact_person 완벽 추출
   const fetchChatRoomsAndInit = async (currentUserObj, currentRole) => {
     try {
       if (!currentUserObj) {
@@ -315,13 +312,11 @@ function ChatContent() {
         const buyerUserIds = currentRoomsList.map((r) => r.buyer_id).filter(Boolean);
 
         if (buyerUserIds.length > 0) {
-          // 1) Scan buyer_profiles table
           const { data: buyerProfiles } = await supabase
             .from('buyer_profiles')
             .select('user_id, contact_person, company_name')
             .in('user_id', buyerUserIds);
 
-          // 2) Scan buyers table
           const { data: rawBuyers } = await supabase
             .from('buyers')
             .select('user_id, contact_person, company_name')
@@ -391,7 +386,7 @@ function ChatContent() {
         }
       }
 
-      // Handle Direct URL Parameters
+      // Direct URL Parameters
       if (paramCompany || paramTitle) {
         const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product Inquiry';
         const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Verified Korean Company';
@@ -452,7 +447,6 @@ function ChatContent() {
         }
 
         if (matchedRoom) {
-          // Open accordion only for direct URL parameters
           setActiveRoomId(matchedRoom.id);
           await markRoomMessagesAsRead(matchedRoom.id, currentRole);
         }
@@ -574,15 +568,19 @@ function ChatContent() {
     }
   };
 
-  // 4번 수정: 셀러의 공식 견적서 발송 함수
+  // ★ 품명(Product Name)을 포함한 견적서 전송
   const handleSendQuote = async () => {
     if (!activeRoomId) return;
 
     try {
+      const activeRoomObj = roomsRef.current.find(r => r.id === activeRoomId);
+      const targetProdName = quoteProductName || activeRoomObj?.product_title || activeRoomObj?.title || 'High Precision Industrial Component';
+
       const quoteMsgPayload = {
         room_id: activeRoomId,
         sender_id: user?.id ? user.id.toString() : 'guest_seller',
         sender_role: 'seller',
+        product_name: targetProdName, // 품명 영구 기록
         message: `[Official B2B Quotation Sent] ${quoteNote}`,
         translated_message: `[Official B2B Quotation Sent] ${quoteNote}`,
         is_quote: true,
@@ -717,19 +715,31 @@ function ChatContent() {
         )}
       </main>
 
-      {/* Modal Section */}
+      {/* Quotation Modal - 품명(Product Name) 입력 필드 추가 */}
       {isQuoteModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6">
             <div className="border-b border-slate-100 pb-3">
               <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
                 <FileText className="w-5 h-5 text-emerald-600" />
-                Create Official Wholesale Quote (RFQ)
+                Create Official Wholesale Quotation
               </h3>
-              <p className="text-xs text-slate-500 mt-1">Please enter unit price, MOQ, and terms for the global buyer.</p>
+              <p className="text-xs text-slate-500 mt-1">Please enter product name, unit price, MOQ, and terms for the buyer.</p>
             </div>
 
             <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Product Name (품명)</label>
+                <input
+                  type="text"
+                  value={quoteProductName}
+                  onChange={(e) => setQuoteProductName(e.target.value)}
+                  placeholder="e.g. Hydraulic Control Valve HV-300 Series"
+                  required
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Unit Price ($ USD)</label>
@@ -738,7 +748,7 @@ function ChatContent() {
                     value={quotePrice}
                     onChange={(e) => setQuotePrice(e.target.value)}
                     placeholder="145.00"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold"
                   />
                 </div>
 
@@ -749,7 +759,7 @@ function ChatContent() {
                     value={quoteMoq}
                     onChange={(e) => setQuoteMoq(e.target.value)}
                     placeholder="500 Units"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold"
                   />
                 </div>
               </div>
@@ -760,7 +770,7 @@ function ChatContent() {
                   rows={3}
                   value={quoteNote}
                   onChange={(e) => setQuoteNote(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
                 />
               </div>
             </div>
@@ -769,7 +779,7 @@ function ChatContent() {
               <button
                 type="button"
                 onClick={() => setIsQuoteModalOpen(false)}
-                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer"
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -777,7 +787,7 @@ function ChatContent() {
               <button
                 type="button"
                 onClick={handleSendQuote}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl shadow-md transition cursor-pointer"
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer"
               >
                 Send Quotation Card
               </button>
@@ -786,6 +796,7 @@ function ChatContent() {
         </div>
       )}
 
+      {/* Trade Document Generator Modal */}
       <TradeDocModal
         isOpen={isDocModalOpen}
         onClose={() => setIsQuoteDocModalOpen(false)}
