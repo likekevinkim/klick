@@ -116,6 +116,11 @@ export default function ChatRoomItem({
     }
   };
 
+  // 1번 수정: 바이어 이메일 대신 설정된 프로필 상호명/담당자 이름 표시
+  const partnerName = userRole === 'seller' 
+    ? (room.buyer_profile_name || room.buyer_name || 'Global Buyer') 
+    : (room.seller_name || room.company_name || 'Korean Manufacturer');
+
   return (
     <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm transition hover:border-blue-400">
       {/* 1. 대화방 아코디언 헤더 */}
@@ -127,7 +132,7 @@ export default function ChatRoomItem({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100 flex items-center gap-1">
               <Building2 className="w-3 h-3" />
-              {userRole === 'seller' ? room.buyer_name || 'Global Buyer' : room.seller_name || 'Korean Manufacturer'}
+              {partnerName}
             </span>
 
             {room.unread_count > 0 && (
@@ -138,12 +143,10 @@ export default function ChatRoomItem({
           </div>
 
           <h3 className="text-sm font-extrabold text-slate-900 line-clamp-1">
-            {room.product_title || 'B2B Trade Discussion'}
+            {room.product_title || room.title || 'B2B Trade Discussion'}
           </h3>
 
-          <p className="text-xs text-slate-500 line-clamp-1 font-medium">
-            {userRole === 'seller' ? room.buyer_name : room.seller_name}: "{room.last_message || '대화가 시작되었습니다.'}"
-          </p>
+          {/* 2번 수정: 두 번째 동그라미 미리보기 텍스트 라인 제거 */}
         </div>
 
         <div className="flex items-center gap-3">
@@ -197,11 +200,7 @@ export default function ChatRoomItem({
               messages.map((msg, index) => {
                 const isMine = msg.sender_role === userRole;
 
-                // ★ [양방향 AI 번역 표출 핵심 규칙]:
-                // 부모(page.jsx)가 "보는 사람" 기준으로 이미 방향을 맞춰서 translated_message를 계산해 줌:
-                //   - 내가 쓴 메시지(isMine)의 translated_message = 상대방 언어로 번역된 텍스트
-                //   - 상대방이 쓴 메시지의 translated_message = 내 언어로 번역된 텍스트
-                // 여기서는 원문과 번역문이 다를 때만 [ AI translate : ... ] 를 표출하면 됨
+                // 원문과 번역문이 다르고 번역문이 존재할 때 하단 AI 번역 줄 표출
                 const showTranslation = 
                   msg.translated_message && 
                   msg.translated_message.trim() !== '' && 
@@ -212,8 +211,9 @@ export default function ChatRoomItem({
                     key={msg.id || index}
                     className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} space-y-1`}
                   >
+                    {/* 3번 수정: 채팅 메시지 발신자 이름에 프로필 명칭 적용 */}
                     <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold px-1">
-                      <span>{isMine ? 'You' : msg.sender_role === 'seller' ? room.seller_name : room.buyer_name}</span>
+                      <span>{isMine ? 'You' : partnerName}</span>
                       <span>•</span>
                       <span>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}</span>
                     </div>
@@ -225,12 +225,12 @@ export default function ChatRoomItem({
                           : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
                       }`}
                     >
-                      {/* 1. 상단: 작성자가 입력한 [원문 텍스트] (예: "안녕하세요" 또는 "Hi, I need coffe") */}
+                      {/* 1. 상단: 작성자가 입력한 원문 텍스트 */}
                       {msg.message && (
                         <p className="leading-relaxed font-semibold whitespace-pre-wrap notranslate">{msg.message}</p>
                       )}
 
-                      {/* 2. 하단: 상대방 언어(또는 내 언어)로 번역된 [ AI translate : 번역문 ] */}
+                      {/* 2. 하단: 상대방 언어로 번역된 [ AI translate : 번역문 ] */}
                       {showTranslation && (
                         <div className={`pt-2 border-t text-[11px] font-bold space-y-0.5 notranslate ${
                           isMine ? 'border-blue-400/50 text-blue-100' : 'border-slate-100 text-blue-600'
@@ -391,12 +391,13 @@ export default function ChatRoomItem({
                 <ImageIcon className="w-4 h-4" />
               </button>
 
+              {/* 4번 수정: 입력창 힌트 문구 깔끔하게 변경 */}
               <input
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={`메시지 보내기 (${userRole === 'seller' ? room.buyer_name || '바이어' : room.seller_name || '셀러'})...`}
+                placeholder="메시지 보내기..."
                 className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white font-medium"
               />
 

@@ -17,7 +17,7 @@ import {
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-// 실시간 AI 번역 API 헬퍼 함수 (sl=auto: 원문 언어를 자동 감지해서 번역)
+// 실시간 AI 번역 API 헬퍼 함수
 const translateTextWithApi = async (text, targetLanguage) => {
   if (!text || !text.trim()) return text;
   try {
@@ -35,10 +35,7 @@ const translateTextWithApi = async (text, targetLanguage) => {
   }
 };
 
-// ★ 사이트 전역 구글 번역 위젯이 선택한 언어를 읽어오는 헬퍼
-// 구글 번역 위젯(Website Translator)은 보통 `googtrans` 쿠키에 "/원본언어/대상언어" 형식으로
-// 현재 선택된 언어를 저장함 (예: "/en/ko" → 사용자가 한국어를 선택함)
-// 쿠키를 못 찾을 경우 localStorage의 'googtrans' 키도 백업으로 확인함
+// 전역 구글 번역 쿠키 읽기 헬퍼
 const getCookie = (name) => {
   if (typeof document === 'undefined') return null;
   const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
@@ -49,7 +46,6 @@ const getSiteTranslateLang = (fallback) => {
   const raw = getCookie('googtrans') || (typeof window !== 'undefined' ? window.localStorage.getItem('googtrans') : null);
   if (!raw) return fallback;
 
-  // "/en/ko" -> ['en', 'ko'] / "/auto/ko" -> ['auto', 'ko']
   const parts = raw.split('/').filter(Boolean);
   const target = parts[1];
 
@@ -73,11 +69,10 @@ function ChatContent() {
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // 내 언어 설정 - 더 이상 드롭다운으로 직접 고르지 않고, 사이트 전역 구글 번역 위젯의
-  // 선택값을 자동으로 따라감 (기본값: 한국어)
+  // 내 언어 설정 - 사이트 전역 구글 번역 위젯의 선택값을 자동으로 추적
   const [targetLang, setTargetLang] = useState('ko');
 
-  // ★ 비동기 콜백(realtime 구독, setInterval 등) 안에서도 항상 최신 값을 참조하기 위한 ref들
+  // 비동기 콜백 안에서도 최신 값을 보장하는 ref
   const userRef = useRef(null);
   const userRoleRef = useRef('seller');
   const targetLangRef = useRef('ko');
@@ -111,15 +106,13 @@ function ChatContent() {
 
   const messagesEndRef = useRef(null);
 
-  // ★ 채팅방(room) 레코드에서 "상대방"의 언어를 읽어오는 헬퍼
-  // chat_rooms 테이블에 seller_lang / buyer_lang (text) 컬럼이 있어야 정확히 동작하며,
-  // 컬럼이 없거나 값이 비어있으면 기본값(seller=ko, buyer=en 상대)으로 대체됨
+  // 대화방(room) 레코드에서 상대방의 언어를 읽어오는 헬퍼
   const getOpponentLang = (room, role) => {
     if (role === 'seller') return room?.buyer_lang || 'en';
     return room?.seller_lang || 'ko';
   };
 
-  // ★ 사이트 전역 구글 번역 선택값을 1초 간격으로 감지해서 targetLang에 자동 반영
+  // 사이트 전역 구글 번역 선택값을 1초 간격으로 감지해서 targetLang에 자동 반영
   useEffect(() => {
     const detect = () => {
       const fallback = userRoleRef.current === 'seller' ? 'ko' : 'en';
@@ -134,13 +127,11 @@ function ChatContent() {
     return () => clearInterval(interval);
   }, []);
 
-  // ★ 감지된 내 언어(targetLang)를 chat_rooms의 내 역할 언어 컬럼에 자동 저장
-  // (상대방이 "내 언어"를 알아야 내가 보낸 메시지를 내 언어로 번역해서 보여줄 수 있기 때문)
+  // 감지된 내 언어(targetLang)를 chat_rooms의 내 역할 언어 컬럼에 자동 저장
   useEffect(() => {
     if (!user || rooms.length === 0) return;
     if (lastPersistedLangRef.current === targetLang) return;
     persistMyLang(targetLang);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetLang, rooms.length, user]);
 
   const persistMyLang = async (newLang) => {
@@ -155,10 +146,7 @@ function ChatContent() {
         .in('id', roomIds);
 
       if (error) {
-        console.error(
-          '언어 설정 저장 실패 (chat_rooms 테이블에 seller_lang / buyer_lang 컬럼이 있는지 확인하세요):',
-          error
-        );
+        console.error('언어 설정 저장 실패 (chat_rooms 테이블에 seller_lang / buyer_lang 컬럼 확인 필요):', error);
         return;
       }
 
@@ -173,7 +161,7 @@ function ChatContent() {
     setMounted(true);
     initChatSession();
 
-    // ★ 1. 실시간 메시지 수신 (Realtime Live Socket)
+    // 1. 실시간 메시지 수신 (Realtime Live Socket)
     const msgChannel = supabase
       .channel('public:chat_messages_page_realtime')
       .on(
@@ -185,7 +173,7 @@ function ChatContent() {
       )
       .subscribe();
 
-    // ★ 2. 실시간 대화방 수신 (상대방이 자신의 언어를 바꾸는 것도 여기로 감지됨)
+    // 2. 실시간 대화방 수신
     const roomChannel = supabase
       .channel('public:chat_rooms_page_realtime')
       .on(
@@ -194,7 +182,6 @@ function ChatContent() {
         async () => {
           if (userRef.current) {
             await fetchChatRoomsAndInit(userRef.current, userRoleRef.current);
-            // 상대방이 자기 언어를 바꿨을 수 있으니, 현재 열려있는 방의 번역을 다시 계산
             if (activeRoomIdRef.current) {
               refreshRoomTranslations(activeRoomIdRef.current);
             }
@@ -209,16 +196,13 @@ function ChatContent() {
     };
   }, [paramProductId, paramCompany, paramTitle, paramSellerId]);
 
-  // ★ 3. 활성화된 대화방이 바뀌거나, 내 언어(targetLang)가 바뀌면 해당 방의 메시지를 재번역
-  //    - 내가 쓴 메시지 -> 상대방 언어로
-  //    - 상대방이 쓴 메시지 -> 내 언어로
+  // 3. 활성화된 대화방이 바뀌거나 내 언어가 바뀌면 해당 방 메시지 재번역
   useEffect(() => {
     if (!activeRoomId) return;
     refreshRoomTranslations(activeRoomId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRoomId, targetLang]);
 
-  // ★ 4. 특정 방의 메시지 목록을 "보는 사람" 기준으로 양방향 번역해서 갱신
+  // 특정 방 메시지 스레드의 언어별 재번역 계산
   const refreshRoomTranslations = async (roomId) => {
     const room = roomsRef.current.find((r) => r.id === roomId);
     const role = userRoleRef.current;
@@ -227,14 +211,6 @@ function ChatContent() {
     const currentMsgs = roomMessagesMapRef.current[roomId] || [];
 
     if (currentMsgs.length === 0) return;
-
-    const needsWork = currentMsgs.some((msg) => {
-      if (!msg.message) return false;
-      const isMine = msg.sender_role === role;
-      const destLang = isMine ? opponentLang : myLang;
-      return msg._translatedFor !== destLang;
-    });
-    if (!needsWork) return;
 
     const translatedList = await Promise.all(
       currentMsgs.map(async (msg) => {
@@ -253,7 +229,7 @@ function ChatContent() {
     }));
   };
 
-  // ★ 5. 상대방(또는 나)이 보낸 실시간 라이브 메세지가 들어올 때 즉시 방향에 맞게 번역 적용
+  // 상대방이 보낸 실시간 라이브 메세지 수신 시 번역 처리
   const handleRealtimeMessageReceived = async (newMsg) => {
     const role = userRoleRef.current;
     const myLang = targetLangRef.current;
@@ -289,8 +265,6 @@ function ChatContent() {
     );
 
     window.dispatchEvent(new Event('klick_unread_chat_updated'));
-
-    // 방금 처리 못한 나머지 메시지(예: 상대방 언어 변경 등)까지 한 번 더 정리
     refreshRoomTranslations(newMsg.room_id);
   };
 
@@ -319,6 +293,7 @@ function ChatContent() {
     }
   };
 
+  // ★ 1번 수정 반영: 바이어 프로필의 contact person(담당자) 이름을 대화방 객체에 바인딩
   const fetchChatRoomsAndInit = async (currentUserObj, currentRole) => {
     try {
       if (!currentUserObj) {
@@ -339,7 +314,29 @@ function ChatContent() {
 
       let currentRoomsList = existingRooms || [];
 
+      // 바이어 프로필 담당자 이름 스캔 및 바인딩
       if (currentRoomsList.length > 0) {
+        const buyerUserIds = currentRoomsList.map((r) => r.buyer_id).filter(Boolean);
+
+        if (buyerUserIds.length > 0) {
+          const { data: buyerProfiles } = await supabase
+            .from('buyer_profiles')
+            .select('user_id, contact_person, company_name')
+            .in('user_id', buyerUserIds);
+
+          if (buyerProfiles) {
+            const profileMap = {};
+            buyerProfiles.forEach((p) => {
+              profileMap[p.user_id] = p.contact_person || p.company_name;
+            });
+
+            currentRoomsList = currentRoomsList.map((r) => ({
+              ...r,
+              buyer_profile_name: profileMap[r.buyer_id] || r.buyer_name || 'Global Buyer'
+            }));
+          }
+        }
+
         const roomIds = currentRoomsList.map((r) => r.id);
         const { data: msgData } = await supabase
           .from('chat_messages')
@@ -363,7 +360,6 @@ function ChatContent() {
             }
           });
 
-          // 기존 map은 새 배열이므로 이전에 계산해둔 번역 캐시(_translatedFor)를 최대한 이어받음
           const prevMap = roomMessagesMapRef.current;
           Object.keys(map).forEach((rid) => {
             const prevMsgs = prevMap[rid];
@@ -407,6 +403,8 @@ function ChatContent() {
             seller_name: companySeller,
             company_name: companySeller,
             title: companyTitle,
+            seller_lang: 'ko',
+            buyer_lang: 'en',
             last_message: `Hello! I am inquiring about [${companyTitle}].`,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -422,7 +420,6 @@ function ChatContent() {
             currentRoomsList = [matchedRoom, ...currentRoomsList];
 
             const initialMsgText = `Hello! I am inquiring about [${companyTitle}] from ${companySeller}. Could you please share the FOB pricing and official catalog?`;
-            // 새로 만들어진 방이라 seller_lang이 아직 없을 수 있으므로 기본값 'ko'로 대체
             const initialTrans = await translateTextWithApi(initialMsgText, matchedRoom.seller_lang || 'ko');
 
             const initialMsg = {
@@ -498,7 +495,7 @@ function ChatContent() {
     }
   };
 
-  // ★ 메시지 전송 시: 원문은 그대로 저장하고, 상대방이 실제로 설정해둔 언어로 미리 번역해서 함께 저장
+  // 메시지 전송 처리
   const handleSendMessage = async (targetRoomId, text, attachedFile) => {
     let finalFilePayload = null;
     if (attachedFile) {
@@ -519,8 +516,8 @@ function ChatContent() {
         room_id: targetRoomId,
         sender_id: user?.id ? user.id.toString() : 'guest_user',
         sender_role: userRole,
-        message: text, // 내가 입력한 원문 100% 보존
-        translated_message: autoTrans, // 상대방의 현재 언어 설정 기준 번역
+        message: text,
+        translated_message: autoTrans,
         is_quote: false,
         is_read: false,
         file: finalFilePayload,
