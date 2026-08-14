@@ -17,7 +17,7 @@ import {
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-// 실시간 AI 번역 API 헬퍼 함수 (sl=auto: 원문 언어 자동 감지)
+// Real-time AI Translation API Helper
 const translateTextWithApi = async (text, targetLanguage) => {
   if (!text || !text.trim()) return text;
   try {
@@ -35,7 +35,7 @@ const translateTextWithApi = async (text, targetLanguage) => {
   }
 };
 
-// 사이트 전역 구글 번역 위젯 선택값 가져오기 헬퍼
+// Global Google Translate Cookie Helper
 const getCookie = (name) => {
   if (typeof document === 'undefined') return null;
   const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
@@ -65,17 +65,20 @@ function ChatContent() {
   const [userRole, setUserRole] = useState('seller');
 
   const [rooms, setRooms] = useState([]);
+  
+  // ★ 2번 수정: 아코디언 기본값을 접힘(null)으로 세팅하여 진입 시 접혀있도록 보장
   const [activeRoomId, setActiveRoomId] = useState(null);
+
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // 내 언어 설정 - 전역 구글 번역 위젯 선택값 추적
-  const [targetLang, setTargetLang] = useState('ko');
+  // 5번 수정: 기본 언어 영어(en) 설정
+  const [targetLang, setTargetLang] = useState('en');
 
-  // 비동기 콜백 안에서도 최신 값을 보장하는 ref들
+  // Ref snapshots to avoid stale closures
   const userRef = useRef(null);
   const userRoleRef = useRef('seller');
-  const targetLangRef = useRef('ko');
+  const targetLangRef = useRef('en');
   const roomsRef = useRef([]);
   const roomMessagesMapRef = useRef({});
   const activeRoomIdRef = useRef(null);
@@ -88,7 +91,7 @@ function ChatContent() {
   useEffect(() => { roomMessagesMapRef.current = roomMessagesMap; }, [roomMessagesMap]);
   useEffect(() => { activeRoomIdRef.current = activeRoomId; }, [activeRoomId]);
 
-  // 모달 상태
+  // Modal States
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [quotePrice, setQuotePrice] = useState('145.00');
   const [quoteMoq, setQuoteMoq] = useState('500 Units');
@@ -106,13 +109,11 @@ function ChatContent() {
 
   const messagesEndRef = useRef(null);
 
-  // 대화방(room) 레코드에서 상대방의 언어를 읽어오는 헬퍼
   const getOpponentLang = (room, role) => {
     if (role === 'seller') return room?.buyer_lang || 'en';
     return room?.seller_lang || 'ko';
   };
 
-  // 사이트 전역 구글 번역 선택값을 1초 간격으로 감지해서 targetLang에 자동 반영
   useEffect(() => {
     const detect = () => {
       const fallback = userRoleRef.current === 'seller' ? 'ko' : 'en';
@@ -127,7 +128,6 @@ function ChatContent() {
     return () => clearInterval(interval);
   }, []);
 
-  // 감지된 내 언어(targetLang)를 chat_rooms의 내 역할 언어 컬럼에 자동 저장
   useEffect(() => {
     if (!user || rooms.length === 0) return;
     if (lastPersistedLangRef.current === targetLang) return;
@@ -146,7 +146,7 @@ function ChatContent() {
         .in('id', roomIds);
 
       if (error) {
-        console.error('언어 설정 저장 실패 (chat_rooms 테이블에 seller_lang / buyer_lang 컬럼 확인 필요):', error);
+        console.error('Failed to persist language preference in DB:', error);
         return;
       }
 
@@ -161,7 +161,7 @@ function ChatContent() {
     setMounted(true);
     initChatSession();
 
-    // 1. 실시간 메시지 수신 (Realtime Live Socket)
+    // 1. Realtime Messages Socket
     const msgChannel = supabase
       .channel('public:chat_messages_page_realtime')
       .on(
@@ -173,7 +173,7 @@ function ChatContent() {
       )
       .subscribe();
 
-    // 2. 실시간 대화방 수신
+    // 2. Realtime Rooms Socket
     const roomChannel = supabase
       .channel('public:chat_rooms_page_realtime')
       .on(
@@ -196,13 +196,11 @@ function ChatContent() {
     };
   }, [paramProductId, paramCompany, paramTitle, paramSellerId]);
 
-  // 3. 활성화된 대화방이 바뀌거나 내 언어가 바뀌면 해당 방 메시지 재번역
   useEffect(() => {
     if (!activeRoomId) return;
     refreshRoomTranslations(activeRoomId);
   }, [activeRoomId, targetLang]);
 
-  // 특정 방 메시지 스레드의 언어별 재번역 계산
   const refreshRoomTranslations = async (roomId) => {
     const room = roomsRef.current.find((r) => r.id === roomId);
     const role = userRoleRef.current;
@@ -229,7 +227,6 @@ function ChatContent() {
     }));
   };
 
-  // 상대방이 보낸 실시간 라이브 메세지 수신 시 번역 처리
   const handleRealtimeMessageReceived = async (newMsg) => {
     const role = userRoleRef.current;
     const myLang = targetLangRef.current;
@@ -293,7 +290,7 @@ function ChatContent() {
     }
   };
 
-  // 바이어 프로필의 contact_person(담당자 이름) 조회를 통한 이름 설정
+  // ★ 1번 수정: buyer_profiles & buyers 테이블 동시 스캔으로 contact_person 완벽 추출
   const fetchChatRoomsAndInit = async (currentUserObj, currentRole) => {
     try {
       if (!currentUserObj) {
@@ -318,22 +315,36 @@ function ChatContent() {
         const buyerUserIds = currentRoomsList.map((r) => r.buyer_id).filter(Boolean);
 
         if (buyerUserIds.length > 0) {
+          // 1) buyer_profiles 스캔
           const { data: buyerProfiles } = await supabase
             .from('buyer_profiles')
             .select('user_id, contact_person, company_name')
             .in('user_id', buyerUserIds);
 
-          if (buyerProfiles) {
-            const profileMap = {};
-            buyerProfiles.forEach((p) => {
-              profileMap[p.user_id] = p.contact_person || p.company_name;
-            });
+          // 2) buyers 스캔
+          const { data: rawBuyers } = await supabase
+            .from('buyers')
+            .select('user_id, contact_person, company_name')
+            .in('user_id', buyerUserIds);
 
-            currentRoomsList = currentRoomsList.map((r) => ({
-              ...r,
-              buyer_profile_name: profileMap[r.buyer_id] || r.buyer_name || 'Global Buyer'
-            }));
-          }
+          const profileMap = {};
+
+          (buyerProfiles || []).forEach((p) => {
+            if (p.contact_person) profileMap[p.user_id] = p.contact_person;
+            else if (p.company_name) profileMap[p.user_id] = p.company_name;
+          });
+
+          (rawBuyers || []).forEach((b) => {
+            if (!profileMap[b.user_id]) {
+              if (b.contact_person) profileMap[b.user_id] = b.contact_person;
+              else if (b.company_name) profileMap[b.user_id] = b.company_name;
+            }
+          });
+
+          currentRoomsList = currentRoomsList.map((r) => ({
+            ...r,
+            buyer_profile_name: profileMap[r.buyer_id] || r.buyer_name || 'Global Buyer'
+          }));
         }
 
         const roomIds = currentRoomsList.map((r) => r.id);
@@ -441,14 +452,11 @@ function ChatContent() {
         }
 
         if (matchedRoom) {
+          // URL 직접 진입 문의 건만 자동 오픈
           setActiveRoomId(matchedRoom.id);
           await markRoomMessagesAsRead(matchedRoom.id, currentRole);
         }
       } 
-      else if (currentRoomsList.length > 0 && !activeRoomIdRef.current) {
-        setActiveRoomId(currentRoomsList[0].id);
-        await markRoomMessagesAsRead(currentRoomsList[0].id, currentRole);
-      }
 
       setRooms(currentRoomsList);
       window.dispatchEvent(new Event('klick_unread_chat_updated'));
@@ -494,7 +502,6 @@ function ChatContent() {
     }
   };
 
-  // 메시지 전송 처리
   const handleSendMessage = async (targetRoomId, text, attachedFile) => {
     let finalFilePayload = null;
     if (attachedFile) {
@@ -576,7 +583,7 @@ function ChatContent() {
         sender_id: user?.id ? user.id.toString() : 'guest_seller',
         sender_role: 'seller',
         message: `[Official B2B Quote Sent] ${quoteNote}`,
-        translated_message: `[공식 B2B 견적서 발송] ${quoteNote}`,
+        translated_message: `[Official B2B Quotation Sent] ${quoteNote}`,
         is_quote: true,
         is_read: false,
         quote_price: `${quotePrice} USD / Unit`,
@@ -709,7 +716,7 @@ function ChatContent() {
         )}
       </main>
 
-      {/* 모달 구역 */}
+      {/* Modal Section */}
       {isQuoteModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6">
