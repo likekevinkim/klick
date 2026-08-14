@@ -17,7 +17,7 @@ import {
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-// 실시간 AI 번역 API 헬퍼 함수
+// 실시간 AI 번역 API 헬퍼 함수 (sl=auto: 원문 언어 자동 감지)
 const translateTextWithApi = async (text, targetLanguage) => {
   if (!text || !text.trim()) return text;
   try {
@@ -35,7 +35,7 @@ const translateTextWithApi = async (text, targetLanguage) => {
   }
 };
 
-// 전역 구글 번역 쿠키 읽기 헬퍼
+// 사이트 전역 구글 번역 위젯 선택값 가져오기 헬퍼
 const getCookie = (name) => {
   if (typeof document === 'undefined') return null;
   const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
@@ -69,10 +69,10 @@ function ChatContent() {
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // 내 언어 설정 - 사이트 전역 구글 번역 위젯의 선택값을 자동으로 추적
+  // 내 언어 설정 - 전역 구글 번역 위젯 선택값 추적
   const [targetLang, setTargetLang] = useState('ko');
 
-  // 비동기 콜백 안에서도 최신 값을 보장하는 ref
+  // 비동기 콜백 안에서도 최신 값을 보장하는 ref들
   const userRef = useRef(null);
   const userRoleRef = useRef('seller');
   const targetLangRef = useRef('ko');
@@ -293,7 +293,7 @@ function ChatContent() {
     }
   };
 
-  // ★ 1번 수정 반영: 바이어 프로필의 contact person(담당자) 이름을 대화방 객체에 바인딩
+  // 바이어 프로필의 contact_person(담당자 이름) 조회를 통한 이름 설정
   const fetchChatRoomsAndInit = async (currentUserObj, currentRole) => {
     try {
       if (!currentUserObj) {
@@ -314,7 +314,6 @@ function ChatContent() {
 
       let currentRoomsList = existingRooms || [];
 
-      // 바이어 프로필 담당자 이름 스캔 및 바인딩
       if (currentRoomsList.length > 0) {
         const buyerUserIds = currentRoomsList.map((r) => r.buyer_id).filter(Boolean);
 

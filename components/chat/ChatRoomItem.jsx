@@ -116,7 +116,7 @@ export default function ChatRoomItem({
     }
   };
 
-  // 1번 수정: 바이어 이메일 대신 설정된 프로필 상호명/담당자 이름 표시
+  // 바이어 이메일 아이디 대신 바이어 프로필 담당자 이름/상호명 표시
   const partnerName = userRole === 'seller' 
     ? (room.buyer_profile_name || room.buyer_name || 'Global Buyer') 
     : (room.seller_name || room.company_name || 'Korean Manufacturer');
@@ -145,8 +145,6 @@ export default function ChatRoomItem({
           <h3 className="text-sm font-extrabold text-slate-900 line-clamp-1">
             {room.product_title || room.title || 'B2B Trade Discussion'}
           </h3>
-
-          {/* 2번 수정: 두 번째 동그라미 미리보기 텍스트 라인 제거 */}
         </div>
 
         <div className="flex items-center gap-3">
@@ -190,7 +188,7 @@ export default function ChatRoomItem({
             </span>
           </div>
 
-          {/* 대화 메시지 내역 스크롤 박스 (notranslate 속성으로 브라우저의 무단 텍스트 치환 방지) */}
+          {/* 대화 메시지 내역 스크롤 박스 (notranslate 속성으로 브라우저 무단 변형 차단) */}
           <div className="max-h-[380px] overflow-y-auto space-y-3.5 pr-2 notranslate">
             {messages.length === 0 ? (
               <div className="text-center py-8 text-xs text-slate-400 font-medium">
@@ -211,7 +209,6 @@ export default function ChatRoomItem({
                     key={msg.id || index}
                     className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} space-y-1`}
                   >
-                    {/* 3번 수정: 채팅 메시지 발신자 이름에 프로필 명칭 적용 */}
                     <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold px-1">
                       <span>{isMine ? 'You' : partnerName}</span>
                       <span>•</span>
@@ -225,7 +222,7 @@ export default function ChatRoomItem({
                           : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'
                       }`}
                     >
-                      {/* 1. 상단: 작성자가 입력한 원문 텍스트 */}
+                      {/* 1. 상단: 원문 텍스트 (100% 원본 보존) */}
                       {msg.message && (
                         <p className="leading-relaxed font-semibold whitespace-pre-wrap notranslate">{msg.message}</p>
                       )}
@@ -391,13 +388,13 @@ export default function ChatRoomItem({
                 <ImageIcon className="w-4 h-4" />
               </button>
 
-              {/* 4번 수정: 입력창 힌트 문구 깔끔하게 변경 */}
+              {/* 입력창 placeholder 완전히 제거 */}
               <input
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="메시지 보내기..."
+                placeholder=""
                 className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white font-medium"
               />
 
