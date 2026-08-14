@@ -1,9 +1,10 @@
 // app/buyer/profile/page.jsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Header from '@/components/Header';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   Building2, 
   Globe, 
@@ -22,19 +23,40 @@ import {
   X,
   Loader2,
   ArrowRight,
-  Mail
+  Mail,
+  Plus,
+  Briefcase,
+  Layers
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function BuyerProfileHubPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <div className="flex items-center gap-2 text-slate-600 text-xs font-bold">
+            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+            <span>Loading KLICK Buyer Sourcing Hub...</span>
+          </div>
+        </div>
+      }
+    >
+      <BuyerProfileContent />
+    </Suspense>
+  );
+}
+
+function BuyerProfileContent() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
   
-  // 편집 모드 토글 상태 (기본값: false - 조회 모드)
+  // 편집 모드 토글 상태
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  // 바이어 프로필 상태값
-  const [buyerName, setBuyerName] = useState('John Smith');
+  // 바이어 프로필 상태값 (2번 수정: Contact Person 연동 / 3번 수정: Company Name 연동)
+  const [contactPerson, setContactPerson] = useState('Kevin');
   const [companyName, setCompanyName] = useState('Global Sourcing LLC');
   const [country, setCountry] = useState('United States');
   const [businessType, setBusinessType] = useState('Wholesaler / Distributor');
@@ -43,11 +65,20 @@ export default function BuyerProfileHubPage() {
   const [description, setDescription] = useState('Leading North American importer and wholesale distributor specializing in Korean high-precision industrial components and hydraulic machinery parts.');
   const [email, setEmail] = useState('john.smith@globalsourcingllc.com');
 
-  // 바이어가 제출한 실제 RFQ 내역 (DB 연동)
+  // 바이어가 제출한 실제 RFQ 내역
   const [myRfqs, setMyRfqs] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // 1번 수정: 신규 RFQ 작성 모달 상태
+  const [isRfqModalOpen, setIsRfqModalOpen] = useState(false);
+  const [isSubmittingRfq, setIsSubmittingRfq] = useState(false);
+  const [rfqTitle, setRfqTitle] = useState('');
+  const [rfqCategory, setRfqCategory] = useState('Industrial Machinery');
+  const [rfqTargetPrice, setRfqTargetPrice] = useState('$130 - $145 USD');
+  const [rfqMoq, setRfqMoq] = useState('500 Units');
+  const [rfqDetails, setRfqDetails] = useState('');
 
   useEffect(() => {
     setMounted(true);
@@ -67,58 +98,64 @@ export default function BuyerProfileHubPage() {
         setEmail(buyerEmail);
 
         const meta = session.user.user_metadata || {};
-        if (meta.buyer_name) setBuyerName(meta.buyer_name);
+        if (meta.contact_person || meta.buyer_name) {
+          setContactPerson(meta.contact_person || meta.buyer_name);
+        }
         if (meta.company_name) setCompanyName(meta.company_name);
         if (meta.country) setCountry(meta.country);
       }
 
       // 1. Supabase에서 바이어 프로필 조회
-      const { data: profile } = await supabase
-        .from('buyer_profiles')
-        .select('*')
-        .limit(1)
-        .single();
+      const userIdStr = session?.user?.id ? session.user.id.toString() : null;
+      let query = supabase.from('buyer_profiles').select('*');
+      if (userIdStr) {
+        query = query.eq('user_id', userIdStr);
+      }
+
+      const { data: profile } = await query.maybeSingle();
 
       if (profile) {
-        setBuyerName(profile.buyer_name || buyerName);
+        setContactPerson(profile.contact_person || profile.buyer_name || contactPerson);
         setCompanyName(profile.company_name || companyName);
         setCountry(profile.country || country);
         setBusinessType(profile.business_type || businessType);
         setWebsiteUrl(profile.website_url || websiteUrl);
-        setInterestCategory(profile.interest_category || interestCategory);
+        setInterestCategory(profile.interest_category || profile.target_category || interestCategory);
         setDescription(profile.description || description);
       }
 
-      // 2. Supabase DB 'rfqs' 테이블에서 해당 바이어의 실제 RFQ 목록 연동
-      const { data: rfqList } = await supabase
-        .from('rfqs')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // 2. Supabase DB 'public_rfqs' 또는 'rfqs' 테이블에서 해당 바이어의 실제 RFQ 목록 연동
+      let rfqQuery = supabase.from('public_rfqs').select('*');
+      if (userIdStr) {
+        rfqQuery = rfqQuery.eq('user_id', userIdStr);
+      }
+
+      const { data: rfqList } = await rfqQuery.order('created_at', { ascending: false });
 
       if (rfqList && rfqList.length > 0) {
         setMyRfqs(rfqList);
       } else {
-        // 백업 보장 샘플 데이터
+        // 샘플 RFQ 데이터
         setMyRfqs([
           {
             id: '1',
-            title: 'Request for Quotation: Hydraulic Control Valve HV-300',
+            title: 'Request for Quotation: Hydraulic Control Valve HV-300 Series',
             category: 'Industrial Machinery',
-            target_quantity: '500 Units',
+            moq: '500 Units',
             target_price: '$130 - $145 USD',
             status: 'Active',
-            quotes_count: 3,
-            created_at: new Date().toISOString(),
+            quote_count: 3,
+            created_at: '2026-08-14T09:00:00.000Z',
           },
           {
             id: '2',
             title: 'Organic K-Beauty Repair Serum (Private Label OEM)',
             category: 'K-Beauty & Cosmetics',
-            target_quantity: '2,000 Units',
+            moq: '2,000 Units',
             target_price: '$10 - $12 USD',
             status: 'Quoted',
-            quotes_count: 5,
-            created_at: new Date(Date.now() - 86400000).toISOString(),
+            quote_count: 5,
+            created_at: '2026-08-13T14:00:00.000Z',
           },
         ]);
       }
@@ -129,33 +166,91 @@ export default function BuyerProfileHubPage() {
     }
   };
 
+  // 프로필 정보 저장
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSaving(true);
     setSaveSuccess(false);
 
     try {
+      const userIdStr = user?.id ? user.id.toString() : 'guest_buyer';
+
       const payload = {
-        buyer_name: buyerName,
+        user_id: userIdStr,
+        contact_person: contactPerson,
+        buyer_name: contactPerson,
         company_name: companyName,
         country: country,
         business_type: businessType,
         website_url: websiteUrl,
         interest_category: interestCategory,
+        target_category: interestCategory,
         description: description,
+        updated_at: new Date().toISOString()
       };
 
-      await supabase.from('buyer_profiles').upsert([payload]);
+      await supabase.from('buyer_profiles').upsert([payload], { onConflict: 'user_id' });
 
       setSaveSuccess(true);
       setTimeout(() => {
         setSaveSuccess(false);
-        setIsEditModalOpen(false); // 저장 완료 후 모달 닫기
+        setIsEditModalOpen(false);
       }, 1200);
     } catch (error) {
       console.error('Failed to save buyer profile:', error);
+      alert('Failed to save profile settings: ' + (error.message || 'Database error'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  // 1번 수정: 신규 RFQ 작성 및 게시 처리
+  const handleCreateRfq = async (e) => {
+    e.preventDefault();
+    if (!user) {
+      alert('Login is required to post an RFQ.');
+      router.push('/login');
+      return;
+    }
+
+    try {
+      setIsSubmittingRfq(true);
+      const userIdStr = user.id.toString();
+
+      const newRfqPayload = {
+        user_id: userIdStr,
+        buyer_name: contactPerson || 'Kevin',
+        company_name: companyName || 'Global Buyer',
+        title: rfqTitle,
+        category: rfqCategory,
+        target_price: rfqTargetPrice,
+        moq: rfqMoq,
+        details: rfqDetails,
+        quote_count: 0,
+        created_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from('public_rfqs')
+        .insert([newRfqPayload])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setMyRfqs((prev) => [data, ...prev]);
+      }
+
+      setIsRfqModalOpen(false);
+      setRfqTitle('');
+      setRfqDetails('');
+      alert('New public RFQ posted successfully to Korean Suppliers!');
+    } catch (err) {
+      console.error('Create RFQ error:', err);
+      alert('Failed to publish RFQ: ' + (err.message || 'Database error'));
+    } finally {
+      setIsSubmittingRfq(false);
     }
   };
 
@@ -173,16 +268,18 @@ export default function BuyerProfileHubPage() {
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-3 max-w-2xl">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-bold border border-blue-500/20">
-                <ShieldCheck className="w-3.5 h-3.5" /> Verified Global Buyer Sourcing Hub
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Verified Global Buyer Sourcing Hub
               </span>
 
               <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight">
-                {companyName} ({country})
+                {companyName ? `${companyName} (${country})` : `Buyer (${country})`}
               </h1>
 
               <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 font-medium">
-                <span className="flex items-center gap-1">
-                  <User className="w-4 h-4 text-blue-400" /> {buyerName}
+                {/* 2번 수정: Contact Person (Kevin) 연동 */}
+                <span className="flex items-center gap-1.5">
+                  <User className="w-4 h-4 text-blue-400" />
+                  <span>Contact Person: <strong className="text-white">{contactPerson}</strong></span>
                 </span>
                 <span className="flex items-center gap-1">
                   <MapPin className="w-4 h-4 text-emerald-400" /> {country}
@@ -215,7 +312,7 @@ export default function BuyerProfileHubPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* 1. 바이어 회사 정보 프로필 카드 (기본 조회 화면) */}
+          {/* 1. 바이어 회사 정보 프로필 카드 */}
           <div className="lg:col-span-7 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
             <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
               <div>
@@ -226,7 +323,7 @@ export default function BuyerProfileHubPage() {
                 <p className="text-xs text-slate-500 mt-1">Official information verified by Korean suppliers.</p>
               </div>
 
-              {/* 세팅(편집 모드 전환) 버튼 */}
+              {/* Edit Settings 버튼 */}
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(true)}
@@ -237,32 +334,48 @@ export default function BuyerProfileHubPage() {
               </button>
             </div>
 
-            {/* 회사 정보 리드온리 데이터 그리드 */}
+            {/* 회사 정보 데이터 그리드 */}
             <div className="grid grid-cols-2 gap-4 text-xs">
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold mb-0.5">Contact Person</span>
-                <span className="font-extrabold text-slate-900 text-sm flex items-center gap-1">
-                  <User className="w-3.5 h-3.5 text-blue-600" />
-                  {buyerName}
+              {/* 2번 수정: Contact Person 필드 표출 */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Contact Person</span>
+                <span className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
+                  <User className="w-4 h-4 text-blue-600" />
+                  {contactPerson}
                 </span>
               </div>
 
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold mb-0.5">Base Country</span>
-                <span className="font-extrabold text-slate-900 text-sm flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-blue-600" />
+              {/* 3번 수정: Company Name (선택값) 필드 추가 */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Company Name (Optional)</span>
+                <span className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
+                  <Building2 className="w-4 h-4 text-blue-600" />
+                  {companyName || 'Not Specified'}
+                </span>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Base Country</span>
+                <span className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-blue-600" />
                   {country}
                 </span>
               </div>
 
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold mb-0.5">Business Type</span>
-                <span className="font-bold text-slate-800">{businessType}</span>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Business Type</span>
+                <span className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
+                  <Briefcase className="w-4 h-4 text-blue-600" />
+                  {businessType}
+                </span>
               </div>
 
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold mb-0.5">Target Category</span>
-                <span className="font-bold text-blue-600">{interestCategory}</span>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1 col-span-2">
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Target Category</span>
+                <span className="font-extrabold text-blue-600 text-sm flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-blue-600" />
+                  {interestCategory}
+                </span>
               </div>
             </div>
 
@@ -285,13 +398,13 @@ export default function BuyerProfileHubPage() {
             {/* 바이어 회사 상세 개요 */}
             <div className="space-y-2 pt-2">
               <span className="text-xs font-extrabold text-slate-900 block">Sourcing Scope & Company Description</span>
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-600 leading-relaxed">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-600 leading-relaxed font-medium">
                 {description || 'No detailed description provided.'}
               </div>
             </div>
           </div>
 
-          {/* 2. ★ DB 실시간 연동된 My Active RFQs 현황 카드 */}
+          {/* 2. My Active RFQs 현황 카드 및 1번 수정: RFQ 요청 버튼 */}
           <div className="lg:col-span-5 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
             <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
               <div>
@@ -302,13 +415,15 @@ export default function BuyerProfileHubPage() {
                 <p className="text-xs text-slate-500 mt-1">Purchasing demands you requested to Korean suppliers.</p>
               </div>
 
-              <Link
-                href="/rfq"
-                className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition"
-                title="Post New RFQ"
+              {/* 1번 수정: 바이어가 새 RFQ(견적 요청)를 등록하는 핵심 플러스 버튼 */}
+              <button
+                type="button"
+                onClick={() => setIsRfqModalOpen(true)}
+                className="w-9 h-9 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-full flex items-center justify-center transition cursor-pointer shadow-sm"
+                title="Post New RFQ Request"
               >
-                <PlusCircle className="w-5 h-5" />
-              </Link>
+                <Plus className="w-5 h-5" />
+              </button>
             </div>
 
             <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
@@ -318,15 +433,17 @@ export default function BuyerProfileHubPage() {
                   <p className="text-xs text-slate-400">Loading active RFQs from database...</p>
                 </div>
               ) : myRfqs.length === 0 ? (
-                <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-3">
+                <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-3 p-6">
                   <FileText className="w-10 h-10 text-slate-300 mx-auto stroke-1" />
                   <p className="text-xs text-slate-500 font-semibold">No active RFQs posted yet.</p>
-                  <Link
-                    href="/rfq"
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:underline"
+                  <button
+                    type="button"
+                    onClick={() => setIsRfqModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white font-extrabold text-xs rounded-xl shadow hover:bg-emerald-500 transition cursor-pointer"
                   >
-                    <span>Browse Public RFQ Board ➡️</span>
-                  </Link>
+                    <Plus className="w-4 h-4" />
+                    <span>Post First Public RFQ</span>
+                  </button>
                 </div>
               ) : (
                 myRfqs.map((rfq) => (
@@ -336,7 +453,7 @@ export default function BuyerProfileHubPage() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
-                        {rfq.category}
+                        {rfq.category || 'Manufacturing'}
                       </span>
                       <span className="text-[10px] text-slate-400 flex items-center gap-1">
                         <Clock className="w-3 h-3" /> {new Date(rfq.created_at || Date.now()).toLocaleDateString()}
@@ -346,12 +463,12 @@ export default function BuyerProfileHubPage() {
                     <h4 className="text-xs font-extrabold text-slate-900 line-clamp-1">{rfq.title}</h4>
 
                     <p className="text-[11px] text-slate-500">
-                      Target Price: <span className="font-bold text-emerald-600">{rfq.target_price || rfq.price || '$145 USD'}</span> | MOQ: <span className="font-bold text-slate-800">{rfq.target_quantity || rfq.quantity || '500 Units'}</span>
+                      Target Price: <span className="font-bold text-emerald-600">{rfq.target_price || rfq.price || '$145 USD'}</span> | MOQ: <span className="font-bold text-slate-800">{rfq.target_quantity || rfq.moq || '500 Units'}</span>
                     </p>
 
                     <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
                       <span className="font-bold text-blue-600 bg-blue-50/80 px-2 py-0.5 rounded-md">
-                        {rfq.quotes_count || 3} Factory Quotes
+                        {rfq.quote_count || rfq.quotes_count || 3} Factory Quotes
                       </span>
 
                       <Link
@@ -366,11 +483,22 @@ export default function BuyerProfileHubPage() {
                 ))
               )}
             </div>
+
+            {/* 1번 수정: 하단 신규 RFQ 요청 버튼 */}
+            <button
+              type="button"
+              onClick={() => setIsRfqModalOpen(true)}
+              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-2xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Post New RFQ Request to Factories</span>
+            </button>
           </div>
+
         </div>
       </main>
 
-      {/* 3. [세팅 버튼 클릭 시 팝업] 바이어 정보 수정 팝업 모달 */}
+      {/* 모달 1: Buyer Profile Settings Edit Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-fadeIn">
@@ -392,38 +520,41 @@ export default function BuyerProfileHubPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveProfile} className="space-y-4">
+            <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
+                {/* 2번 수정: Contact Person 필드 */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Contact Person Name</label>
+                  <label className="block font-bold text-slate-700 mb-1">Contact Person (Real Name)</label>
                   <input
                     type="text"
                     required
-                    value={buyerName}
-                    onChange={(e) => setBuyerName(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    value={contactPerson}
+                    onChange={(e) => setContactPerson(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
 
+                {/* 3번 수정: Company Name (선택값) 필드 */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Company Name</label>
+                  <label className="block font-bold text-slate-700 mb-1">Company Name (Optional)</label>
                   <input
                     type="text"
-                    required
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    placeholder="e.g. Global Sourcing LLC"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Country / Region</label>
+                  <label className="block font-bold text-slate-700 mb-1">Country / Region</label>
+
                   <select
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   >
                     <option value="United States">United States</option>
                     <option value="China">China</option>
@@ -436,11 +567,11 @@ export default function BuyerProfileHubPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Business Type</label>
+                  <label className="block font-bold text-slate-700 mb-1">Business Type</label>
                   <select
                     value={businessType}
                     onChange={(e) => setBusinessType(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   >
                     <option value="Wholesaler / Distributor">Wholesaler / Distributor</option>
                     <option value="Import Agent">Import Agent</option>
@@ -451,22 +582,22 @@ export default function BuyerProfileHubPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Official Website URL</label>
+                <label className="block font-bold text-slate-700 mb-1">Official Website URL</label>
                 <input
                   type="url"
                   value={websiteUrl}
                   onChange={(e) => setWebsiteUrl(e.target.value)}
                   placeholder="https://company.com"
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Main Target Category</label>
+                <label className="block font-bold text-slate-700 mb-1">Main Target Category</label>
                 <select
                   value={interestCategory}
                   onChange={(e) => setInterestCategory(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 >
                   <option value="Industrial Machinery">Industrial Machinery & Parts</option>
                   <option value="K-Beauty & Cosmetics">K-Beauty & Cosmetics</option>
@@ -477,18 +608,18 @@ export default function BuyerProfileHubPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Company Description</label>
+                <label className="block font-bold text-slate-700 mb-1">Sourcing Scope & Company Description</label>
                 <textarea
                   rows={4}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none leading-relaxed"
+                  className="w-full p-3 rounded-xl border border-slate-300 font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none leading-relaxed"
                 />
               </div>
 
               {saveSuccess && (
                 <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-xl flex items-center gap-2 font-semibold">
-                  <CheckCircle2 className="w-4 h-4" /> Profile updated successfully!
+                  <CheckCircle2 className="w-4 h-4" /> Profile settings updated successfully!
                 </div>
               )}
 
@@ -508,6 +639,108 @@ export default function BuyerProfileHubPage() {
                 >
                   <Save className="w-4 h-4" />
                   <span>{saving ? 'Saving...' : 'Save Changes'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 모달 2: 1번 수정 - Post New Public RFQ Request Modal */}
+      {isRfqModalOpen && (
+        <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <Plus className="w-4 h-4 text-emerald-600" />
+                Post New Public RFQ Request
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsRfqModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateRfq} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-700 font-extrabold mb-1">RFQ Title / Product Required</label>
+                <input
+                  type="text"
+                  value={rfqTitle}
+                  onChange={(e) => setRfqTitle(e.target.value)}
+                  placeholder="e.g. Request for Quotation: CNC Machined Stainless Steel Parts"
+                  required
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-extrabold mb-1">Target Category</label>
+                  <select
+                    value={rfqCategory}
+                    onChange={(e) => setRfqCategory(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium bg-white"
+                  >
+                    <option value="Industrial Machinery">Industrial Machinery</option>
+                    <option value="K-Beauty & Cosmetics">K-Beauty & Cosmetics</option>
+                    <option value="K-Food & Beverages">K-Food & Beverages</option>
+                    <option value="Electronics & Smart IT">Electronics & Smart IT</option>
+                    <option value="General Manufacturing">General Manufacturing</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-extrabold mb-1">Target FOB Price Range</label>
+                  <input
+                    type="text"
+                    value={rfqTargetPrice}
+                    onChange={(e) => setRfqTargetPrice(e.target.value)}
+                    placeholder="$130 - $145 USD"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-extrabold mb-1">Minimum Order Quantity (MOQ)</label>
+                <input
+                  type="text"
+                  value={rfqMoq}
+                  onChange={(e) => setRfqMoq(e.target.value)}
+                  placeholder="500 Units"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-extrabold mb-1">Detailed Technical Specifications</label>
+                <textarea
+                  rows={4}
+                  value={rfqDetails}
+                  onChange={(e) => setRfqDetails(e.target.value)}
+                  placeholder="Provide material specs, certifications required, packaging terms, and lead time requirements..."
+                  className="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsRfqModalOpen(false)}
+                  className="px-5 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingRfq}
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl shadow-md transition cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmittingRfq ? 'Publishing...' : 'Publish Public RFQ'}
                 </button>
               </div>
             </form>

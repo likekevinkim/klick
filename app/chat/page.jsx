@@ -35,7 +35,7 @@ const translateTextWithApi = async (text, targetLanguage) => {
   }
 };
 
-// Global Google Translate Cookie Helper
+// Read Global Google Translate Cookie Helper
 const getCookie = (name) => {
   if (typeof document === 'undefined') return null;
   const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
@@ -66,16 +66,16 @@ function ChatContent() {
 
   const [rooms, setRooms] = useState([]);
   
-  // ★ 2번 수정: 아코디언 기본값을 접힘(null)으로 세팅하여 진입 시 접혀있도록 보장
+  // ★ 2번 수정: 채팅 아코디언 기본값 접힘(null) 세팅
   const [activeRoomId, setActiveRoomId] = useState(null);
 
   const [roomMessagesMap, setRoomMessagesMap] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // 5번 수정: 기본 언어 영어(en) 설정
+  // Global default language English
   const [targetLang, setTargetLang] = useState('en');
 
-  // Ref snapshots to avoid stale closures
+  // Snapshots for async callbacks
   const userRef = useRef(null);
   const userRoleRef = useRef('seller');
   const targetLangRef = useRef('en');
@@ -91,7 +91,7 @@ function ChatContent() {
   useEffect(() => { roomMessagesMapRef.current = roomMessagesMap; }, [roomMessagesMap]);
   useEffect(() => { activeRoomIdRef.current = activeRoomId; }, [activeRoomId]);
 
-  // Modal States
+  // Modals State
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [quotePrice, setQuotePrice] = useState('145.00');
   const [quoteMoq, setQuoteMoq] = useState('500 Units');
@@ -290,7 +290,7 @@ function ChatContent() {
     }
   };
 
-  // ★ 1번 수정: buyer_profiles & buyers 테이블 동시 스캔으로 contact_person 완벽 추출
+  // ★ 2번 수정: buyer_profiles & buyers 테이블 동시 스캔으로 contact_person 완벽 추출
   const fetchChatRoomsAndInit = async (currentUserObj, currentRole) => {
     try {
       if (!currentUserObj) {
@@ -315,13 +315,13 @@ function ChatContent() {
         const buyerUserIds = currentRoomsList.map((r) => r.buyer_id).filter(Boolean);
 
         if (buyerUserIds.length > 0) {
-          // 1) buyer_profiles 스캔
+          // 1) Scan buyer_profiles table
           const { data: buyerProfiles } = await supabase
             .from('buyer_profiles')
             .select('user_id, contact_person, company_name')
             .in('user_id', buyerUserIds);
 
-          // 2) buyers 스캔
+          // 2) Scan buyers table
           const { data: rawBuyers } = await supabase
             .from('buyers')
             .select('user_id, contact_person, company_name')
@@ -391,7 +391,7 @@ function ChatContent() {
         }
       }
 
-      // URL 파라미터 처리
+      // Handle Direct URL Parameters
       if (paramCompany || paramTitle) {
         const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product Inquiry';
         const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Verified Korean Company';
@@ -452,11 +452,11 @@ function ChatContent() {
         }
 
         if (matchedRoom) {
-          // URL 직접 진입 문의 건만 자동 오픈
+          // Open accordion only for direct URL parameters
           setActiveRoomId(matchedRoom.id);
           await markRoomMessagesAsRead(matchedRoom.id, currentRole);
         }
-      } 
+      }
 
       setRooms(currentRoomsList);
       window.dispatchEvent(new Event('klick_unread_chat_updated'));
@@ -574,6 +574,7 @@ function ChatContent() {
     }
   };
 
+  // 4번 수정: 셀러의 공식 견적서 발송 함수
   const handleSendQuote = async () => {
     if (!activeRoomId) return;
 
@@ -582,7 +583,7 @@ function ChatContent() {
         room_id: activeRoomId,
         sender_id: user?.id ? user.id.toString() : 'guest_seller',
         sender_role: 'seller',
-        message: `[Official B2B Quote Sent] ${quoteNote}`,
+        message: `[Official B2B Quotation Sent] ${quoteNote}`,
         translated_message: `[Official B2B Quotation Sent] ${quoteNote}`,
         is_quote: true,
         is_read: false,
@@ -768,7 +769,7 @@ function ChatContent() {
               <button
                 type="button"
                 onClick={() => setIsQuoteModalOpen(false)}
-                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -776,7 +777,7 @@ function ChatContent() {
               <button
                 type="button"
                 onClick={handleSendQuote}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer"
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl shadow-md transition cursor-pointer"
               >
                 Send Quotation Card
               </button>
