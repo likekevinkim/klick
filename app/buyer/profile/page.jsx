@@ -151,7 +151,7 @@ function BuyerProfileContent() {
     } catch (error) {
       console.error('Failed to load buyer profile data:', error);
       setMyRfqs([]);
-    } fontally {
+    } finally {
       setLoading(false);
     }
   };
