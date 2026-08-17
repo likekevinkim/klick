@@ -401,7 +401,7 @@ export default function ChatRoomItem({
                               <button
                                 type="button"
                                 onClick={() => onOpenDocModal(msg, room)}
-                                className="py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-[10px] rounded-lg shadow transition flex items-center justify-center gap-1 cursor-pointer"
+                                className="py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-lg shadow transition flex items-center justify-center gap-1 cursor-pointer"
                               >
                                 <span>Edit Order Specs</span>
                               </button>
@@ -514,7 +514,7 @@ export default function ChatRoomItem({
         </div>
       )}
 
-      {/* 바이어 전용: RFQ 요청 제출 모달 (오더 예상 수량 반영 완료) */}
+      {/* 바이어 전용: RFQ 요청 제출 모달 */}
       {isBuyerRfqModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 animate-fadeIn">
