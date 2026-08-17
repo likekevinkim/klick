@@ -97,7 +97,7 @@ function PublicBuyerShowroomContent() {
     } catch (err) {
       console.error('Error fetching public buyer data:', err);
       setRfqs([]);
-    } fontally {
+    } finally {
       setLoading(false);
     }
   };
