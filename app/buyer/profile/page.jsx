@@ -72,7 +72,7 @@ function BuyerProfileContent() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // New RFQ Modal State (Estimated Order Quantity & MOQ 호환 매핑)
+  // New RFQ Modal State
   const [isRfqModalOpen, setIsRfqModalOpen] = useState(false);
   const [isSubmittingRfq, setIsSubmittingRfq] = useState(false);
   const [rfqProductName, setRfqProductName] = useState('');
@@ -230,7 +230,7 @@ function BuyerProfileContent() {
     }
   };
 
-  // Create New Public RFQ (moq 및 order_quantity 동시 매핑하여 호환성 완벽 보장)
+  // Create New Public RFQ (quote_count 및 필드 매핑)
   const handleCreateRfq = async (e) => {
     e.preventDefault();
     if (!user) {
@@ -251,8 +251,8 @@ function BuyerProfileContent() {
         title: rfqTitle,
         category: rfqCategory,
         target_price: rfqTargetPrice,
-        moq: rfqOrderQuantity, // moq 컬럼 요구 시 대응
-        order_quantity: rfqOrderQuantity, // order_quantity 컬럼 대응
+        moq: rfqOrderQuantity,
+        order_quantity: rfqOrderQuantity,
         details: rfqDetails,
         drawing_url: rfqAttachment?.url || null,
         drawing_name: rfqAttachment?.name || null,
@@ -700,7 +700,7 @@ function BuyerProfileContent() {
         </div>
       )}
 
-      {/* Modal 2: Post New Public RFQ Modal (Estimated Order Quantity & 호환 매핑) */}
+      {/* Modal 2: Post New Public RFQ Modal */}
       {isRfqModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 animate-fadeIn">
