@@ -230,7 +230,7 @@ function BuyerProfileContent() {
     }
   };
 
-  // Create New Public RFQ (quote_count 및 필드 매핑)
+  // Create New Public RFQ
   const handleCreateRfq = async (e) => {
     e.preventDefault();
     if (!user) {
@@ -347,7 +347,7 @@ function BuyerProfileContent() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* 1. Buyer Company Information Card */}
+          {/* Buyer Company Information Card */}
           <div className="lg:col-span-7 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
             <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
               <div>
@@ -436,7 +436,7 @@ function BuyerProfileContent() {
             </div>
           </div>
 
-          {/* 2. My Active RFQs List */}
+          {/* My Active RFQs List */}
           <div className="lg:col-span-5 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
             <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
               <div>
