@@ -4,6 +4,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import Header from '@/components/Header';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   FileText, 
   Search, 
@@ -18,9 +19,9 @@ import {
   X,
   ShoppingBag,
   PlusCircle,
-  DollarSign,
-  CheckCircle2,
-  Send
+  ArrowRight,
+  Send,
+  Eye
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -42,6 +43,7 @@ export default function PublicRfqBoardPage() {
 }
 
 function PublicRfqBoardContent() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState('buyer');
@@ -62,14 +64,6 @@ function PublicRfqBoardContent() {
   const [newTargetPrice, setNewTargetPrice] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [posting, setPosting] = useState(false);
-
-  // Seller modal state
-  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
-  const [selectedRfq, setSelectedRfq] = useState(null);
-  const [quotePrice, setQuotePrice] = useState('');
-  const [quoteMoq, setQuoteMoq] = useState('');
-  const [quoteNote, setQuoteNote] = useState('');
-  const [submittingQuote, setSubmittingQuote] = useState(false);
 
   const categories = [
     'All',
@@ -169,35 +163,6 @@ function PublicRfqBoardContent() {
     }
   };
 
-  const handleSubmitQuote = async (e) => {
-    e.preventDefault();
-    setSubmittingQuote(true);
-
-    try {
-      const sellerMeta = user?.user_metadata || {};
-      const proposalPayload = {
-        rfq_id: selectedRfq?.id,
-        seller_company_name: sellerMeta.company_name_en || sellerMeta.company_name || 'Korean Manufacturer',
-        offered_price: `$${quotePrice} USD / Unit`,
-        offered_moq: quoteMoq,
-        proposal_message: quoteNote,
-        created_at: new Date().toISOString()
-      };
-
-      await supabase.from('rfq_proposals').insert([proposalPayload]).catch(() => {});
-
-      alert(`Your official quotation ($${quotePrice} / Unit) has been sent directly to ${selectedRfq?.buyer_name || 'the buyer'}.`);
-      setIsQuoteModalOpen(false);
-      setQuotePrice('');
-      setQuoteMoq('');
-      setQuoteNote('');
-    } catch (error) {
-      console.error('Quote submission error:', error);
-    } finally {
-      setSubmittingQuote(false);
-    }
-  };
-
   const resetPostForm = () => {
     setNewTitle('');
     setNewProductName('');
@@ -243,7 +208,7 @@ function PublicRfqBoardContent() {
             </h1>
 
             <p className="text-slate-300 text-xs md:text-sm font-medium leading-relaxed">
-              Global buyers post direct purchasing inquiries here. Korean factories can review demands and send direct wholesale quotes.
+              Global buyers post direct purchasing inquiries here. Korean factories can review specifications in detail and send direct wholesale quotes.
             </p>
           </div>
 
@@ -260,7 +225,7 @@ function PublicRfqBoardContent() {
             ) : (
               <div className="text-right text-xs text-slate-300 bg-slate-800/80 px-4 py-3 rounded-2xl border border-slate-700">
                 <span className="block font-bold text-blue-400">Seller Mode Active</span>
-                <span className="text-[11px] text-slate-400">Review RFQs below and submit direct quotes.</span>
+                <span className="text-[11px] text-slate-400">Click any RFQ card below to inspect full specs & submit quotes.</span>
               </div>
             )}
           </div>
@@ -367,9 +332,11 @@ function PublicRfqBoardContent() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRfqs.map((rfq) => (
+              /* 카드 블록 전체 클릭 시 상세 검증 페이지로 이동 */
               <div
                 key={rfq.id}
-                className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:border-blue-400 hover:shadow-md transition flex flex-col justify-between space-y-4"
+                onClick={() => router.push(`/rfq/${rfq.id}`)}
+                className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:border-blue-500 hover:shadow-lg transition cursor-pointer flex flex-col justify-between space-y-4 group relative"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
@@ -388,12 +355,9 @@ function PublicRfqBoardContent() {
                         Product: {rfq.product_name}
                       </span>
                     )}
-                    <Link
-                      href={`/rfq/${rfq.id}`}
-                      className="text-sm font-extrabold text-slate-900 leading-snug line-clamp-2 hover:text-blue-600 transition"
-                    >
+                    <h3 className="text-sm font-extrabold text-slate-900 leading-snug line-clamp-2 group-hover:text-blue-600 transition">
                       {rfq.title}
-                    </Link>
+                    </h3>
                   </div>
 
                   <div className="flex items-center gap-3 text-xs text-slate-500 font-medium pt-1 border-t border-slate-100">
@@ -407,7 +371,7 @@ function PublicRfqBoardContent() {
                     </span>
                   </div>
 
-                  {/* Order Quantity 용어 교정 반영 */}
+                  {/* Order Qty 표기 교정 */}
                   <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs space-y-1">
                     <div className="flex items-center justify-between text-slate-600">
                       <span>Target Price:</span>
@@ -421,51 +385,31 @@ function PublicRfqBoardContent() {
 
                   {rfq.drawing_url && (
                     <div>
-                      <a
-                        href={rfq.drawing_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-blue-600 hover:underline bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100"
-                      >
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100">
                         <Paperclip className="w-3.5 h-3.5 text-blue-500" />
-                        <span>View Technical Drawing / Photo</span>
-                      </a>
+                        <span>Attached CAD / Drawing / Photo Available</span>
+                      </span>
                     </div>
                   )}
 
                   {rfq.details && (
-                    <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed font-medium bg-slate-50/50 p-2.5 rounded-xl border border-slate-100">
+                    <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed font-medium bg-slate-50/50 p-2.5 rounded-xl border border-slate-100">
                       {rfq.details}
                     </p>
                   )}
                 </div>
 
+                {/* 하단 버튼: 무조건 상세 스펙 검증 페이지로 이동하는 액션 유도 */}
                 <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
                   <span className="text-[11px] font-extrabold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
                     {rfq.quote_count || 0} Factory Quotes
                   </span>
 
-                  {userRole === 'seller' ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedRfq(rfq);
-                        setIsQuoteModalOpen(true);
-                      }}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <DollarSign className="w-3.5 h-3.5" />
-                      <span>Submit Quote</span>
-                    </button>
-                  ) : (
-                    <Link
-                      href={`/chat?rfqId=${rfq.id}&buyerId=${rfq.user_id}&title=${encodeURIComponent(rfq.title)}`}
-                      className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Send Quote in Chat</span>
-                    </Link>
-                  )}
+                  <span className="px-4 py-2 bg-blue-600 group-hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow transition flex items-center gap-1.5">
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Inspect Specs & Offer Quote</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </span>
                 </div>
               </div>
             ))}
@@ -589,94 +533,6 @@ function PublicRfqBoardContent() {
                 >
                   <Send className="w-4 h-4" />
                   <span>{posting ? 'Publishing...' : 'Publish Request to Board'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 셀러 견적 제출 모달 */}
-      {isQuoteModalOpen && selectedRfq && (
-        <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6">
-            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-blue-600" />
-                  Submit Direct Wholesale Quote
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">Send a factory-direct offer to {selectedRfq.buyer_name} ({selectedRfq.company_name || selectedRfq.buyer_company_name}).</p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsQuoteModalOpen(false)}
-                className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitQuote} className="space-y-4">
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs space-y-1">
-                <span className="font-bold text-blue-600 block">Target Item: {selectedRfq.title}</span>
-                <span className="text-slate-500 block">Buyer Target Budget: {selectedRfq.target_price}</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Your Offered Unit Price ($ USD)</label>
-                  <input
-                    type="text"
-                    required
-                    value={quotePrice}
-                    onChange={(e) => setQuotePrice(e.target.value)}
-                    placeholder=""
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-emerald-600"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Offer MOQ</label>
-                  <input
-                    type="text"
-                    required
-                    value={quoteMoq}
-                    onChange={(e) => setQuoteMoq(e.target.value)}
-                    placeholder=""
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Production Lead Time & Export Notes</label>
-                <textarea
-                  rows={3}
-                  value={quoteNote}
-                  onChange={(e) => setQuoteNote(e.target.value)}
-                  placeholder=""
-                  className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsQuoteModalOpen(false)}
-                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={submittingQuote}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>{submittingQuote ? 'Submitting...' : 'Send Direct Offer'}</span>
                 </button>
               </div>
             </form>
