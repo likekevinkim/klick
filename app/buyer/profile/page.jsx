@@ -67,20 +67,20 @@ function BuyerProfileContent() {
   const [description, setDescription] = useState('');
   const [email, setEmail] = useState('');
 
-  // RFQ List State (Fully initialized without mock sample data)
+  // RFQ List State
   const [myRfqs, setMyRfqs] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // New RFQ Modal State
+  // New RFQ Modal State (Estimated Order Quantity 적용)
   const [isRfqModalOpen, setIsRfqModalOpen] = useState(false);
   const [isSubmittingRfq, setIsSubmittingRfq] = useState(false);
   const [rfqProductName, setRfqProductName] = useState('');
   const [rfqTitle, setRfqTitle] = useState('');
   const [rfqCategory, setRfqCategory] = useState('Industrial Machinery');
   const [rfqTargetPrice, setRfqTargetPrice] = useState('');
-  const [rfqMoq, setRfqMoq] = useState('');
+  const [rfqOrderQuantity, setRfqOrderQuantity] = useState(''); // 오더 예상 수량
   const [rfqDetails, setRfqDetails] = useState('');
 
   // Drawing File Attachment State
@@ -132,7 +132,7 @@ function BuyerProfileContent() {
         setDescription(profile.description || description);
       }
 
-      // 2. Fetch Buyer's Real Active RFQs from DB (가짜 샘플 카드 철거)
+      // 2. Fetch Buyer's Real Active RFQs from DB
       if (userIdStr) {
         const { data: rfqList } = await supabase
           .from('public_rfqs')
@@ -231,7 +231,7 @@ function BuyerProfileContent() {
     }
   };
 
-  // Create New Public RFQ
+  // Create New Public RFQ (buyer_name 및 order_quantity 컬럼 매핑)
   const handleCreateRfq = async (e) => {
     e.preventDefault();
     if (!user) {
@@ -252,7 +252,8 @@ function BuyerProfileContent() {
         title: rfqTitle,
         category: rfqCategory,
         target_price: rfqTargetPrice,
-        moq: rfqMoq,
+        moq: rfqOrderQuantity, // 하위 호환성 유지
+        order_quantity: rfqOrderQuantity, // 오더 예상 수량
         details: rfqDetails,
         drawing_url: rfqAttachment?.url || null,
         drawing_name: rfqAttachment?.name || null,
@@ -276,7 +277,7 @@ function BuyerProfileContent() {
       setRfqProductName('');
       setRfqTitle('');
       setRfqTargetPrice('');
-      setRfqMoq('');
+      setRfqOrderQuantity('');
       setRfqDetails('');
       setRfqAttachment(null);
       alert('New public RFQ published successfully to Korean Suppliers!');
@@ -436,7 +437,7 @@ function BuyerProfileContent() {
             </div>
           </div>
 
-          {/* 2. My Active RFQs & Post New RFQ Trigger */}
+          {/* 2. My Active RFQs List */}
           <div className="lg:col-span-5 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
             <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
               <div>
@@ -515,7 +516,7 @@ function BuyerProfileContent() {
                     )}
 
                     <p className="text-[11px] text-slate-500">
-                      Target Price: <span className="font-bold text-emerald-600">{rfq.target_price || 'Negotiable'}</span> | MOQ: <span className="font-bold text-slate-800">{rfq.moq || rfq.target_quantity || '1 Unit'}</span>
+                      Target Price: <span className="font-bold text-emerald-600">{rfq.target_price || 'Negotiable'}</span> | Order Qty: <span className="font-bold text-slate-800">{rfq.order_quantity || rfq.moq || '1 Unit'}</span>
                     </p>
 
                     <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
@@ -590,7 +591,7 @@ function BuyerProfileContent() {
                     type="text"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder="e.g. Global Sourcing LLC"
+                    placeholder=""
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
@@ -635,7 +636,7 @@ function BuyerProfileContent() {
                   type="url"
                   value={websiteUrl}
                   onChange={(e) => setWebsiteUrl(e.target.value)}
-                  placeholder="https://company.com"
+                  placeholder=""
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
               </div>
@@ -694,7 +695,7 @@ function BuyerProfileContent() {
         </div>
       )}
 
-      {/* Modal 2: Post New Public RFQ Modal */}
+      {/* Modal 2: Post New Public RFQ Modal (Estimated Order Quantity 적용) */}
       {isRfqModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 animate-fadeIn">
@@ -706,7 +707,7 @@ function BuyerProfileContent() {
               <button
                 type="button"
                 onClick={() => setIsRfqModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -765,13 +766,14 @@ function BuyerProfileContent() {
                 </div>
               </div>
 
+              {/* 오더 예상 수량 필드로 용어 교정 */}
               <div>
-                <label className="block text-slate-700 font-extrabold mb-1">Minimum Order Quantity (MOQ)</label>
+                <label className="block text-slate-700 font-extrabold mb-1">Estimated Order Quantity</label>
                 <input
                   type="text"
-                  value={rfqMoq}
-                  onChange={(e) => setRfqMoq(e.target.value)}
-                  placeholder=""
+                  value={rfqOrderQuantity}
+                  onChange={(e) => setRfqOrderQuantity(e.target.value)}
+                  placeholder="e.g. 500 Units"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
                 />
               </div>

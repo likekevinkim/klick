@@ -14,10 +14,12 @@ import {
   CreditCard, 
   Truck,
   Sparkles,
-  FileCheck
+  FileCheck,
+  Loader2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
+// Helper to check if original and translated text are virtually identical
 const isSameText = (str1, str2) => {
   if (!str1 || !str2) return true;
   const clean1 = str1.replace(/[\s\p{P}]/gu, '').toLowerCase();
@@ -43,9 +45,21 @@ export default function ChatRoomItem({
   const [attachedFile, setAttachedFile] = useState(null);
   const [uploadingFile, setUploadingFile] = useState(false);
 
+  // Buyer RFQ Modal State in Chat
+  const [isBuyerRfqModalOpen, setIsBuyerRfqModalOpen] = useState(false);
+  const [isSubmittingRfq, setIsSubmittingRfq] = useState(false);
+  const [rfqProductName, setRfqProductName] = useState('');
+  const [rfqOrderQuantity, setRfqOrderQuantity] = useState(''); // 오더 예상 수량
+  const [rfqPrice, setRfqPrice] = useState('');
+  const [rfqDetails, setRfqDetails] = useState('');
+  const [rfqAttachment, setRfqAttachment] = useState(null);
+  const [uploadingRfqFile, setUploadingRfqFile] = useState(false);
+
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
+  const rfqFileInputRef = useRef(null);
 
+  // Auto scroll to bottom when messages update
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -88,6 +102,43 @@ export default function ChatRoomItem({
     }
   };
 
+  // RFQ Attachment Upload
+  const handleRfqFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingRfqFile(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `rfq_drawing_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `rfq_drawings/${fileName}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from('company-images')
+        .upload(filePath, file);
+
+      if (uploadErr) throw uploadErr;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('company-images')
+        .getPublicUrl(filePath);
+
+      if (publicUrlData?.publicUrl) {
+        setRfqAttachment({
+          name: file.name,
+          size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+          type: file.type.includes('image') ? 'image' : 'drawing',
+          url: publicUrlData.publicUrl
+        });
+      }
+    } catch (err) {
+      console.error('RFQ file upload error:', err);
+      alert('Failed to upload drawing/photo: ' + (err.message || 'Storage error'));
+    } finally {
+      setUploadingRfqFile(false);
+    }
+  };
+
   const handleRemoveAttachment = () => {
     setAttachedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -115,9 +166,32 @@ export default function ChatRoomItem({
     }
   };
 
-  // 바이어 이름/회사명 1순위 바인딩 (이메일 ID 절대 배제)
+  // Submit Buyer RFQ into Chat Stream
+  const handleSendRfqInquiry = async (e) => {
+    e.preventDefault();
+    try {
+      setIsSubmittingRfq(true);
+
+      const rfqMsgText = `[Official RFQ Inquiry] Product: ${rfqProductName || 'Requested Item'} | Estimated Order Quantity: ${rfqOrderQuantity} | Target Price: ${rfqPrice}. Details: ${rfqDetails}`;
+
+      onSendMessage(room.id, rfqMsgText, rfqAttachment);
+
+      setIsBuyerRfqModalOpen(false);
+      setRfqProductName('');
+      setRfqOrderQuantity('');
+      setRfqPrice('');
+      setRfqDetails('');
+      setRfqAttachment(null);
+    } catch (err) {
+      console.error('Failed to send RFQ inquiry in chat:', err);
+    } finally {
+      setIsSubmittingRfq(false);
+    }
+  };
+
+  // Bind partner name correctly (Contact Person Kevin)
   const partnerName = userRole === 'seller' 
-    ? (room.buyer_profile_name || room.buyer_contact_person || room.buyer_company_name || 'Global Buyer') 
+    ? (room.buyer_profile_name || room.buyer_contact_person || room.buyer_name || 'Global Buyer') 
     : (room.seller_name || room.company_name || 'Korean Manufacturer');
 
   const productName = room.product_title || room.title || '';
@@ -161,6 +235,8 @@ export default function ChatRoomItem({
       {/* 2. Accordion Expanded Content */}
       {isOpen && (
         <div className="border-t border-slate-100 bg-slate-50/50 p-5 space-y-4 animate-fadeIn">
+          
+          {/* Top Control Bar */}
           <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200/60">
             <div className="flex items-center gap-2">
               {userRole === 'seller' ? (
@@ -184,13 +260,14 @@ export default function ChatRoomItem({
                   </button>
                 </>
               ) : (
+                /* 바이어 전용: RFQ 요청 모달 팝업 오픈 버튼 */
                 <button
                   type="button"
-                  onClick={() => onSendMessage(room.id, "[RFQ Request] Please provide the official Proforma Invoice (PI) and FOB pricing.", null)}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                  onClick={() => setIsBuyerRfqModalOpen(true)}
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <FileText className="w-3.5 h-3.5" />
-                  <span>Send RFQ Inquiry</span>
+                  <span>Send RFQ Inquiry (Attach Drawing)</span>
                 </button>
               )}
 
@@ -293,7 +370,6 @@ export default function ChatRoomItem({
                             <span>{msg.quote_price}</span>
                           </div>
                           
-                          {/* 품명 표시 (예시 문장 배제) */}
                           {(msg.product_name || productName) && (
                             <div className="text-xs font-extrabold text-blue-300">
                               Product Name: {msg.product_name || productName}
@@ -433,6 +509,138 @@ export default function ChatRoomItem({
                 <span>Send</span>
                 <Send className="w-3.5 h-3.5" />
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 바이어 전용: RFQ 요청 제출 모달 (오더 예상 수량 반영 완료) */}
+      {isBuyerRfqModalOpen && (
+        <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-emerald-600" />
+                Send RFQ Inquiry to Manufacturer
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsBuyerRfqModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendRfqInquiry} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-700 font-extrabold mb-1">Product Name (Required)</label>
+                <input
+                  type="text"
+                  value={rfqProductName}
+                  onChange={(e) => setRfqProductName(e.target.value)}
+                  placeholder=""
+                  required
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-extrabold mb-1">Estimated Order Quantity</label>
+                  <input
+                    type="text"
+                    value={rfqOrderQuantity}
+                    onChange={(e) => setRfqOrderQuantity(e.target.value)}
+                    placeholder=""
+                    required
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-extrabold mb-1">Target FOB Price Range</label>
+                  <input
+                    type="text"
+                    value={rfqPrice}
+                    onChange={(e) => setRfqPrice(e.target.value)}
+                    placeholder=""
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* 제품 사진 및 CAD/블루프린트 도면 첨부 파일 업로더 */}
+              <div>
+                <label className="block text-slate-700 font-extrabold mb-1">Attach Product Drawing or Photo</label>
+                <input
+                  type="file"
+                  ref={rfqFileInputRef}
+                  onChange={handleRfqFileUpload}
+                  accept="image/*,.pdf,.doc,.docx,.cad,.dwg"
+                  className="hidden"
+                />
+
+                {rfqAttachment ? (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-2 truncate">
+                      {rfqAttachment.type === 'image' ? <ImageIcon className="w-4 h-4 text-emerald-600" /> : <Paperclip className="w-4 h-4 text-blue-600" />}
+                      <span className="font-extrabold text-blue-900 truncate max-w-[200px]">{rfqAttachment.name}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setRfqAttachment(null)}
+                      className="text-rose-600 hover:underline text-[10px] font-bold cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={uploadingRfqFile}
+                    onClick={() => rfqFileInputRef.current?.click()}
+                    className="w-full py-3 bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 rounded-xl flex items-center justify-center gap-2 text-slate-600 font-bold transition cursor-pointer"
+                  >
+                    {uploadingRfqFile ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                    ) : (
+                      <>
+                        <Paperclip className="w-4 h-4 text-blue-600" />
+                        <span>Upload CAD Drawing / Photo</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-extrabold mb-1">Detailed Sourcing Requirements</label>
+                <textarea
+                  rows={3}
+                  value={rfqDetails}
+                  onChange={(e) => setRfqDetails(e.target.value)}
+                  placeholder=""
+                  className="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsBuyerRfqModalOpen(false)}
+                  className="px-5 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingRfq || uploadingRfqFile}
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl shadow-md transition cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmittingRfq ? 'Submitting...' : 'Send RFQ Inquiry'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
