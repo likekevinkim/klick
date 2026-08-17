@@ -1,63 +1,89 @@
 // app/rfq/page.jsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { 
   FileText, 
   Search, 
-  Filter, 
-  PlusCircle, 
   Clock, 
-  Globe, 
+  MapPin, 
   Building2, 
-  DollarSign, 
-  Package, 
+  ShieldCheck, 
   MessageSquare, 
-  X, 
-  CheckCircle2, 
-  Loader2,
-  User,
-  ShieldCheck,
-  Send,
-  Sparkles,
-  PackageCheck
+  Loader2, 
+  Plus, 
+  Paperclip, 
+  X,
+  ShoppingBag,
+  PlusCircle,
+  DollarSign,
+  CheckCircle2,
+  Send
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function PublicRfqBoardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
+          <div className="flex items-center gap-2 text-slate-600 text-xs font-bold">
+            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+            <span>Loading Global Public RFQ Sourcing Board...</span>
+          </div>
+        </div>
+      }
+    >
+      <PublicRfqBoardContent />
+    </Suspense>
+  );
+}
+
+function PublicRfqBoardContent() {
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
-  const [userRole, setUserRole] = useState('buyer'); // 'buyer' or 'seller'
+  const [userRole, setUserRole] = useState('buyer');
 
-  // RFQ 목록 및 검색/필터 상태
-  const [rfqs, setRfqs] = useState([]);
+  const [rfqList, setRfqList] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Search & Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  // 바이어 전용: 새 RFQ 작성 모달 상태
+  // Buyer modal state
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [newProductName, setNewProductName] = useState('');
   const [newCategory, setNewCategory] = useState('Industrial Machinery');
-  const [newQuantity, setNewQuantity] = useState('500 Units');
-  const [newTargetPrice, setNewTargetPrice] = useState('$130 - $145 USD');
+  const [newQuantity, setNewQuantity] = useState('');
+  const [newTargetPrice, setNewTargetPrice] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [posting, setPosting] = useState(false);
 
-  // 셀러 전용: 견적 제출 모달 상태 (셀러일 때만 작동)
+  // Seller modal state
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [selectedRfq, setSelectedRfq] = useState(null);
-  const [quotePrice, setQuotePrice] = useState('140.00');
-  const [quoteMoq, setQuoteMoq] = useState('500 Units');
+  const [quotePrice, setQuotePrice] = useState('');
+  const [quoteMoq, setQuoteMoq] = useState('');
   const [quoteNote, setQuoteNote] = useState('');
   const [submittingQuote, setSubmittingQuote] = useState(false);
+
+  const categories = [
+    'All',
+    'Industrial Machinery',
+    'K-Beauty & Cosmetics',
+    'K-Food & Beverages',
+    'Electronics & Smart IT',
+    'General Manufacturing'
+  ];
 
   useEffect(() => {
     setMounted(true);
     checkUserSession();
-    fetchRfqs();
+    fetchPublicRfqs();
   }, []);
 
   const checkUserSession = async () => {
@@ -73,35 +99,31 @@ export default function PublicRfqBoardPage() {
     }
   };
 
-  const fetchRfqs = async () => {
+  const fetchPublicRfqs = async () => {
     try {
       setLoading(true);
-      // Supabase rfq_posts 및 rfqs 테이블 연동 조회
+
       const { data, error } = await supabase
-        .from('rfq_posts')
+        .from('public_rfqs')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
-        // 테이블명이 rfqs인 경우 백업 조회
-        const { data: backupData } = await supabase
-          .from('rfqs')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        setRfqs(backupData || []);
+        console.error('Error fetching public RFQs from DB:', error);
+        setRfqList([]);
+      } else if (data) {
+        setRfqList(data);
       } else {
-        setRfqs(data || []);
+        setRfqList([]);
       }
-    } catch (error) {
-      console.error('Failed to fetch RFQs:', error);
-      setRfqs([]);
+    } catch (err) {
+      console.error('Exception fetching public RFQs:', err);
+      setRfqList([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // 바이어: 신규 RFQ 작성 제출
   const handlePostRfq = async (e) => {
     e.preventDefault();
     setPosting(true);
@@ -109,26 +131,31 @@ export default function PublicRfqBoardPage() {
     try {
       const buyerMeta = user?.user_metadata || {};
       const newRfqPayload = {
+        user_id: user?.id ? user.id.toString() : 'guest_buyer',
         title: newTitle,
+        product_name: newProductName || newTitle,
         category: newCategory,
-        buyer_name: buyerMeta.buyer_name || 'Global Buyer',
-        buyer_company: buyerMeta.company_name || buyerMeta.company_name_en || 'Verified Importer',
-        country: buyerMeta.country || 'United States 🇺🇸',
-        target_quantity: newQuantity,
+        buyer_name: buyerMeta.contact_person || buyerMeta.buyer_name || 'Global Buyer',
+        company_name: buyerMeta.company_name || 'Global Sourcing LLC',
+        buyer_company_name: buyerMeta.company_name || 'Global Sourcing LLC',
+        order_quantity: newQuantity,
+        moq: newQuantity,
         target_price: newTargetPrice,
-        description: newDescription,
+        details: newDescription,
+        quote_count: 0,
         created_at: new Date().toISOString(),
       };
 
       const { data, error } = await supabase
-        .from('rfq_posts')
+        .from('public_rfqs')
         .insert([newRfqPayload])
-        .select();
+        .select()
+        .single();
 
-      if (data && data.length > 0) {
-        setRfqs([data[0], ...rfqs]);
-      } else {
-        setRfqs([{ id: `rfq_${Date.now()}`, ...newRfqPayload }, ...rfqs]);
+      if (error) throw error;
+
+      if (data) {
+        setRfqList([data, ...rfqList]);
       }
 
       alert('Your RFQ request has been published to Korean manufacturers!');
@@ -136,14 +163,12 @@ export default function PublicRfqBoardPage() {
       resetPostForm();
     } catch (error) {
       console.error('Failed to post RFQ:', error);
-      alert('RFQ published successfully!');
-      setIsPostModalOpen(false);
+      alert('Failed to publish RFQ: ' + (error.message || 'Database error'));
     } finally {
       setPosting(false);
     }
   };
 
-  // 셀러: 견적 제출 (셀러 전용)
   const handleSubmitQuote = async (e) => {
     e.preventDefault();
     setSubmittingQuote(true);
@@ -161,71 +186,75 @@ export default function PublicRfqBoardPage() {
 
       await supabase.from('rfq_proposals').insert([proposalPayload]).catch(() => {});
 
-      setTimeout(() => {
-        alert(`Your official quotation ($${quotePrice} / Unit) has been sent directly to ${selectedRfq?.buyer_name || 'the buyer'}. You can continue discussion in Live Chat.`);
-        setIsQuoteModalOpen(false);
-        setSubmittingQuote(false);
-      }, 800);
+      alert(`Your official quotation ($${quotePrice} / Unit) has been sent directly to ${selectedRfq?.buyer_name || 'the buyer'}.`);
+      setIsQuoteModalOpen(false);
+      setQuotePrice('');
+      setQuoteMoq('');
+      setQuoteNote('');
     } catch (error) {
       console.error('Quote submission error:', error);
-      setIsQuoteModalOpen(false);
+    } finally {
       setSubmittingQuote(false);
     }
   };
 
   const resetPostForm = () => {
     setNewTitle('');
-    setNewQuantity('500 Units');
-    setNewTargetPrice('$130 - $145 USD');
+    setNewProductName('');
+    setNewQuantity('');
+    setNewTargetPrice('');
     setNewDescription('');
   };
 
-  // 카테고리 및 검색어 필터링
-  const filteredRfqs = rfqs.filter((rfq) => {
-    const matchesSearch = 
-      (rfq.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (rfq.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (rfq.country || '').toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredRfqs = rfqList.filter((rfq) => {
+    const matchesCategory = 
+      selectedCategory === 'All' || 
+      (rfq.category && rfq.category.trim().toLowerCase() === selectedCategory.toLowerCase());
 
-    const matchesCategory = selectedCategory === 'All' || rfq.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const searchLower = searchTerm.trim().toLowerCase();
+    const matchesSearch = 
+      !searchLower ||
+      (rfq.title && rfq.title.toLowerCase().includes(searchLower)) ||
+      (rfq.product_name && rfq.product_name.toLowerCase().includes(searchLower)) ||
+      (rfq.buyer_name && rfq.buyer_name.toLowerCase().includes(searchLower)) ||
+      (rfq.company_name && rfq.company_name.toLowerCase().includes(searchLower)) ||
+      (rfq.details && rfq.details.toLowerCase().includes(searchLower));
+
+    return matchesCategory && matchesSearch;
   });
 
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 antialiased">
+    <div className="min-h-screen bg-[#F9FAFB] text-slate-900 pb-24 antialiased">
       <Header />
 
-      <main className="max-w-6xl mx-auto px-6 mt-10 space-y-8">
-        
-        {/* 상단 브랜딩 배너 */}
-        <div className="bg-slate-900 text-white rounded-3xl p-8 md:p-10 shadow-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+      {/* 1. Hero Banner */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 mt-8">
+        <div className="bg-[#0F172A] text-white rounded-3xl p-8 md:p-12 shadow-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+          <div className="space-y-3 relative z-10 max-w-2xl">
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-extrabold border border-blue-500/20">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Public RFQ Sourcing Board</span>
+            </div>
 
-          <div className="relative z-10 space-y-2 max-w-2xl">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20">
-              <ShieldCheck className="w-3.5 h-3.5" /> Public RFQ Sourcing Board
-            </span>
-
-            <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight">
+            <h1 className="text-2xl md:text-4xl font-black tracking-tight">
               Global Buyer Purchasing Requests
             </h1>
 
-            <p className="text-slate-300 text-xs md:text-sm leading-relaxed">
+            <p className="text-slate-300 text-xs md:text-sm font-medium leading-relaxed">
               Global buyers post direct purchasing inquiries here. Korean factories can review demands and send direct wholesale quotes.
             </p>
           </div>
 
-          {/* ★ 바이어일 때는 [+ Post New RFQ] 전용 버튼 노출 */}
-          <div className="relative z-10 flex flex-shrink-0">
+          <div className="relative z-10 flex flex-wrap gap-3">
             {userRole === 'buyer' ? (
               <button
                 type="button"
                 onClick={() => setIsPostModalOpen(true)}
-                className="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs md:text-sm rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer"
+                className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-2xl shadow-lg transition flex items-center gap-2 cursor-pointer"
               >
-                <PlusCircle className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
                 <span>Post New RFQ</span>
               </button>
             ) : (
@@ -236,33 +265,51 @@ export default function PublicRfqBoardPage() {
             )}
           </div>
         </div>
+      </section>
 
-        {/* 검색 및 카테고리 필터 바 */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-          
-          {/* 검색창 */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search RFQ by product name, specification, or buyer country..."
-              className="w-full pl-11 pr-4 py-3 bg-slate-50 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
-            />
+      {/* 2. Search & Filter Bar */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 mt-8">
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            
+            <div className="relative w-full md:w-96">
+              <Search className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search RFQ by product, title or buyer..."
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none focus:bg-white transition"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="text-xs font-extrabold text-slate-500 flex items-center gap-1.5 self-end md:self-auto">
+              <span>Active Buying Requests:</span>
+              <span className="text-blue-600 bg-blue-50 px-2.5 py-1 rounded-xl border border-blue-100 font-black">
+                {filteredRfqs.length} Demands
+              </span>
+            </div>
           </div>
 
-          {/* 카테고리 필터 버튼 칩 */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-            {['All', 'Industrial Machinery', 'K-Beauty & Cosmetics', 'K-Food & Beverages', 'Electronics & Smart IT', 'General Manufacturing'].map((cat) => (
+          <div className="flex items-center gap-2 overflow-x-auto pt-2 pb-1 scrollbar-none">
+            {categories.map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex-shrink-0 cursor-pointer ${
+                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer whitespace-nowrap flex-shrink-0 ${
                   selectedCategory === cat
                     ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
                 }`}
               >
                 {cat}
@@ -270,97 +317,134 @@ export default function PublicRfqBoardPage() {
             ))}
           </div>
         </div>
+      </section>
 
-        {/* RFQ 게시글 리스트 */}
-        <div className="space-y-4">
-          {loading ? (
-            <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
-              <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
-              <p className="text-xs text-slate-400">Loading public RFQ demands...</p>
-            </div>
-          ) : filteredRfqs.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 space-y-3 p-6">
-              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300">
-                <PackageCheck className="w-8 h-8 stroke-1" />
-              </div>
-              <h3 className="text-sm font-extrabold text-slate-800">No Matching RFQs Found</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+      {/* 3. RFQ Cards Grid */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-8">
+        {loading ? (
+          <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
+            <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
+            <p className="text-xs text-slate-400 font-bold">Loading live RFQ demands from database...</p>
+          </div>
+        ) : filteredRfqs.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-300 p-8 space-y-4">
+            <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
+            <div className="space-y-1">
+              <h3 className="text-base font-extrabold text-slate-800">No Matching RFQs Found</h3>
+              <p className="text-xs text-slate-400 font-medium max-w-sm mx-auto">
                 {searchTerm || selectedCategory !== 'All'
-                  ? 'There are no buying inquiries matching your search filters.'
+                  ? 'There are currently no buying requests matching your filter.'
                   : 'There are currently no buying requests posted in the database. Post the first RFQ!'}
               </p>
-              {userRole === 'buyer' && !searchTerm && selectedCategory === 'All' && (
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsPostModalOpen(true)}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow transition"
-                  >
-                    <PlusCircle className="w-4 h-4" />
-                    <span>Submit First Buying Inquiry (RFQ)</span>
-                  </button>
-                </div>
+            </div>
+
+            <div className="pt-2 flex justify-center gap-3">
+              {(searchTerm || selectedCategory !== 'All') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSelectedCategory('All');
+                  }}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+                >
+                  Reset Filters
+                </button>
+              )}
+
+              {userRole === 'buyer' && (
+                <button
+                  type="button"
+                  onClick={() => setIsPostModalOpen(true)}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold rounded-xl shadow transition inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Submit First Buying Inquiry (RFQ)</span>
+                </button>
               )}
             </div>
-          ) : (
-            filteredRfqs.map((rfq) => (
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredRfqs.map((rfq) => (
               <div
                 key={rfq.id}
-                className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm hover:border-blue-300 transition space-y-4"
+                className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:border-blue-400 hover:shadow-md transition flex flex-col justify-between space-y-4"
               >
-                {/* 상단 태그 및 시간 */}
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100">
                       {rfq.category || 'General Manufacturing'}
                     </span>
-                    <span className="text-[10px] font-extrabold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-                      {rfq.country || 'Global Importer'}
+                    <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {rfq.created_at ? new Date(rfq.created_at).toLocaleDateString() : 'Active'}
                     </span>
                   </div>
 
-                  <span className="text-xs text-slate-400 flex items-center gap-1 font-medium">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    {new Date(rfq.created_at || Date.now()).toLocaleDateString()}
+                  <div className="space-y-1">
+                    {rfq.product_name && (
+                      <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-100 inline-block mb-1">
+                        Product: {rfq.product_name}
+                      </span>
+                    )}
+                    <Link
+                      href={`/rfq/${rfq.id}`}
+                      className="text-sm font-extrabold text-slate-900 leading-snug line-clamp-2 hover:text-blue-600 transition"
+                    >
+                      {rfq.title}
+                    </Link>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-xs text-slate-500 font-medium pt-1 border-t border-slate-100">
+                    <span className="flex items-center gap-1">
+                      <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                      <strong className="text-slate-800">{rfq.company_name || rfq.buyer_company_name || rfq.buyer_name || 'Global Buyer'}</strong>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{rfq.country || 'United States'}</span>
+                    </span>
+                  </div>
+
+                  {/* Order Quantity 용어 교정 반영 */}
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-600">
+                      <span>Target Price:</span>
+                      <strong className="text-emerald-600 font-extrabold">{rfq.target_price || 'Negotiable'}</strong>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-600">
+                      <span>Order Qty:</span>
+                      <strong className="text-slate-900 font-extrabold">{rfq.order_quantity || rfq.moq || rfq.target_quantity || '1 Unit'}</strong>
+                    </div>
+                  </div>
+
+                  {rfq.drawing_url && (
+                    <div>
+                      <a
+                        href={rfq.drawing_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-blue-600 hover:underline bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100"
+                      >
+                        <Paperclip className="w-3.5 h-3.5 text-blue-500" />
+                        <span>View Technical Drawing / Photo</span>
+                      </a>
+                    </div>
+                  )}
+
+                  {rfq.details && (
+                    <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed font-medium bg-slate-50/50 p-2.5 rounded-xl border border-slate-100">
+                      {rfq.details}
+                    </p>
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-extrabold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
+                    {rfq.quote_count || 0} Factory Quotes
                   </span>
-                </div>
 
-                {/* RFQ 제목 */}
-                <h3 className="text-base md:text-lg font-extrabold text-slate-900 leading-snug">
-                  {rfq.title}
-                </h3>
-
-                {/* 바이어 주요 요구 수량 & 단가 조건 카드 */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-0.5">
-                    <span className="text-slate-400 text-[10px] font-bold block">Target Quantity</span>
-                    <span className="font-extrabold text-slate-800">{rfq.target_quantity || rfq.quantity || '500 Units'}</span>
-                  </div>
-
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-0.5">
-                    <span className="text-slate-400 text-[10px] font-bold block">Target Budget / Price</span>
-                    <span className="font-extrabold text-emerald-600">{rfq.target_price || rfq.price || '$130 - $145 USD'}</span>
-                  </div>
-
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-0.5 col-span-2 md:col-span-1">
-                    <span className="text-slate-400 text-[10px] font-bold block">Buyer Entity</span>
-                    <span className="font-extrabold text-slate-800 truncate block">{rfq.buyer_company || 'Verified Global Importer'}</span>
-                  </div>
-                </div>
-
-                {/* RFQ 본문 설명 */}
-                <p className="text-xs md:text-sm text-slate-600 leading-relaxed font-medium bg-slate-50/60 p-4 rounded-2xl border border-slate-100">
-                  {rfq.description}
-                </p>
-
-                {/* 하단 액션 버튼 분기 */}
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1.5 text-slate-500 font-medium">
-                    <User className="w-4 h-4 text-blue-600" />
-                    <span>Posted by {rfq.buyer_name || 'Verified Buyer'}</span>
-                  </div>
-
-                  {/* ★ 셀러일 때만 [Submit Quote] 노출, 바이어일 때는 [Open Live Chat Thread] 노출 */}
                   {userRole === 'seller' ? (
                     <button
                       type="button"
@@ -368,28 +452,28 @@ export default function PublicRfqBoardPage() {
                         setSelectedRfq(rfq);
                         setIsQuoteModalOpen(true);
                       }}
-                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
                     >
-                      <DollarSign className="w-4 h-4" />
-                      <span>Submit Direct Quote</span>
+                      <DollarSign className="w-3.5 h-3.5" />
+                      <span>Submit Quote</span>
                     </button>
                   ) : (
                     <Link
-                      href="/chat"
-                      className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
+                      href={`/chat?rfqId=${rfq.id}&buyerId=${rfq.user_id}&title=${encodeURIComponent(rfq.title)}`}
+                      className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
                     >
-                      <MessageSquare className="w-4 h-4 text-emerald-400" />
-                      <span>Open Live Chat Thread</span>
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Send Quote in Chat</span>
                     </Link>
                   )}
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </main>
 
-      {/* 1. [바이어 전용] 새 RFQ 작성 팝업 모달 */}
+      {/* 바이어 새 RFQ 작성 모달 */}
       {isPostModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-fadeIn">
@@ -413,13 +497,25 @@ export default function PublicRfqBoardPage() {
 
             <form onSubmit={handlePostRfq} className="space-y-4">
               <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Product Name</label>
+                <input
+                  type="text"
+                  required
+                  value={newProductName}
+                  onChange={(e) => setNewProductName(e.target.value)}
+                  placeholder=""
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                />
+              </div>
+
+              <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Product Title / Sourcing Subject</label>
                 <input
                   type="text"
                   required
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="e.g. Request for Quotation: Hydraulic Control Valve HV-300"
+                  placeholder=""
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
               </div>
@@ -441,13 +537,13 @@ export default function PublicRfqBoardPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Target Quantity</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Estimated Order Quantity</label>
                   <input
                     type="text"
                     required
                     value={newQuantity}
                     onChange={(e) => setNewQuantity(e.target.value)}
-                    placeholder="500 Units"
+                    placeholder="e.g. 500 Units"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
@@ -459,20 +555,20 @@ export default function PublicRfqBoardPage() {
                     required
                     value={newTargetPrice}
                     onChange={(e) => setNewTargetPrice(e.target.value)}
-                    placeholder="$130 - $145 USD"
+                    placeholder=""
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Detailed Specifications & Sourcing Requirements</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Detailed Specifications & Requirements</label>
                 <textarea
                   rows={4}
                   required
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Specify working pressure, material standards, certifications (CE/ISO), OEM private labeling requirements..."
+                  placeholder=""
                   className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none leading-relaxed"
                 />
               </div>
@@ -500,7 +596,7 @@ export default function PublicRfqBoardPage() {
         </div>
       )}
 
-      {/* 2. [셀러 전용] 견적 제출 모달 */}
+      {/* 셀러 견적 제출 모달 */}
       {isQuoteModalOpen && selectedRfq && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6">
@@ -510,7 +606,7 @@ export default function PublicRfqBoardPage() {
                   <DollarSign className="w-5 h-5 text-blue-600" />
                   Submit Direct Wholesale Quote
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">Send a factory-direct offer to {selectedRfq.buyer_name} ({selectedRfq.buyer_company}).</p>
+                <p className="text-xs text-slate-500 mt-0.5">Send a factory-direct offer to {selectedRfq.buyer_name} ({selectedRfq.company_name || selectedRfq.buyer_company_name}).</p>
               </div>
 
               <button
@@ -536,6 +632,7 @@ export default function PublicRfqBoardPage() {
                     required
                     value={quotePrice}
                     onChange={(e) => setQuotePrice(e.target.value)}
+                    placeholder=""
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-emerald-600"
                   />
                 </div>
@@ -547,6 +644,7 @@ export default function PublicRfqBoardPage() {
                     required
                     value={quoteMoq}
                     onChange={(e) => setQuoteMoq(e.target.value)}
+                    placeholder=""
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold"
                   />
                 </div>
@@ -558,7 +656,7 @@ export default function PublicRfqBoardPage() {
                   rows={3}
                   value={quoteNote}
                   onChange={(e) => setQuoteNote(e.target.value)}
-                  placeholder="e.g. Lead time 15 days, FOB Incheon Port, Includes ISO inspection report."
+                  placeholder=""
                   className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
               </div>

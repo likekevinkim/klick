@@ -61,11 +61,13 @@ function PublicBuyerShowroomContent() {
     try {
       setLoading(true);
 
-      // 1. Fetch Buyer Public Profile from Supabase
+      const buyerIdStr = buyerId ? buyerId.toString() : '';
+
+      // 1. Supabase buyer_profiles 테이블에서 해당 바이어 프로필 상세 조회
       const { data: profile } = await supabase
         .from('buyer_profiles')
         .select('*')
-        .eq('user_id', buyerId)
+        .eq('user_id', buyerIdStr)
         .maybeSingle();
 
       if (profile) {
@@ -78,19 +80,27 @@ function PublicBuyerShowroomContent() {
           business_type: 'Wholesaler / Distributor',
           target_category: 'Industrial Machinery',
           website_url: '',
-          description: ''
+          description: 'Verified global wholesale buyer on KLICK platform.'
         });
       }
 
-      // 2. Fetch Buyer's Public Active RFQs from DB
-      const { data: rfqList } = await supabase
-        .from('public_rfqs')
-        .select('*')
-        .eq('user_id', buyerId)
-        .order('created_at', { ascending: false });
+      // 2. 해당 바이어(user_id)가 게시한 실제 public_rfqs 목록 정밀 연동
+      if (buyerIdStr) {
+        const { data: rfqList, error: rfqErr } = await supabase
+          .from('public_rfqs')
+          .select('*')
+          .eq('user_id', buyerIdStr)
+          .order('created_at', { ascending: false });
 
-      if (rfqList) {
-        setRfqs(rfqList);
+        if (rfqErr) {
+          console.error('Error fetching public RFQ list:', rfqErr);
+        }
+
+        if (rfqList && rfqList.length > 0) {
+          setRfqs(rfqList);
+        } else {
+          setRfqs([]);
+        }
       } else {
         setRfqs([]);
       }
@@ -235,7 +245,7 @@ function PublicBuyerShowroomContent() {
             </div>
           </div>
 
-          {/* Active RFQs List */}
+          {/* Active RFQs List (마이페이지 RFQ와 100% 실시간 연동) */}
           <div className="lg:col-span-5 space-y-6">
             <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
               <div className="border-b border-slate-100 pb-4 flex items-center justify-between">

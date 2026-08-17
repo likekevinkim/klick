@@ -7,18 +7,14 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { 
   Building2, 
-  Globe, 
   MapPin, 
-  FileText, 
-  Send, 
-  CheckCircle2, 
-  Clock, 
-  DollarSign, 
   ShieldCheck, 
   ArrowLeft,
-  Package,
-  Layers,
-  Award
+  Clock,
+  Send,
+  CheckCircle2,
+  Award,
+  Paperclip
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -30,13 +26,13 @@ export default function RfqDetailPage() {
   const [rfq, setRfq] = useState(null);
   const [proposals, setProposals] = useState([]);
   
-  // 셀러 견적 투찰 양식 상태
-  const [offeredPrice, setOfferedPrice] = useState('145.00');
-  const [offeredMoq, setOfferedMoq] = useState('500 Units');
-  const [leadTime, setLeadTime] = useState('14 Days FOB Incheon');
-  const [proposalMessage, setProposalMessage] = useState('We are a direct ISO 9001 certified Korean factory. We can satisfy your technical requirements with premium quality assurance.');
+  // 셀러 견적 제출 상태
+  const [offeredPrice, setOfferedPrice] = useState('');
+  const [offeredMoq, setOfferedMoq] = useState('');
+  const [leadTime, setLeadTime] = useState('');
+  const [proposalMessage, setProposalMessage] = useState('');
   
-  const [submitting, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   useEffect(() => {
@@ -51,28 +47,13 @@ export default function RfqDetailPage() {
         .from('public_rfqs')
         .select('*')
         .eq('id', rfqId)
-        .single();
+        .maybeSingle();
 
       if (rfqData) {
         setRfq(rfqData);
-      } else {
-        // 목업 상세 데이터
-        setRfq({
-          id: rfqId,
-          buyer_company_name: 'Global Sourcing LLC',
-          buyer_country: 'United States',
-          title: 'Hydraulic Flow Control Valves (1,000 Units Monthly Batch)',
-          category: 'Industrial Machinery',
-          target_price: '140 - 160 USD',
-          target_moq: '1,000 Units',
-          delivery_destination: 'Los Angeles Port, USA',
-          deadline_date: '2026-10-15',
-          description: 'We are seeking verified Korean manufacturers for high-durability hydraulic control valves. Must be ISO 9001 certified with test certificates provided. Long-term OEM supply agreement for North American distribution.',
-          created_at: '2026-08-01',
-        });
       }
 
-      // 2. 이미 제출된 투찰 견적서 목록 조회
+      // 2. 제출된 견적서 목록 조회
       const { data: proposalList } = await supabase
         .from('rfq_proposals')
         .select('*')
@@ -87,17 +68,20 @@ export default function RfqDetailPage() {
 
   const handleProposalSubmit = async (e) => {
     e.preventDefault();
-    setSaving(true);
+    setSubmitting(true);
     setSubmitSuccess(false);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const sellerMeta = session?.user?.user_metadata || {};
 
     const newProposal = {
       rfq_id: rfqId,
-      seller_company_name: '한국정밀공업 (Hankook Precision Co., Ltd.)',
+      seller_company_name: sellerMeta.company_name_en || sellerMeta.company_name || 'Hankook Precision Co., Ltd.',
       offered_price: `${offeredPrice} USD / Unit`,
       offered_moq: offeredMoq,
       lead_time: leadTime,
       proposal_message: proposalMessage,
-      status: 'Pending',
+      created_at: new Date().toISOString(),
     };
 
     try {
@@ -109,15 +93,23 @@ export default function RfqDetailPage() {
       }
 
       setSubmitSuccess(true);
+      setOfferedPrice('');
+      setOfferedMoq('');
+      setLeadTime('');
+      setProposalMessage('');
       setTimeout(() => setSubmitSuccess(false), 2500);
     } catch (error) {
       console.error('Failed to submit proposal:', error);
     } finally {
-      setSaving(false);
+      setSubmitting(false);
     }
   };
 
   if (!mounted) return null;
+
+  const buyerCompany = rfq?.company_name || rfq?.buyer_company_name || 'Global Buyer';
+  const buyerCountry = rfq?.country || 'United States';
+  const orderQuantity = rfq?.order_quantity || rfq?.moq || rfq?.target_quantity || '1 Unit';
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 antialiased">
@@ -132,11 +124,11 @@ export default function RfqDetailPage() {
           <span>Back to RFQ Marketplace</span>
         </Link>
 
-        {/* 상단 RFQ 타이틀 헤더 */}
+        {/* 상단 RFQ 상세 헤더 */}
         <div className="bg-slate-900 text-white rounded-3xl p-8 shadow-md border border-slate-800 space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-extrabold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
-              {rfq?.category}
+              {rfq?.category || 'General Manufacturing'}
             </span>
             <span className="text-xs font-extrabold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5" /> Verified Purchasing Demand
@@ -144,52 +136,68 @@ export default function RfqDetailPage() {
           </div>
 
           <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight leading-snug">
-            {rfq?.title}
+            {rfq?.title || 'RFQ Demand Specification'}
           </h1>
 
           <div className="flex flex-wrap items-center gap-6 text-xs text-slate-300 border-t border-slate-800 pt-4">
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-blue-400" />
-              <Link href={`/buyers/${rfqId}`} className="font-bold hover:underline text-blue-400">
-                {rfq?.buyer_company_name} ({rfq?.buyer_country})
+              <Link href={`/buyers/${rfq?.user_id}`} className="font-bold hover:underline text-blue-400">
+                {buyerCompany} ({buyerCountry})
               </Link>
             </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-blue-400" />
-              <span>Destination: {rfq?.delivery_destination}</span>
-            </div>
+
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-blue-400" />
-              <span>Deadline: {rfq?.deadline_date}</span>
+              <span>Posted: {rfq?.created_at ? new Date(rfq.created_at).toLocaleDateString() : 'Active'}</span>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* 바이어 요구 스펙 및 제출된 투찰 목록 */}
           <div className="lg:col-span-7 space-y-6">
             <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <h2 className="text-lg font-extrabold text-slate-900 border-b border-slate-100 pb-3">
                 Buyer Purchasing Specifications
               </h2>
 
-              <p className="text-xs text-slate-600 leading-relaxed">
-                {rfq?.description}
+              {rfq?.product_name && (
+                <div className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-lg text-xs font-extrabold">
+                  Product Name: {rfq.product_name}
+                </div>
+              )}
+
+              <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                {rfq?.details || rfq?.description || 'No additional details specified.'}
               </p>
+
+              {rfq?.drawing_url && (
+                <div className="pt-2">
+                  <a
+                    href={rfq.drawing_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-extrabold text-blue-600 hover:underline bg-blue-50 px-3.5 py-2 rounded-xl border border-blue-100"
+                  >
+                    <Paperclip className="w-4 h-4 text-blue-500" />
+                    <span>View Product Drawing / Photo Attachment</span>
+                  </a>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs mt-2">
                 <div>
-                  <span className="text-slate-400 block text-[10px]">Buyer Target Price</span>
-                  <span className="font-extrabold text-blue-600 text-sm">${rfq?.target_price}</span>
+                  <span className="text-slate-400 block text-[10px]">Target Budget</span>
+                  <span className="font-extrabold text-emerald-600 text-sm">{rfq?.target_price || 'Negotiable'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px]">Target MOQ</span>
-                  <span className="font-bold text-slate-800 text-sm">{rfq?.target_moq}</span>
+                  <span className="text-slate-400 block text-[10px]">Target Order Quantity</span>
+                  <span className="font-bold text-slate-800 text-sm">{orderQuantity}</span>
                 </div>
               </div>
             </div>
 
-            {/* 이미 제출된 다른 셀러 투찰 내역 */}
+            {/* 제출된 투찰 목록 */}
             <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <h3 className="text-base font-extrabold text-slate-900 border-b border-slate-100 pb-3 flex items-center justify-between">
                 <span>Submitted Seller Proposals ({proposals.length})</span>
@@ -224,12 +232,12 @@ export default function RfqDetailPage() {
             </div>
           </div>
 
-          {/* 한국 셀러 견적 투찰 제출 폼 */}
+          {/* 셀러 견적 투찰 제출 폼 */}
           <div className="lg:col-span-5 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
             <div className="border-b border-slate-100 pb-3">
               <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
                 <Send className="w-5 h-5 text-blue-600" />
-                Submit Seller B2B Proposal
+                Submit Direct Offer
               </h2>
               <p className="text-xs text-slate-500 mt-1">Submit your factory price and supply terms directly to this buyer.</p>
             </div>
@@ -242,8 +250,8 @@ export default function RfqDetailPage() {
                   required
                   value={offeredPrice}
                   onChange={(e) => setOfferedPrice(e.target.value)}
-                  placeholder="145.00"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  placeholder=""
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-emerald-600"
                 />
               </div>
 
@@ -255,6 +263,7 @@ export default function RfqDetailPage() {
                     required
                     value={offeredMoq}
                     onChange={(e) => setOfferedMoq(e.target.value)}
+                    placeholder=""
                     className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
@@ -266,6 +275,7 @@ export default function RfqDetailPage() {
                     required
                     value={leadTime}
                     onChange={(e) => setLeadTime(e.target.value)}
+                    placeholder=""
                     className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
@@ -278,6 +288,7 @@ export default function RfqDetailPage() {
                   required
                   value={proposalMessage}
                   onChange={(e) => setProposalMessage(e.target.value)}
+                  placeholder=""
                   className="w-full p-4 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none leading-relaxed"
                 />
               </div>
@@ -291,7 +302,7 @@ export default function RfqDetailPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <Send className="w-4 h-4" />
                 <span>{submitting ? 'Submitting Quote...' : 'Submit Wholesale Proposal'}</span>
