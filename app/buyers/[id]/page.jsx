@@ -71,19 +71,18 @@ function PublicBuyerShowroomContent() {
       if (profile) {
         setBuyerProfile(profile);
       } else {
-        // Fallback default structure
         setBuyerProfile({
-          contact_person: 'Kevin',
-          company_name: 'Global Sourcing LLC',
+          contact_person: 'Global Buyer',
+          company_name: 'Verified Importer',
           country: 'United States',
           business_type: 'Wholesaler / Distributor',
           target_category: 'Industrial Machinery',
-          website_url: 'https://globalsourcingllc.com',
-          description: 'Leading North American importer and wholesale distributor specializing in Korean high-precision industrial components.'
+          website_url: '',
+          description: ''
         });
       }
 
-      // 2. Fetch Buyer's Public Active RFQs from DB (가짜 예시 카드 전면 제거)
+      // 2. Fetch Buyer's Public Active RFQs from DB
       const { data: rfqList } = await supabase
         .from('public_rfqs')
         .select('*')
@@ -105,8 +104,8 @@ function PublicBuyerShowroomContent() {
 
   if (!mounted) return null;
 
-  const contactPerson = buyerProfile?.contact_person || buyerProfile?.buyer_name || 'Kevin';
-  const companyName = buyerProfile?.company_name || 'Global Sourcing LLC';
+  const contactPerson = buyerProfile?.contact_person || buyerProfile?.buyer_name || 'Global Buyer';
+  const companyName = buyerProfile?.company_name || 'Verified Importer';
   const country = buyerProfile?.country || 'United States';
   const businessType = buyerProfile?.business_type || 'Wholesaler / Distributor';
   const targetCategory = buyerProfile?.target_category || buyerProfile?.interest_category || 'Industrial Machinery';
@@ -303,6 +302,12 @@ function PublicBuyerShowroomContent() {
                         <p>Target Price: <strong className="text-emerald-600 font-bold">{item.target_price || 'Negotiable'}</strong></p>
                         <p>Order Qty: <strong className="text-slate-800 font-bold">{item.order_quantity || item.moq || '1 Unit'}</strong></p>
                       </div>
+
+                      {item.details && (
+                        <p className="text-[10px] text-slate-600 line-clamp-2 bg-white p-2 rounded-lg border border-slate-100 font-medium">
+                          {item.details}
+                        </p>
+                      )}
 
                       <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs">
                         <span className="text-[11px] font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">

@@ -7,7 +7,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
   Building2, 
-  Globe, 
   MapPin, 
   ShieldCheck, 
   Save, 
@@ -17,7 +16,6 @@ import {
   User, 
   ShoppingBag, 
   ExternalLink, 
-  PlusCircle, 
   Clock, 
   Settings, 
   X, 
@@ -73,14 +71,14 @@ function BuyerProfileContent() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // New RFQ Modal State (Estimated Order Quantity 적용)
+  // New RFQ Modal State
   const [isRfqModalOpen, setIsRfqModalOpen] = useState(false);
   const [isSubmittingRfq, setIsSubmittingRfq] = useState(false);
   const [rfqProductName, setRfqProductName] = useState('');
   const [rfqTitle, setRfqTitle] = useState('');
   const [rfqCategory, setRfqCategory] = useState('Industrial Machinery');
   const [rfqTargetPrice, setRfqTargetPrice] = useState('');
-  const [rfqOrderQuantity, setRfqOrderQuantity] = useState(''); // 오더 예상 수량
+  const [rfqOrderQuantity, setRfqOrderQuantity] = useState('');
   const [rfqDetails, setRfqDetails] = useState('');
 
   // Drawing File Attachment State
@@ -113,7 +111,6 @@ function BuyerProfileContent() {
         if (meta.country) setCountry(meta.country);
       }
 
-      // 1. Fetch Buyer Profile from Supabase
       const userIdStr = session?.user?.id ? session.user.id.toString() : null;
       let query = supabase.from('buyer_profiles').select('*');
       if (userIdStr) {
@@ -132,7 +129,6 @@ function BuyerProfileContent() {
         setDescription(profile.description || description);
       }
 
-      // 2. Fetch Buyer's Real Active RFQs from DB
       if (userIdStr) {
         const { data: rfqList } = await supabase
           .from('public_rfqs')
@@ -156,7 +152,6 @@ function BuyerProfileContent() {
     }
   };
 
-  // Drawing File Upload Handler
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -193,7 +188,6 @@ function BuyerProfileContent() {
     }
   };
 
-  // Save Buyer Profile Settings
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -231,7 +225,6 @@ function BuyerProfileContent() {
     }
   };
 
-  // Create New Public RFQ (buyer_name 및 order_quantity 컬럼 매핑)
   const handleCreateRfq = async (e) => {
     e.preventDefault();
     if (!user) {
@@ -247,13 +240,13 @@ function BuyerProfileContent() {
       const newRfqPayload = {
         user_id: userIdStr,
         buyer_name: contactPerson || 'Global Buyer',
-        company_name: companyName || 'Global Buyer',
+        company_name: companyName || 'Global Sourcing LLC',
         product_name: rfqProductName || rfqTitle,
         title: rfqTitle,
         category: rfqCategory,
         target_price: rfqTargetPrice,
-        moq: rfqOrderQuantity, // 하위 호환성 유지
-        order_quantity: rfqOrderQuantity, // 오더 예상 수량
+        moq: rfqOrderQuantity,
+        order_quantity: rfqOrderQuantity,
         details: rfqDetails,
         drawing_url: rfqAttachment?.url || null,
         drawing_name: rfqAttachment?.name || null,
@@ -348,7 +341,7 @@ function BuyerProfileContent() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* 1. Buyer Company Information Card */}
+          {/* Buyer Company Information Card */}
           <div className="lg:col-span-7 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
             <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
               <div>
@@ -369,7 +362,6 @@ function BuyerProfileContent() {
               </button>
             </div>
 
-            {/* Profile Info Grid */}
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Contact Person</span>
@@ -412,7 +404,6 @@ function BuyerProfileContent() {
               </div>
             </div>
 
-            {/* Website URL */}
             {websiteUrl && (
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs flex items-center justify-between">
                 <span className="text-slate-500 font-bold">Official Website:</span>
@@ -428,7 +419,6 @@ function BuyerProfileContent() {
               </div>
             )}
 
-            {/* Sourcing Scope & Description */}
             <div className="space-y-2 pt-2">
               <span className="text-xs font-extrabold text-slate-900 block">Sourcing Scope & Company Description</span>
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-600 leading-relaxed font-medium">
@@ -437,7 +427,7 @@ function BuyerProfileContent() {
             </div>
           </div>
 
-          {/* 2. My Active RFQs List */}
+          {/* My Active RFQs List */}
           <div className="lg:col-span-5 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
             <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
               <div>
@@ -519,6 +509,12 @@ function BuyerProfileContent() {
                       Target Price: <span className="font-bold text-emerald-600">{rfq.target_price || 'Negotiable'}</span> | Order Qty: <span className="font-bold text-slate-800">{rfq.order_quantity || rfq.moq || '1 Unit'}</span>
                     </p>
 
+                    {rfq.details && (
+                      <p className="text-[10px] text-slate-600 line-clamp-2 bg-white p-2 rounded-lg border border-slate-100 font-medium">
+                        {rfq.details}
+                      </p>
+                    )}
+
                     <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
                       <span className="font-bold text-blue-600 bg-blue-50/80 px-2 py-0.5 rounded-md">
                         {rfq.quote_count || 0} Factory Quotes
@@ -550,7 +546,7 @@ function BuyerProfileContent() {
         </div>
       </main>
 
-      {/* Modal 1: Buyer Profile Settings Edit Modal */}
+      {/* Edit Settings Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto animate-fadeIn">
@@ -695,7 +691,7 @@ function BuyerProfileContent() {
         </div>
       )}
 
-      {/* Modal 2: Post New Public RFQ Modal (Estimated Order Quantity 적용) */}
+      {/* Modal 2: Post New Public RFQ Modal */}
       {isRfqModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 animate-fadeIn">
@@ -766,7 +762,6 @@ function BuyerProfileContent() {
                 </div>
               </div>
 
-              {/* 오더 예상 수량 필드로 용어 교정 */}
               <div>
                 <label className="block text-slate-700 font-extrabold mb-1">Estimated Order Quantity</label>
                 <input
