@@ -65,7 +65,16 @@ function AuthPageContent() {
 
   useEffect(() => {
     setMounted(true);
+    checkExistingSession();
   }, []);
+
+  // 이미 로그인된 사용자인 경우 홈 화면(/)으로 자동 이동
+  const checkExistingSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      router.push('/');
+    }
+  };
 
   // Send password reset email
   const handleSendPasswordReset = async (e) => {
@@ -304,14 +313,11 @@ function AuthPageContent() {
             return;
           }
 
-          setSuccessMessage(`Successfully signed in as ${actualRole === 'seller' ? 'Seller' : 'Buyer'}! Redirecting...`);
+          setSuccessMessage(`Successfully signed in as ${actualRole === 'seller' ? 'Seller' : 'Buyer'}! Redirecting to Home...`);
 
+          // ★ 역할을 불문하고 첫 화면(홈 화면)으로 리다이렉트 처리
           setTimeout(() => {
-            if (actualRole === 'seller') {
-              router.push('/chat');
-            } else {
-              router.push('/buyer/profile');
-            }
+            router.push('/');
           }, 600);
         }
       }
