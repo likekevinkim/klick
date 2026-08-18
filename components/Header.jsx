@@ -27,7 +27,7 @@ export default function Header() {
   const [user, setUser] = useState(null);
   const pathname = usePathname();
 
-  // 실시간 안읽은 채팅 메시지 총 개수 상태 (기본 0 초기화)
+  // 실시간 안읽은 채팅 메시지 총 개수 상태
   const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   const languages = [
@@ -39,7 +39,6 @@ export default function Header() {
     { code: 'ar', label: 'AR', name: 'العربية (AR)' },
   ];
 
-  // 구글 번역 쿠키 설정 및 셀렉터 변경 트리거
   const setGoogleTranslateCookie = (langCode) => {
     if (!langCode) return;
     const domain = window.location.hostname;
@@ -59,7 +58,6 @@ export default function Header() {
     setTimeout(triggerGoogleCombo, 300);
   };
 
-  // Supabase DB 기반 내 계정의 대화방 검증 및 진짜 안 읽은 메시지 정밀 계산
   const updateUnreadCountFromStorage = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -332,7 +330,7 @@ export default function Header() {
                         <span>My Company & Showroom</span>
                       </Link>
 
-                      {/* ★ Product Dashboard 클릭 시 등록된 제품 리스트가 보이는 /products 페이지로 연결 */}
+                      {/* Product Dashboard 클릭 시 내가 등록한 전체 제품 목록 카탈로그 페이지(/products)로 정확히 이동 */}
                       <Link
                         href="/products"
                         onClick={() => setIsUserMenuOpen(false)}
