@@ -29,7 +29,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
   const [companyName, setCompanyName] = useState('');
   const [factoryLocation, setFactoryLocation] = useState('South Korea');
 
-  // 1. BASIC PRODUCT INFORMATION (모든 placeholder 예시 문구 비움)
+  // 1. BASIC PRODUCT INFORMATION
   const [titleKo, setTitleKo] = useState('');
   const [titleEn, setTitleEn] = useState('');
   const [category, setCategory] = useState('Industrial Machinery');
@@ -390,7 +390,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
             </div>
           </div>
 
-          {/* 2. MANUFACTURER PROFILE & COMPLIANCE CERTIFICATIONS (셀러 프로필 연동) */}
+          {/* 2. MANUFACTURER PROFILE & COMPLIANCE CERTIFICATIONS */}
           <div className="space-y-3">
             <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-blue-600" />
@@ -398,7 +398,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {/* 내 회사명 자동 연동 */}
               <div>
                 <label className="block text-slate-700 font-extrabold mb-1">Company / Factory Name *</label>
                 <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-extrabold text-slate-900 flex items-center gap-2">
@@ -407,7 +406,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
                 </div>
               </div>
 
-              {/* 공장 위치 자동 연동 */}
               <div>
                 <label className="block text-slate-700 font-extrabold mb-1">Factory Location *</label>
                 <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-extrabold text-slate-900 flex items-center gap-2">
@@ -430,7 +428,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
             </div>
           </div>
 
-          {/* 3. WHOLESALE TIERED FOB PRICING ($ USD) */}
+          {/* 3. WHOLESALE TIERED FOB PRICING ($ USD) - 수량 구간 라벨 명확하게 표기 */}
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
               <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
@@ -446,46 +444,57 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
               </button>
             </div>
 
+            {/* 수량 구간 및 단가 입력칸 헤더 라벨 추가 */}
+            <div className="grid grid-cols-12 gap-3 text-[11px] font-extrabold text-slate-600 px-1">
+              <div className="col-span-7">Quantity Tier Range (Min Qty ~ Max Qty)</div>
+              <div className="col-span-4">FOB Unit Price ($ USD)</div>
+              <div className="col-span-1 text-center">Delete</div>
+            </div>
+
             <div className="space-y-2">
               {pricingTiers.map((tier) => (
-                <div key={tier.id} className="flex items-center gap-3">
-                  <div className="flex-1 grid grid-cols-2 gap-2">
+                <div key={tier.id} className="grid grid-cols-12 gap-3 items-center">
+                  <div className="col-span-7 flex items-center gap-2">
                     <input
                       type="text"
                       value={tier.minQty}
                       onChange={(e) => handleTierChange(tier.id, 'minQty', e.target.value)}
-                      placeholder=""
-                      className="px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium bg-white"
+                      placeholder="Min Qty"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-slate-800 bg-white"
                     />
+                    <span className="font-bold text-slate-400">~</span>
                     <input
                       type="text"
                       value={tier.maxQty}
                       onChange={(e) => handleTierChange(tier.id, 'maxQty', e.target.value)}
-                      placeholder=""
-                      className="px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium bg-white"
+                      placeholder="Max Qty (or +)"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-slate-800 bg-white"
                     />
                   </div>
 
-                  <div className="flex items-center gap-1 flex-1">
-                    <span className="font-bold text-slate-500">$</span>
+                  <div className="col-span-4 flex items-center gap-1">
+                    <span className="font-extrabold text-slate-500">$</span>
                     <input
                       type="text"
                       value={tier.price}
                       onChange={(e) => handleTierChange(tier.id, 'price', e.target.value)}
-                      placeholder=""
+                      placeholder="Price"
                       className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-extrabold text-emerald-600 bg-white"
                     />
                   </div>
 
-                  {pricingTiers.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTier(tier.id)}
-                      className="text-rose-500 hover:text-rose-700 p-1 cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
+                  <div className="col-span-1 text-center">
+                    {pricingTiers.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTier(tier.id)}
+                        className="text-rose-500 hover:text-rose-700 p-1 cursor-pointer"
+                        title="Delete Tier"
+                      >
+                        <X className="w-4 h-4 mx-auto" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -498,7 +507,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Cover Image Upload Box */}
               <div>
                 <label className="block text-slate-700 font-extrabold mb-1">Main Cover Image *</label>
                 <input
@@ -543,7 +551,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
                 )}
               </div>
 
-              {/* Video Upload Box */}
               <div>
                 <label className="block text-slate-700 font-extrabold mb-1">Factory Demo Video File</label>
                 <input
@@ -608,7 +615,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
               </button>
             </div>
 
-            {/* Simple Editor Toolbar */}
             <div className="p-2 bg-slate-50 border border-slate-200 rounded-t-2xl flex items-center gap-2 border-b-0 text-slate-600">
               <button type="button" className="p-1.5 hover:bg-slate-200 rounded-lg"><Bold className="w-3.5 h-3.5" /></button>
               <button type="button" className="p-1.5 hover:bg-slate-200 rounded-lg"><Italic className="w-3.5 h-3.5" /></button>

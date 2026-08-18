@@ -23,13 +23,14 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import ProductFormModal from '@/components/products/ProductFormModal';
 
 export default function SellerCompanyProfilePage() {
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
   const [companyId, setCompanyId] = useState('1');
 
-  // 셀러 공장 프로필 상태값 (자동 연동 및 기본값 정돈)
+  // 셀러 공장 프로필 상태값
   const [companyName, setCompanyName] = useState('');
   const [tagline, setTagline] = useState('');
   const [description, setDescription] = useState('');
@@ -40,16 +41,17 @@ export default function SellerCompanyProfilePage() {
   const [factorySize, setFactorySize] = useState('');
   const [certificationsText, setCertificationsText] = useState('');
   
-  // 공장 사진 및 동영상 URL 상태값
+  // 미디어 URL 상태값
   const [videoUrl, setVideoUrl] = useState('');
   const [galleryImages, setGalleryImages] = useState([]);
   const [newImageUrl, setNewImageUrl] = useState('');
 
-  // 셀러 등록 수출 상품 데이터
+  // 셀러 등록 수출 상품 데이터 및 모달 상태
   const [products, setProducts] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -66,7 +68,6 @@ export default function SellerCompanyProfilePage() {
         setUser(currentUser);
         const userIdStr = currentUser.id.toString();
 
-        // 1. 로그인한 셀러의 DB 프로필 및 회사 정보 자동 불러오기
         const { data: sellerProf } = await supabase
           .from('seller_profiles')
           .select('*')
@@ -80,7 +81,6 @@ export default function SellerCompanyProfilePage() {
           .maybeSingle();
 
         const meta = currentUser.user_metadata || {};
-
         const activeCompany = companyData || sellerProf || {};
         
         setCompanyId(activeCompany.id || '1');
@@ -101,7 +101,6 @@ export default function SellerCompanyProfilePage() {
           setGalleryImages(activeCompany.gallery_images);
         }
 
-        // 2. 해당 셀러가 등록한 실제 수출 상품 목록 불러오기
         const { data: productList } = await supabase
           .from('products')
           .select('*')
@@ -119,19 +118,16 @@ export default function SellerCompanyProfilePage() {
     }
   };
 
-  // 공장 사진 추가 핸들러
   const handleAddImage = () => {
     if (!newImageUrl.trim()) return;
     setGalleryImages([...galleryImages, newImageUrl.trim()]);
     setNewImageUrl('');
   };
 
-  // 공장 사진 삭제 핸들러
   const handleDeleteImage = (index) => {
     setGalleryImages(galleryImages.filter((_, i) => i !== index));
   };
 
-  // 공장 프로필 정보 저장 및 업데이트 핸들러
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -189,7 +185,6 @@ export default function SellerCompanyProfilePage() {
     }
   };
 
-  // 등록 상품 삭제 핸들러
   const handleDeleteProduct = async (id) => {
     if (!confirm('Are you sure you want to delete this product from your factory catalog?')) return;
 
@@ -198,6 +193,12 @@ export default function SellerCompanyProfilePage() {
       setProducts(products.filter((item) => item.id !== id));
     } catch (error) {
       console.error('Failed to delete product:', error);
+    }
+  };
+
+  const handleProductCreated = (newProduct) => {
+    if (newProduct) {
+      setProducts((prev) => [newProduct, ...prev]);
     }
   };
 
@@ -233,18 +234,19 @@ export default function SellerCompanyProfilePage() {
               <ExternalLink className="w-3.5 h-3.5" />
             </Link>
 
-            <Link
-              href="/products/new"
+            <button
+              type="button"
+              onClick={() => setIsRegisterModalOpen(true)}
               className="px-5 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs md:text-sm rounded-xl shadow-md transition inline-flex items-center gap-1.5 cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>AI Product Setup</span>
-            </Link>
+              <span>Register Product</span>
+            </button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* 1. 셀러 공장 프로필 및 미디어 관리 폼 카드 (Placeholder 제거 반영) */}
+          {/* 1. 셀러 공장 프로필 폼 */}
           <div className="lg:col-span-7 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
             <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
               <div>
@@ -352,7 +354,6 @@ export default function SellerCompanyProfilePage() {
                 />
               </div>
 
-              {/* 홍보 동영상 URL 입력 */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
                   <Video className="w-4 h-4 text-blue-600" />
@@ -367,7 +368,6 @@ export default function SellerCompanyProfilePage() {
                 />
               </div>
 
-              {/* 공장 전경 및 생산 라인 사진 갤러리 등록 */}
               <div className="space-y-3 pt-2 border-t border-slate-100">
                 <label className="block text-xs font-bold text-slate-700 flex items-center gap-1.5">
                   <ImageIcon className="w-4 h-4 text-emerald-600" />
@@ -447,13 +447,14 @@ export default function SellerCompanyProfilePage() {
                 <p className="text-xs text-slate-500 mt-1">글로벌 바이어에게 노출되고 있는 등록 상품 목록입니다.</p>
               </div>
 
-              <Link
-                href="/products/new"
-                className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition"
+              <button
+                type="button"
+                onClick={() => setIsRegisterModalOpen(true)}
+                className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition cursor-pointer"
                 title="Add Product"
               >
                 <PlusCircle className="w-5 h-5" />
-              </Link>
+              </button>
             </div>
 
             <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
@@ -465,12 +466,13 @@ export default function SellerCompanyProfilePage() {
                 <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-3">
                   <Package className="w-10 h-10 text-slate-300 mx-auto stroke-1" />
                   <p className="text-xs text-slate-500 font-semibold">등록된 수출 상품이 없습니다.</p>
-                  <Link
-                    href="/products/new"
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:underline"
+                  <button
+                    type="button"
+                    onClick={() => setIsRegisterModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:underline cursor-pointer"
                   >
-                    <PlusCircle className="w-3.5 h-3.5" /> AI 첫 상품 등록하기 ➡️
-                  </Link>
+                    <PlusCircle className="w-3.5 h-3.5" /> 첫 수출 상품 등록하기 ➡️
+                  </button>
                 </div>
               ) : (
                 products.map((item) => (
@@ -520,6 +522,13 @@ export default function SellerCompanyProfilePage() {
           </div>
         </div>
       </main>
+
+      {/* 수량 구간 라벨 표기 반영된 모달 컴포넌트 연동 */}
+      <ProductFormModal
+        isOpen={isRegisterModalOpen}
+        onClose={() => setIsRegisterModalOpen(false)}
+        onProductCreated={handleProductCreated}
+      />
     </div>
   );
 }
