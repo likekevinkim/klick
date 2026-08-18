@@ -217,7 +217,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
     }
   };
 
-  // 최종 등록 제출 (dimensions 컬럼 유무에 따른 2단계 자동 재시도)
+  // 최종 등록 제출 (재정의된 DB 스키마 필드 구조에 완벽 매핑)
   const handleSubmitProduct = async (e) => {
     e.preventDefault();
     try {
@@ -236,7 +236,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
       const mainTitle = titleEn || titleKo || 'Export Product';
       const mainFobPrice = pricingTiers[0]?.price ? `$${pricingTiers[0].price} USD` : 'Negotiable';
 
-      // 규격 정보를 description 설명 본문에도 자동 보존
       const fullDescription = dimensions
         ? `${detailsText}\n\n[Product Dimensions & Weight]\n${dimensions}`
         : detailsText;
@@ -257,30 +256,18 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
         price: mainFobPrice,
         tiered_pricing: pricingTiers,
         description: fullDescription,
+        details: fullDescription,
         image_url: coverImage?.url || null,
         video_url: demoVideo?.url || null,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
-      // 1차 시도: dimensions 포함
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('products')
         .insert([payload])
         .select()
         .single();
-
-      // 만약 DB에 dimensions 컬럼이 없다면 제외 후 2차 재시도
-      if (error && error.message.includes('dimensions')) {
-        delete payload.dimensions;
-        const retryResult = await supabase
-          .from('products')
-          .insert([payload])
-          .select()
-          .single();
-        
-        data = retryResult.data;
-        error = retryResult.error;
-      }
 
       if (error) throw error;
 
@@ -445,7 +432,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
             </div>
           </div>
 
-          {/* 3. WHOLESALE TIERED FOB PRICING ($ USD) - 수량 헤더 및 구분 표기 */}
+          {/* 3. WHOLESALE TIERED FOB PRICING ($ USD) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
               <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">

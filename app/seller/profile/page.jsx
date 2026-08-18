@@ -523,7 +523,7 @@ export default function SellerCompanyProfilePage() {
         </div>
       </main>
 
-      {/* 수량 구간 라벨 표기 및 Certifications 선택사항 적용된 모달 컴포넌트 연동 */}
+      {/* 수량 구간 라벨 표기 및 스키마 안전 처리 모달 컴포넌트 연동 */}
       <ProductFormModal
         isOpen={isRegisterModalOpen}
         onClose={() => setIsRegisterModalOpen(false)}
