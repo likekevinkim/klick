@@ -201,7 +201,7 @@ function NewProductCreateContent() {
     }
   };
 
-  // 상품 등록 제출 핸들러
+  // 상품 등록 제출 핸들러 (스키마 오류 원인이었던 details 필드 제외하고 description만 전송)
   const handleSubmitProduct = async (e) => {
     e.preventDefault();
     if (!user) return;
