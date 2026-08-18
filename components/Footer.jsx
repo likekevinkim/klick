@@ -31,11 +31,11 @@ export default function Footer() {
             </p>
             <p className="flex items-center gap-2 hover:text-white transition">
               <Mail className="w-4 h-4 text-blue-500 flex-shrink-0" /> 
-              <span>support@klick.com</span>
+              <span>truek.work@gmail.com</span>
             </p>
             <p className="flex items-start gap-2 hover:text-white transition">
               <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" /> 
-              <span>서울특별시 강남구 테헤란로 123, 45층 KLICK 코퍼레이션</span>
+              <span>서울특별시 강남구 테헤란로 123, 45층 TRUE K CO., LTD.</span>
             </p>
           </div>
         </div>
@@ -66,8 +66,8 @@ export default function Footer() {
       {/* 하단 사업자 정보 및 카피라이트 */}
       <div className="max-w-7xl mx-auto px-6 mt-12 pt-6 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 font-medium text-[10px] text-slate-500">
         <div className="space-y-1 text-center md:text-left">
-          <p>상호명: KLICK 코퍼레이션 | 대표: 김클릭 | 사업자등록번호: 123-45-67890</p>
-          <p>통신판매업신고: 2026-서울강남-01234 | 개인정보보호책임자: 이보안</p>
+          <p>상호명: TRUE K CO., LTD. | 사업자등록번호: 829-32-00630</p>
+          <p>통신판매업신고: 2026-서울송파-01234 </p>
         </div>
         <p>© {new Date().getFullYear()} KLICK Corporation. All rights reserved.</p>
       </div>
