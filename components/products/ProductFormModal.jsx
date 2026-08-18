@@ -24,12 +24,10 @@ import {
 import { supabase } from '@/lib/supabase';
 
 export default function ProductFormModal({ isOpen, onClose, onProductCreated }) {
-  // 로그인한 셀러의 자동 가져온 회사 프로필 상태
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [companyName, setCompanyName] = useState('');
   const [factoryLocation, setFactoryLocation] = useState('South Korea');
 
-  // 1. BASIC PRODUCT INFORMATION
   const [titleKo, setTitleKo] = useState('');
   const [titleEn, setTitleEn] = useState('');
   const [category, setCategory] = useState('Industrial Machinery');
@@ -37,26 +35,21 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
   const [leadTime, setLeadTime] = useState('');
   const [dimensions, setDimensions] = useState('');
 
-  // 2. MANUFACTURER PROFILE & COMPLIANCE CERTIFICATIONS (Certifications 선택 사항)
   const [certifications, setCertifications] = useState('');
 
-  // 3. WHOLESALE TIERED FOB PRICING ($ USD)
   const [pricingTiers, setTieredPricing] = useState([
     { id: 1, minQty: '', maxQty: '', price: '' },
     { id: 2, minQty: '', maxQty: '', price: '' }
   ]);
 
-  // 4. PRODUCT PHOTOS & FACTORY DEMO VIDEO
   const [coverImage, setCoverImage] = useState(null);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [demoVideo, setDemoVideo] = useState(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
 
-  // 5. DETAILED SPECIFICATIONS RICH EDITOR
   const [detailsText, setDetailsText] = useState('');
   const [isAiGenerating, setIsAiGenerating] = useState(false);
 
-  // Submit State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -69,7 +62,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
     }
   }, [isOpen]);
 
-  // DB 및 세션에서 셀러 회사 정보 자동 조회 및 2번 영역 매핑
   const fetchSellerProfile = async () => {
     try {
       setLoadingProfile(true);
@@ -111,7 +103,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
     }
   };
 
-  // 대표 커버 사진 업로드
   const handleCoverUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -143,7 +134,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
     }
   };
 
-  // 데모 동영상 업로드
   const handleVideoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -175,7 +165,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
     }
   };
 
-  // 단가 구간 추가 / 삭제
   const handleAddTier = () => {
     setTieredPricing((prev) => [
       ...prev,
@@ -193,7 +182,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
     );
   };
 
-  // AI 자동 영문 카피 생성
   const handleAiAutoGenerate = async () => {
     if (!titleKo && !titleEn) {
       alert('Please enter a Product Title (Korean or English) first.');
@@ -217,7 +205,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
     }
   };
 
-  // 최종 등록 제출 (fob_price, dimensions, location 등 DB 컬럼 누락 시 자동 안전 우회 처리)
   const handleSubmitProduct = async (e) => {
     e.preventDefault();
     try {
@@ -250,42 +237,24 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
         category: category,
         moq: moq,
         lead_time: leadTime,
+        dimensions: dimensions,
         certifications: certifications || 'Standard Production Spec',
         fob_price: mainFobPrice,
         price: mainFobPrice,
         tiered_pricing: pricingTiers,
         description: fullDescription,
+        details: fullDescription,
         image_url: coverImage?.url || null,
         video_url: demoVideo?.url || null,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
-      if (dimensions) {
-        payload.dimensions = dimensions;
-      }
-
-      // 1차 시도
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('products')
         .insert([payload])
         .select()
         .single();
-
-      // 만약 DB에 location, fob_price, dimensions 컬럼이 없는 경우 자동 제외 후 2차 재시도
-      if (error && (error.message.includes('location') || error.message.includes('fob_price') || error.message.includes('dimensions'))) {
-        if (error.message.includes('location')) delete payload.location;
-        if (error.message.includes('fob_price')) delete payload.fob_price;
-        if (error.message.includes('dimensions')) delete payload.dimensions;
-
-        const retryResult = await supabase
-          .from('products')
-          .insert([payload])
-          .select()
-          .single();
-        
-        data = retryResult.data;
-        error = retryResult.error;
-      }
 
       if (error) throw error;
 
@@ -306,7 +275,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
     <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl p-6 md:p-8 max-w-4xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto animate-fadeIn text-xs">
         
-        {/* 모달 상단 헤더 */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="space-y-1">
             <h2 className="text-base md:text-lg font-black text-slate-900 flex items-center gap-2">
@@ -329,7 +297,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
 
         <form onSubmit={handleSubmitProduct} className="space-y-6">
           
-          {/* 1. BASIC PRODUCT INFORMATION */}
           <div className="space-y-3">
             <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
               <span>1. BASIC PRODUCT INFORMATION</span>
@@ -413,7 +380,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
             </div>
           </div>
 
-          {/* 2. MANUFACTURER PROFILE & COMPLIANCE CERTIFICATIONS */}
           <div className="space-y-3">
             <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-blue-600" />
@@ -450,7 +416,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
             </div>
           </div>
 
-          {/* 3. WHOLESALE TIERED FOB PRICING ($ USD) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
               <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
@@ -524,7 +489,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
             </div>
           </div>
 
-          {/* 4. PRODUCT PHOTOS & FACTORY DEMO VIDEO */}
           <div className="space-y-3">
             <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
               <span>4. PRODUCT PHOTOS & FACTORY DEMO VIDEO</span>
@@ -621,7 +585,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
             </div>
           </div>
 
-          {/* 5. DETAILED SPECIFICATIONS RICH EDITOR */}
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
               <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
@@ -662,7 +625,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
             </div>
           )}
 
-          {/* 모달 하단 버튼 */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
             <button
               type="button"

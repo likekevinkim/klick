@@ -214,6 +214,8 @@ function NewProductCreateContent() {
       const newProductPayload = {
         user_id: userIdStr,
         title: productTitle,
+        title_ko: productTitle,
+        title_en: productTitle,
         company_name: activeCompanyName,
         location: location,
         category: category,
@@ -221,31 +223,17 @@ function NewProductCreateContent() {
         price: fobPrice,
         moq: moq,
         description: finalDescription,
+        details: finalDescription,
         image_url: productImage?.url || null,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
-      // 1차 시도
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('products')
         .insert([newProductPayload])
         .select()
         .single();
-
-      // 만약 location이나 fob_price가 DB 컬럼에 없는 경우 우회 시도
-      if (error && (error.message.includes('location') || error.message.includes('fob_price'))) {
-        if (error.message.includes('location')) delete newProductPayload.location;
-        if (error.message.includes('fob_price')) delete newProductPayload.fob_price;
-
-        const retryResult = await supabase
-          .from('products')
-          .insert([newProductPayload])
-          .select()
-          .single();
-
-        data = retryResult.data;
-        error = retryResult.error;
-      }
 
       if (error) throw error;
 
