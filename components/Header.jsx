@@ -344,8 +344,9 @@ export default function Header() {
                         <span>My Company & Showroom</span>
                       </Link>
 
+                      {/* ★ Product Dashboard 클릭 시 등록된 내 상품 목록 카탈로그가 있는 마이페이지(/seller/profile)로 연결 */}
                       <Link
-                        href="/products"
+                        href="/seller/profile"
                         onClick={() => setIsUserMenuOpen(false)}
                         className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
                       >
