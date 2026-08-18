@@ -225,16 +225,18 @@ function NewProductCreateContent() {
         created_at: new Date().toISOString()
       };
 
-      // 1차 시도: fob_price 포함
+      // 1차 시도
       let { data, error } = await supabase
         .from('products')
         .insert([newProductPayload])
         .select()
         .single();
 
-      // fob_price 컬럼이 DB에 없을 경우 자동 제외 후 2차 재시도
-      if (error && error.message.includes('fob_price')) {
-        delete newProductPayload.fob_price;
+      // 만약 location이나 fob_price가 DB 컬럼에 없는 경우 우회 시도
+      if (error && (error.message.includes('location') || error.message.includes('fob_price'))) {
+        if (error.message.includes('location')) delete newProductPayload.location;
+        if (error.message.includes('fob_price')) delete newProductPayload.fob_price;
+
         const retryResult = await supabase
           .from('products')
           .insert([newProductPayload])

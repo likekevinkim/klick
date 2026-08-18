@@ -217,7 +217,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
     }
   };
 
-  // 최종 등록 제출 (재정의된 DB 스키마 필드 구조에 완벽 매핑)
+  // 최종 등록 제출 (fob_price, dimensions, location 등 DB 컬럼 누락 시 자동 안전 우회 처리)
   const handleSubmitProduct = async (e) => {
     e.preventDefault();
     try {
@@ -250,24 +250,42 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
         category: category,
         moq: moq,
         lead_time: leadTime,
-        dimensions: dimensions,
         certifications: certifications || 'Standard Production Spec',
         fob_price: mainFobPrice,
         price: mainFobPrice,
         tiered_pricing: pricingTiers,
         description: fullDescription,
-        details: fullDescription,
         image_url: coverImage?.url || null,
         video_url: demoVideo?.url || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        created_at: new Date().toISOString()
       };
 
-      const { data, error } = await supabase
+      if (dimensions) {
+        payload.dimensions = dimensions;
+      }
+
+      // 1차 시도
+      let { data, error } = await supabase
         .from('products')
         .insert([payload])
         .select()
         .single();
+
+      // 만약 DB에 location, fob_price, dimensions 컬럼이 없는 경우 자동 제외 후 2차 재시도
+      if (error && (error.message.includes('location') || error.message.includes('fob_price') || error.message.includes('dimensions'))) {
+        if (error.message.includes('location')) delete payload.location;
+        if (error.message.includes('fob_price')) delete payload.fob_price;
+        if (error.message.includes('dimensions')) delete payload.dimensions;
+
+        const retryResult = await supabase
+          .from('products')
+          .insert([payload])
+          .select()
+          .single();
+        
+        data = retryResult.data;
+        error = retryResult.error;
+      }
 
       if (error) throw error;
 
