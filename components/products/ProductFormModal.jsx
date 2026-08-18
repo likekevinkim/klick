@@ -37,7 +37,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
   const [leadTime, setLeadTime] = useState('');
   const [dimensions, setDimensions] = useState('');
 
-  // 2. MANUFACTURER PROFILE & COMPLIANCE CERTIFICATIONS (Certifications 선택 사항 전환)
+  // 2. MANUFACTURER PROFILE & COMPLIANCE CERTIFICATIONS (Certifications 선택 사항)
   const [certifications, setCertifications] = useState('');
 
   // 3. WHOLESALE TIERED FOB PRICING ($ USD)
@@ -170,7 +170,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
     } catch (err) {
       console.error('Video upload error:', err);
       alert('Failed to upload video file: ' + (err.message || 'Storage error'));
-    } finally {
+    } fontally {
       setUploadingVideo(false);
     }
   };
@@ -217,7 +217,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
     }
   };
 
-  // 최종 등록 제출
+  // 최종 등록 제출 (스키마 에러 원인이었던 details 컬럼을 payload에서 제외하여 해결)
   const handleSubmitProduct = async (e) => {
     e.preventDefault();
     try {
@@ -252,7 +252,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
         price: mainFobPrice,
         tiered_pricing: pricingTiers,
         description: detailsText,
-        details: detailsText,
         image_url: coverImage?.url || null,
         video_url: demoVideo?.url || null,
         created_at: new Date().toISOString()
@@ -390,7 +389,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
             </div>
           </div>
 
-          {/* 2. MANUFACTURER PROFILE & COMPLIANCE CERTIFICATIONS (Certifications 선택 사항 전환) */}
+          {/* 2. MANUFACTURER PROFILE & COMPLIANCE CERTIFICATIONS */}
           <div className="space-y-3">
             <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-blue-600" />
@@ -414,7 +413,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
                 </div>
               </div>
 
-              {/* ★ Certifications 필수(required) 해제 및 (Optional)로 교정 */}
               <div>
                 <label className="block text-slate-700 font-extrabold mb-1">Certifications (Optional)</label>
                 <input
