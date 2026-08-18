@@ -29,24 +29,20 @@ export default function SellerCompanyProfilePage() {
   const [user, setUser] = useState(null);
   const [companyId, setCompanyId] = useState('1');
 
-  // 셀러 공장 프로필 상태값
-  const [companyName, setCompanyName] = useState('한국정밀공업 (Hankook Precision Co., Ltd.)');
-  const [tagline, setTagline] = useState('Leading Manufacturer of Industrial Machinery & Precision Components in South Korea');
-  const [description, setDescription] = useState('Established in 1998, Hankook Precision specializes in manufacturing ultra-durable hydraulic valves, industrial automation parts, and customized machinery components exported to over 30 countries worldwide.');
+  // 셀러 공장 프로필 상태값 (자동 연동 및 기본값 정돈)
+  const [companyName, setCompanyName] = useState('');
+  const [tagline, setTagline] = useState('');
+  const [description, setDescription] = useState('');
   const [businessType, setBusinessType] = useState('Direct Manufacturer');
-  const [location, setLocation] = useState('Incheon, South Korea');
-  const [establishedYear, setEstablishedYear] = useState('1998');
-  const [employeesCount, setEmployeesCount] = useState('50 - 100 Employees');
-  const [factorySize, setFactorySize] = useState('5,000 sq. meters');
-  const [certificationsText, setCertificationsText] = useState('ISO 9001, CE Certified, IATF 16949');
+  const [location, setLocation] = useState('South Korea');
+  const [establishedYear, setEstablishedYear] = useState('');
+  const [employeesCount, setEmployeesCount] = useState('');
+  const [factorySize, setFactorySize] = useState('');
+  const [certificationsText, setCertificationsText] = useState('');
   
   // 공장 사진 및 동영상 URL 상태값
-  const [videoUrl, setVideoUrl] = useState('https://www.youtube.com/embed/dQw4w9WgXcQ');
-  const [galleryImages, setGalleryImages] = useState([
-    'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=800&q=80'
-  ]);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [galleryImages, setGalleryImages] = useState([]);
   const [newImageUrl, setNewImageUrl] = useState('');
 
   // 셀러 등록 수출 상품 데이터
@@ -64,44 +60,58 @@ export default function SellerCompanyProfilePage() {
     try {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-      }
+      const currentUser = session?.user || null;
 
-      // 1. 공장 대표 프로필 정보 불러오기
-      const { data: company } = await supabase
-        .from('companies')
-        .select('*')
-        .limit(1)
-        .single();
+      if (currentUser) {
+        setUser(currentUser);
+        const userIdStr = currentUser.id.toString();
 
-      if (company) {
-        setCompanyId(company.id);
-        setCompanyName(company.company_name || '한국정밀공업');
-        setTagline(company.tagline || '');
-        setDescription(company.description || '');
-        setBusinessType(company.business_type || 'Direct Manufacturer');
-        setLocation(company.location || 'South Korea');
-        setEstablishedYear(company.established_year || '1998');
-        setEmployeesCount(company.employees_count || '50 - 100 Employees');
-        setFactorySize(company.factory_size || '5,000 sq. meters');
-        setVideoUrl(company.video_url || 'https://www.youtube.com/embed/dQw4w9WgXcQ');
+        // 1. 로그인한 셀러의 DB 프로필 및 회사 정보 자동 불러오기
+        const { data: sellerProf } = await supabase
+          .from('seller_profiles')
+          .select('*')
+          .eq('user_id', userIdStr)
+          .maybeSingle();
 
-        if (Array.isArray(company.certifications)) {
-          setCertificationsText(company.certifications.join(', '));
+        const { data: companyData } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('user_id', userIdStr)
+          .maybeSingle();
+
+        const meta = currentUser.user_metadata || {};
+
+        const activeCompany = companyData || sellerProf || {};
+        
+        setCompanyId(activeCompany.id || '1');
+        setCompanyName(activeCompany.company_name || meta.company_name_en || meta.company_name || '');
+        setTagline(activeCompany.tagline || '');
+        setDescription(activeCompany.description || '');
+        setBusinessType(activeCompany.business_type || 'Direct Manufacturer');
+        setLocation(activeCompany.location || activeCompany.country || 'South Korea');
+        setEstablishedYear(activeCompany.established_year || '');
+        setEmployeesCount(activeCompany.employees_count || '');
+        setFactorySize(activeCompany.factory_size || '');
+        setVideoUrl(activeCompany.video_url || '');
+
+        if (Array.isArray(activeCompany.certifications)) {
+          setCertificationsText(activeCompany.certifications.join(', '));
         }
-        if (Array.isArray(company.gallery_images) && company.gallery_images.length > 0) {
-          setGalleryImages(company.gallery_images);
+        if (Array.isArray(activeCompany.gallery_images)) {
+          setGalleryImages(activeCompany.gallery_images);
         }
+
+        // 2. 해당 셀러가 등록한 실제 수출 상품 목록 불러오기
+        const { data: productList } = await supabase
+          .from('products')
+          .select('*')
+          .eq('user_id', userIdStr)
+          .order('created_at', { ascending: false });
+
+        setProducts(productList || []);
+      } else {
+        setProducts([]);
       }
-
-      // 2. 해당 셀러가 등록한 전체 수출 상품 목록 불러오기
-      const { data: productList } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      setProducts(productList || []);
     } catch (error) {
       console.error('Failed to load seller factory data:', error);
     } finally {
@@ -128,36 +138,46 @@ export default function SellerCompanyProfilePage() {
     setSaveSuccess(false);
 
     try {
+      const userIdStr = user?.id ? user.id.toString() : null;
+
       const certArray = certificationsText
         .split(',')
         .map((item) => item.trim())
         .filter((item) => item.length > 0);
 
       const profilePayload = {
+        user_id: userIdStr,
         company_name: companyName,
+        company_name_en: companyName,
         tagline: tagline,
         description: description,
         business_type: businessType,
         location: location,
+        country: location,
         established_year: establishedYear,
         employees_count: employeesCount,
         factory_size: factorySize,
         certifications: certArray,
         video_url: videoUrl,
         gallery_images: galleryImages,
+        updated_at: new Date().toISOString()
       };
 
-      if (companyId) {
+      if (userIdStr) {
         await supabase
           .from('companies')
-          .update(profilePayload)
-          .eq('id', companyId);
-      } else {
-        const { data } = await supabase
-          .from('companies')
-          .insert([profilePayload])
-          .select();
-        if (data?.[0]) setCompanyId(data[0].id);
+          .upsert(profilePayload, { onConflict: 'user_id' });
+
+        await supabase
+          .from('seller_profiles')
+          .upsert({
+            user_id: userIdStr,
+            company_name: companyName,
+            company_name_en: companyName,
+            country: location,
+            description: description,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id' });
       }
 
       setSaveSuccess(true);
@@ -224,7 +244,7 @@ export default function SellerCompanyProfilePage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* 1. 셀러 공장 프로필 및 미디어 관리 폼 카드 */}
+          {/* 1. 셀러 공장 프로필 및 미디어 관리 폼 카드 (Placeholder 제거 반영) */}
           <div className="lg:col-span-7 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
             <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
               <div>
@@ -244,17 +264,18 @@ export default function SellerCompanyProfilePage() {
                   required
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  placeholder=""
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">한 줄 태그라인 (Tagline - 영문 권장)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">한 줄 태그라인 (Tagline)</label>
                 <input
                   type="text"
                   value={tagline}
                   onChange={(e) => setTagline(e.target.value)}
-                  placeholder="e.g. Leading Manufacturer of Precision Industrial Valves"
+                  placeholder=""
                   className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
               </div>
@@ -265,7 +286,7 @@ export default function SellerCompanyProfilePage() {
                   <select
                     value={businessType}
                     onChange={(e) => setBusinessType(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
                   >
                     <option value="Direct Manufacturer">Direct Manufacturer (제조 공장)</option>
                     <option value="Trading Company">Trading Company (무역상사)</option>
@@ -279,6 +300,7 @@ export default function SellerCompanyProfilePage() {
                     type="text"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
+                    placeholder=""
                     className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
@@ -291,6 +313,7 @@ export default function SellerCompanyProfilePage() {
                     type="text"
                     value={establishedYear}
                     onChange={(e) => setEstablishedYear(e.target.value)}
+                    placeholder=""
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
@@ -301,6 +324,7 @@ export default function SellerCompanyProfilePage() {
                     type="text"
                     value={employeesCount}
                     onChange={(e) => setEmployeesCount(e.target.value)}
+                    placeholder=""
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
@@ -311,6 +335,7 @@ export default function SellerCompanyProfilePage() {
                     type="text"
                     value={factorySize}
                     onChange={(e) => setFactorySize(e.target.value)}
+                    placeholder=""
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
@@ -322,12 +347,12 @@ export default function SellerCompanyProfilePage() {
                   type="text"
                   value={certificationsText}
                   onChange={(e) => setCertificationsText(e.target.value)}
-                  placeholder="ISO 9001, CE Certified, IATF 16949"
+                  placeholder=""
                   className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
               </div>
 
-              {/* 홍보 동영상 임베드 URL 입력 */}
+              {/* 홍보 동영상 URL 입력 */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
                   <Video className="w-4 h-4 text-blue-600" />
@@ -337,7 +362,7 @@ export default function SellerCompanyProfilePage() {
                   type="url"
                   value={videoUrl}
                   onChange={(e) => setVideoUrl(e.target.value)}
-                  placeholder="https://www.youtube.com/embed/dQw4w9WgXcQ"
+                  placeholder=""
                   className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
               </div>
@@ -354,7 +379,7 @@ export default function SellerCompanyProfilePage() {
                     type="url"
                     value={newImageUrl}
                     onChange={(e) => setNewImageUrl(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
+                    placeholder=""
                     className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                   <button
@@ -389,6 +414,7 @@ export default function SellerCompanyProfilePage() {
                   rows={4}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  placeholder=""
                   className="w-full p-4 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none leading-relaxed"
                 />
               </div>
@@ -455,7 +481,7 @@ export default function SellerCompanyProfilePage() {
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-slate-100 rounded-xl border border-slate-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
                         {item.image_url ? (
-                          <img src={item.image_url} alt={item.title_en} className="w-full h-full object-cover" />
+                          <img src={item.image_url} alt={item.title_en || item.title} className="w-full h-full object-cover" />
                         ) : (
                           <Package className="w-5 h-5 text-slate-400" />
                         )}
@@ -465,8 +491,8 @@ export default function SellerCompanyProfilePage() {
                         <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
                           {item.category}
                         </span>
-                        <h4 className="text-xs font-extrabold text-slate-900 truncate">{item.title_en}</h4>
-                        <p className="text-[11px] font-bold text-emerald-600">${item.price} USD</p>
+                        <h4 className="text-xs font-extrabold text-slate-900 truncate">{item.title_en || item.title}</h4>
+                        <p className="text-[11px] font-bold text-emerald-600">${item.price || item.fob_price} USD</p>
                       </div>
                     </div>
 
