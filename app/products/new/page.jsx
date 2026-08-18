@@ -77,7 +77,6 @@ function NewProductCreateContent() {
     fetchSellerProfile();
   }, []);
 
-  // 로그인한 셀러의 DB 회사 프로필 자동 조회 및 매핑
   const fetchSellerProfile = async () => {
     try {
       setLoadingProfile(true);
@@ -93,7 +92,6 @@ function NewProductCreateContent() {
 
       const userIdStr = currentUser.id.toString();
 
-      // DB 및 메타데이터에서 회사 프로필 정보 자동 추출
       const { data: sellerProf } = await supabase
         .from('seller_profiles')
         .select('*')
@@ -124,7 +122,6 @@ function NewProductCreateContent() {
     }
   };
 
-  // 상품 이미지 파일 업로드
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -159,7 +156,6 @@ function NewProductCreateContent() {
     }
   };
 
-  // AI 다국어 카피라이팅 자동 생성 핸들러
   const handleGenerateAiCopy = async () => {
     if (!productTitle.trim()) {
       alert('Please enter a Product Title first to generate AI copy.');
@@ -186,7 +182,6 @@ function NewProductCreateContent() {
       if (data?.generatedText) {
         setAiGeneratedContent(data.generatedText);
       } else {
-        // AI API 연동 전 표준 고품질 다국어 템플릿 생성
         setAiGeneratedContent(
           `[Official Export Product Overview]\nName: ${productTitle}\nCategory: ${category}\nManufacturer: ${companyNameEn || companyNameKo}\n\n[Key Manufacturing Highlights]\n• ISO 9001 Certified High-Precision Production in ${location}.\n• Customized OEM/ODM Private Labeling Available for Overseas Importers.\n• Premium Export Packaging & Strict QC Inspection Guarantee.\n\n[Technical Specifications & Features]\n${description || 'High-durability manufacturing specifications built for international B2B standards.'}`
         );
@@ -201,7 +196,6 @@ function NewProductCreateContent() {
     }
   };
 
-  // 상품 등록 제출 핸들러 (스키마 오류 원인이었던 details 필드 제외하고 description만 전송)
   const handleSubmitProduct = async (e) => {
     e.preventDefault();
     if (!user) return;
@@ -256,8 +250,6 @@ function NewProductCreateContent() {
       <Header />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 mt-8 space-y-8">
-        
-        {/* 상단 네비게이션 및 헤더 */}
         <div className="flex items-center justify-between">
           <Link
             href="/seller/profile"
@@ -272,9 +264,7 @@ function NewProductCreateContent() {
           </span>
         </div>
 
-        {/* 메인 폼 카드 */}
         <div className="bg-white p-8 md:p-10 rounded-3xl border border-slate-200 shadow-sm space-y-8">
-          
           <div className="border-b border-slate-100 pb-4 space-y-1">
             <h1 className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-2">
               <Package className="w-6 h-6 text-blue-600" />
@@ -285,7 +275,6 @@ function NewProductCreateContent() {
             </p>
           </div>
 
-          {/* 1. 자동 매핑된 셀러 회사 정보 카드 */}
           <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block">
@@ -321,10 +310,7 @@ function NewProductCreateContent() {
             )}
           </div>
 
-          {/* 2. 상품 등록 폼 (Placeholder 완전히 비움) */}
           <form onSubmit={handleSubmitProduct} className="space-y-6 text-xs">
-            
-            {/* 상품 제목 */}
             <div>
               <label className="block text-slate-800 font-extrabold mb-1.5 text-xs">
                 Product Title *
@@ -339,7 +325,6 @@ function NewProductCreateContent() {
               />
             </div>
 
-            {/* 카테고리 & FOB 가격 & MOQ */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-slate-800 font-extrabold mb-1.5 text-xs">
@@ -385,7 +370,6 @@ function NewProductCreateContent() {
               </div>
             </div>
 
-            {/* 상품 사진 첨부 업로더 */}
             <div>
               <label className="block text-slate-800 font-extrabold mb-1.5 text-xs">
                 Product Main Photo
@@ -431,7 +415,6 @@ function NewProductCreateContent() {
               )}
             </div>
 
-            {/* 상세 스펙 및 기본 설명 */}
             <div>
               <label className="block text-slate-800 font-extrabold mb-1.5 text-xs">
                 Technical Specifications & Features
@@ -445,7 +428,6 @@ function NewProductCreateContent() {
               />
             </div>
 
-            {/* AI 다국어 카피라이팅 자동 생성 영역 */}
             <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
@@ -487,7 +469,6 @@ function NewProductCreateContent() {
               </div>
             )}
 
-            {/* 하단 최종 제출 버튼 */}
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
               <Link
                 href="/seller/profile"
