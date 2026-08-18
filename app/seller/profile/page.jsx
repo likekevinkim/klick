@@ -113,7 +113,7 @@ export default function SellerCompanyProfilePage() {
       }
     } catch (error) {
       console.error('Failed to load seller factory data:', error);
-    } finally {
+    } fontally {
       setLoading(false);
     }
   };

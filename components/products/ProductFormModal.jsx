@@ -428,7 +428,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
             </div>
           </div>
 
-          {/* 3. WHOLESALE TIERED FOB PRICING ($ USD) - 수량 구간 라벨 명확하게 표기 */}
+          {/* 3. WHOLESALE TIERED FOB PRICING ($ USD) - 수량 헤더 및 구분 추가 */}
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
               <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
@@ -444,42 +444,45 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
               </button>
             </div>
 
-            {/* 수량 구간 및 단가 입력칸 헤더 라벨 추가 */}
-            <div className="grid grid-cols-12 gap-3 text-[11px] font-extrabold text-slate-600 px-1">
-              <div className="col-span-7">Quantity Tier Range (Min Qty ~ Max Qty)</div>
-              <div className="col-span-4">FOB Unit Price ($ USD)</div>
-              <div className="col-span-1 text-center">Delete</div>
+            {/* 컬럼 라벨 헤더 명확히 표기 */}
+            <div className="grid grid-cols-12 gap-3 text-[11px] font-extrabold text-slate-700 px-1">
+              <div className="col-span-3">Min Qty (최소 수량)</div>
+              <div className="col-span-3">Max Qty (최대 수량)</div>
+              <div className="col-span-5">Unit FOB Price ($ USD)</div>
+              <div className="col-span-1 text-center">Del</div>
             </div>
 
             <div className="space-y-2">
               {pricingTiers.map((tier) => (
-                <div key={tier.id} className="grid grid-cols-12 gap-3 items-center">
-                  <div className="col-span-7 flex items-center gap-2">
+                <div key={tier.id} className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-3">
                     <input
                       type="text"
                       value={tier.minQty}
                       onChange={(e) => handleTierChange(tier.id, 'minQty', e.target.value)}
                       placeholder="Min Qty"
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-slate-800 bg-white"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-slate-900 bg-white"
                     />
-                    <span className="font-bold text-slate-400">~</span>
+                  </div>
+
+                  <div className="col-span-3">
                     <input
                       type="text"
                       value={tier.maxQty}
                       onChange={(e) => handleTierChange(tier.id, 'maxQty', e.target.value)}
-                      placeholder="Max Qty (or +)"
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-slate-800 bg-white"
+                      placeholder="Max Qty"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-slate-900 bg-white"
                     />
                   </div>
 
-                  <div className="col-span-4 flex items-center gap-1">
+                  <div className="col-span-5 flex items-center gap-1">
                     <span className="font-extrabold text-slate-500">$</span>
                     <input
                       type="text"
                       value={tier.price}
                       onChange={(e) => handleTierChange(tier.id, 'price', e.target.value)}
-                      placeholder="Price"
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-extrabold text-emerald-600 bg-white"
+                      placeholder="Unit Price"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-extrabold text-emerald-600 bg-white"
                     />
                   </div>
 
