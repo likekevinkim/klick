@@ -113,7 +113,7 @@ export default function SellerCompanyProfilePage() {
       }
     } catch (error) {
       console.error('Failed to load seller factory data:', error);
-    } fontally {
+    } finally {
       setLoading(false);
     }
   };
@@ -523,7 +523,7 @@ export default function SellerCompanyProfilePage() {
         </div>
       </main>
 
-      {/* 수량 구간 라벨 표기 반영된 모달 컴포넌트 연동 */}
+      {/* 수량 구간 라벨 표기 및 Certifications 선택사항 적용된 모달 컴포넌트 연동 */}
       <ProductFormModal
         isOpen={isRegisterModalOpen}
         onClose={() => setIsRegisterModalOpen(false)}

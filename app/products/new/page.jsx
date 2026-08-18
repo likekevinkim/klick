@@ -240,7 +240,7 @@ function NewProductCreateContent() {
       if (error) throw error;
 
       alert('Product published successfully to KLICK Global Showroom!');
-      router.push('/seller');
+      router.push('/seller/profile');
     } catch (err) {
       console.error('Failed to publish product:', err);
       setErrorMessage('Failed to register product: ' + (err.message || 'Database error'));
@@ -260,7 +260,7 @@ function NewProductCreateContent() {
         {/* 상단 네비게이션 및 헤더 */}
         <div className="flex items-center justify-between">
           <Link
-            href="/seller"
+            href="/seller/profile"
             className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -272,7 +272,7 @@ function NewProductCreateContent() {
           </span>
         </div>
 
-        {/* 메인 폼 카트 */}
+        {/* 메인 폼 카드 */}
         <div className="bg-white p-8 md:p-10 rounded-3xl border border-slate-200 shadow-sm space-y-8">
           
           <div className="border-b border-slate-100 pb-4 space-y-1">
@@ -490,7 +490,7 @@ function NewProductCreateContent() {
             {/* 하단 최종 제출 버튼 */}
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
               <Link
-                href="/seller"
+                href="/seller/profile"
                 className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer"
               >
                 Cancel

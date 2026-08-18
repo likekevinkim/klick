@@ -37,7 +37,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
   const [leadTime, setLeadTime] = useState('');
   const [dimensions, setDimensions] = useState('');
 
-  // 2. MANUFACTURER PROFILE & COMPLIANCE CERTIFICATIONS
+  // 2. MANUFACTURER PROFILE & COMPLIANCE CERTIFICATIONS (Certifications 선택 사항 전환)
   const [certifications, setCertifications] = useState('');
 
   // 3. WHOLESALE TIERED FOB PRICING ($ USD)
@@ -247,7 +247,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
         moq: moq,
         lead_time: leadTime,
         dimensions: dimensions,
-        certifications: certifications,
+        certifications: certifications || 'Standard Production Spec',
         fob_price: mainFobPrice,
         price: mainFobPrice,
         tiered_pricing: pricingTiers,
@@ -390,7 +390,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
             </div>
           </div>
 
-          {/* 2. MANUFACTURER PROFILE & COMPLIANCE CERTIFICATIONS */}
+          {/* 2. MANUFACTURER PROFILE & COMPLIANCE CERTIFICATIONS (Certifications 선택 사항 전환) */}
           <div className="space-y-3">
             <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-blue-600" />
@@ -414,11 +414,11 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
                 </div>
               </div>
 
+              {/* ★ Certifications 필수(required) 해제 및 (Optional)로 교정 */}
               <div>
-                <label className="block text-slate-700 font-extrabold mb-1">Certifications *</label>
+                <label className="block text-slate-700 font-extrabold mb-1">Certifications (Optional)</label>
                 <input
                   type="text"
-                  required
                   value={certifications}
                   onChange={(e) => setCertifications(e.target.value)}
                   placeholder=""
@@ -428,7 +428,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
             </div>
           </div>
 
-          {/* 3. WHOLESALE TIERED FOB PRICING ($ USD) - 수량 헤더 및 구분 추가 */}
+          {/* 3. WHOLESALE TIERED FOB PRICING ($ USD) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
               <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
@@ -444,7 +444,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
               </button>
             </div>
 
-            {/* 컬럼 라벨 헤더 명확히 표기 */}
             <div className="grid grid-cols-12 gap-3 text-[11px] font-extrabold text-slate-700 px-1">
               <div className="col-span-3">Min Qty (최소 수량)</div>
               <div className="col-span-3">Max Qty (최대 수량)</div>
