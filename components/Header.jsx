@@ -330,7 +330,7 @@ export default function Header() {
                         <span>My Company & Showroom</span>
                       </Link>
 
-                      {/* Product Dashboard 클릭 시 내가 등록한 전체 제품 목록 카탈로그 페이지(/products)로 정확히 이동 */}
+                      {/* Product Dashboard 클릭 시 /products 페이지로 고정 */}
                       <Link
                         href="/products"
                         onClick={() => setIsUserMenuOpen(false)}

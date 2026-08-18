@@ -1,97 +1,67 @@
-// app/products/new/page.jsx
+// app/products/page.jsx
 'use client';
 
-import { useState, useEffect, Suspense, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
-  Building2, 
   Package, 
   Plus, 
-  ArrowLeft, 
+  Eye, 
+  Trash2, 
   ShieldCheck, 
   Loader2, 
-  User, 
+  Building2, 
   MapPin, 
-  Image as ImageIcon, 
-  Sparkles, 
-  DollarSign, 
-  CheckCircle2, 
-  AlertCircle,
-  FileText
+  Search, 
+  PlusCircle
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import ProductFormModal from '@/components/products/ProductFormModal';
 
-export default function NewProductCreatePage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
-          <div className="flex items-center gap-2 text-slate-600 text-xs font-bold">
-            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-            <span>Loading AI Product Creator Portal...</span>
-          </div>
-        </div>
-      }
-    >
-      <NewProductCreateContent />
-    </Suspense>
-  );
-}
-
-function NewProductCreateContent() {
+export default function ProductsDashboardPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-
-  // 셀러 회사 프로필 자동 연동 상태
-  const [companyNameEn, setCompanyNameEn] = useState('');
-  const [companyNameKo, setCompanyNameKo] = useState('');
-  const [contactPerson, setContactPerson] = useState('');
+  
+  // 셀러 프로필 및 상품 목록 상태
+  const [companyName, setCompanyName] = useState('');
   const [location, setLocation] = useState('South Korea');
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // 상품 입력 폼 상태 (모든 placeholder 예시글 완전히 비움)
-  const [productTitle, setProductTitle] = useState('');
-  const [category, setCategory] = useState('Industrial Machinery');
-  const [fobPrice, setFobPrice] = useState('');
-  const [moq, setMoq] = useState('');
-  const [description, setDescription] = useState('');
-
-  // AI 자동 생성 상태
-  const [isAiGenerating, setIsAiGenerating] = useState(false);
-  const [aiGeneratedContent, setAiGeneratedContent] = useState('');
-
-  // 상품 사진 첨부 상태
-  const [productImage, setProductImage] = useState(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const imageInputRef = useRef(null);
-
-  // 등록 상태
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  // 신규 상품 등록 팝업 모달 상태
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    fetchSellerProfile();
+    fetchSellerProducts();
   }, []);
 
-  const fetchSellerProfile = async () => {
+  const fetchSellerProducts = async () => {
     try {
-      setLoadingProfile(true);
+      setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
       const currentUser = session?.user || null;
       setUser(currentUser);
 
       if (!currentUser) {
-        alert('Login is required to register a product.');
-        router.push('/login');
+        // 비로그인 사용자 접속 시 전체 공개 카탈로그 조회
+        const { data: publicProducts } = await supabase
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        setProducts(publicProducts || []);
+        setLoading(false);
         return;
       }
 
       const userIdStr = currentUser.id.toString();
 
+      // 1. 셀러 회사 정보 자동 조회
       const { data: sellerProf } = await supabase
         .from('seller_profiles')
         .select('*')
@@ -105,147 +75,64 @@ function NewProductCreateContent() {
         .maybeSingle();
 
       const meta = currentUser.user_metadata || {};
+      const activeName = sellerProf?.company_name_en || sellerProf?.company_name || companyData?.company_name_en || companyData?.company_name || meta.company_name_en || meta.company_name || 'My Factory';
+      const activeLoc = sellerProf?.country || companyData?.location || 'South Korea';
 
-      const nameEn = sellerProf?.company_name_en || companyData?.company_name_en || meta.company_name_en || meta.company_name || 'Hankook Precision Co., Ltd.';
-      const nameKo = sellerProf?.company_name_ko || companyData?.company_name_ko || meta.company_name_ko || '';
-      const contact = sellerProf?.contact_person || meta.contact_person || 'Seller Manager';
-      const loc = sellerProf?.country || companyData?.location || 'South Korea';
+      setCompanyName(activeName);
+      setLocation(activeLoc);
 
-      setCompanyNameEn(nameEn);
-      setCompanyNameKo(nameKo);
-      setContactPerson(contact);
-      setLocation(loc);
-    } catch (err) {
-      console.error('Error fetching seller profile:', err);
-    } finally {
-      setLoadingProfile(false);
-    }
-  };
-
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      setUploadingImage(true);
-      const fileExt = file.name.split('.').pop();
-      const fileName = `product_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `product_images/${fileName}`;
-
-      const { error: uploadErr } = await supabase.storage
-        .from('company-images')
-        .upload(filePath, file);
-
-      if (uploadErr) throw uploadErr;
-
-      const { data: publicUrlData } = supabase.storage
-        .from('company-images')
-        .getPublicUrl(filePath);
-
-      if (publicUrlData?.publicUrl) {
-        setProductImage({
-          name: file.name,
-          url: publicUrlData.publicUrl
-        });
-      }
-    } catch (err) {
-      console.error('Image upload error:', err);
-      alert('Failed to upload image: ' + (err.message || 'Storage error'));
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
-  const handleGenerateAiCopy = async () => {
-    if (!productTitle.trim()) {
-      alert('Please enter a Product Title first to generate AI copy.');
-      return;
-    }
-
-    try {
-      setIsAiGenerating(true);
-      setErrorMessage('');
-
-      const res = await fetch('/api/ai/generate-product', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: productTitle,
-          category: category,
-          description: description,
-          companyName: companyNameEn || companyNameKo
-        })
-      });
-
-      const data = await res.json();
-
-      if (data?.generatedText) {
-        setAiGeneratedContent(data.generatedText);
-      } else {
-        setAiGeneratedContent(
-          `[Official Export Product Overview]\nName: ${productTitle}\nCategory: ${category}\nManufacturer: ${companyNameEn || companyNameKo}\n\n[Key Manufacturing Highlights]\n• ISO 9001 Certified High-Precision Production in ${location}.\n• Customized OEM/ODM Private Labeling Available for Overseas Importers.\n• Premium Export Packaging & Strict QC Inspection Guarantee.\n\n[Technical Specifications & Features]\n${description || 'High-durability manufacturing specifications built for international B2B standards.'}`
-        );
-      }
-    } catch (err) {
-      console.error('AI Generation Error:', err);
-      setAiGeneratedContent(
-        `[Official Export Product Overview]\nName: ${productTitle}\nCategory: ${category}\nManufacturer: ${companyNameEn || companyNameKo}\n\n[Key Manufacturing Highlights]\n• High-precision manufacturing certified by Korean export standards.\n• Direct factory wholesale supply with OEM customization options.`
-      );
-    } finally {
-      setIsAiGenerating(false);
-    }
-  };
-
-  const handleSubmitProduct = async (e) => {
-    e.preventDefault();
-    if (!user) return;
-
-    try {
-      setIsSubmitting(true);
-      setErrorMessage('');
-
-      const userIdStr = user.id.toString();
-      const activeCompanyName = companyNameEn || companyNameKo || 'Hankook Precision Co., Ltd.';
-
-      const finalDescription = aiGeneratedContent 
-        ? `${description}\n\n${aiGeneratedContent}`
-        : description;
-
-      const newProductPayload = {
-        user_id: userIdStr,
-        title: productTitle,
-        title_ko: productTitle,
-        title_en: productTitle,
-        company_name: activeCompanyName,
-        location: location,
-        category: category,
-        fob_price: fobPrice,
-        price: fobPrice,
-        moq: moq,
-        description: finalDescription,
-        details: finalDescription,
-        image_url: productImage?.url || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      const { data, error } = await supabase
+      // 2. 현재 로그인한 셀러가 올린 실제 제품 목록 DB 조회
+      const { data: myProducts } = await supabase
         .from('products')
-        .insert([newProductPayload])
-        .select()
-        .single();
+        .select('*')
+        .eq('user_id', userIdStr)
+        .order('created_at', { ascending: false });
+
+      setProducts(myProducts || []);
+    } catch (err) {
+      console.error('Error fetching seller products dashboard:', err);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 상품 삭제 핸들러
+  const handleDeleteProduct = async (id) => {
+    if (!confirm('Are you sure you want to remove this product from your export catalog?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id);
 
       if (error) throw error;
 
-      alert('Product published successfully to KLICK Global Showroom!');
-      router.push('/seller/profile');
+      setProducts((prev) => prev.filter((item) => item.id !== id));
+      alert('Product deleted successfully.');
     } catch (err) {
-      console.error('Failed to publish product:', err);
-      setErrorMessage('Failed to register product: ' + (err.message || 'Database error'));
-    } finally {
-      setIsSubmitting(false);
+      console.error('Failed to delete product:', err);
+      alert('Failed to delete product: ' + (err.message || 'Database error'));
     }
   };
+
+  // 신규 등록 완료 시 목록에 즉시 추가 반영
+  const handleProductCreated = (newProduct) => {
+    if (newProduct) {
+      setProducts((prev) => [newProduct, ...prev]);
+    }
+  };
+
+  // 검색어 필터링
+  const filteredProducts = products.filter((item) => {
+    const title = item.title_en || item.title || item.title_ko || '';
+    const cat = item.category || '';
+    return (
+      title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      cat.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
 
   if (!mounted) return null;
 
@@ -253,256 +140,161 @@ function NewProductCreateContent() {
     <div className="min-h-screen bg-[#F9FAFB] text-slate-900 pb-24 antialiased">
       <Header />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 mt-8 space-y-8">
-        <div className="flex items-center justify-between">
-          <Link
-            href="/seller/profile"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Seller Dashboard</span>
-          </Link>
-
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" /> AI Export Page Creator
-          </span>
-        </div>
-
-        <div className="bg-white p-8 md:p-10 rounded-3xl border border-slate-200 shadow-sm space-y-8">
-          <div className="border-b border-slate-100 pb-4 space-y-1">
-            <h1 className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-2">
-              <Package className="w-6 h-6 text-blue-600" />
-              Upload New Product to Global Showroom
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-8 space-y-8">
+        
+        {/* 1. 상단 메인 대시보드 헤더 배너 */}
+        <div className="bg-[#0F172A] text-white rounded-3xl p-8 shadow-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+              <ShieldCheck className="w-3.5 h-3.5" /> Seller Product Management Dashboard
+            </span>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+              {companyName ? `${companyName} Catalog` : 'Export Product Catalog'}
             </h1>
-            <p className="text-xs text-slate-500 font-medium">
-              Enter product details in Korean or English. AI will automatically generate an optimized multi-lingual B2B detail page.
+            <p className="text-slate-400 text-xs md:text-sm">
+              Manage your registered export products displayed on global buyer showrooms.
             </p>
           </div>
 
-          <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block">
-                Automatically Linked Factory Profile
-              </span>
-              <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md font-extrabold border border-emerald-200">
-                Linked
-              </span>
-            </div>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/seller/profile"
+              className="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-xs rounded-xl border border-slate-700 transition inline-flex items-center gap-2 cursor-pointer"
+            >
+              <Building2 className="w-4 h-4 text-blue-400" />
+              <span>Factory Profile</span>
+            </Link>
 
-            {loadingProfile ? (
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                <span>Loading your company profile...</span>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div className="flex items-center gap-2 text-slate-800 font-extrabold">
-                  <Building2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                  <span className="truncate">{companyNameEn || companyNameKo || 'My Factory'}</span>
-                </div>
+            <button
+              type="button"
+              onClick={() => setIsRegisterModalOpen(true)}
+              className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-md transition inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Register New Product</span>
+            </button>
+          </div>
+        </div>
 
-                <div className="flex items-center gap-2 text-slate-700 font-bold">
-                  <User className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                  <span>{contactPerson}</span>
-                </div>
-
-                <div className="flex items-center gap-2 text-slate-700 font-bold">
-                  <MapPin className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                  <span>{location}</span>
-                </div>
-              </div>
-            )}
+        {/* 2. 검색 및 필터 컨트롤 바 */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="relative w-full sm:w-96">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search product by title or category..."
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white"
+            />
           </div>
 
-          <form onSubmit={handleSubmitProduct} className="space-y-6 text-xs">
-            <div>
-              <label className="block text-slate-800 font-extrabold mb-1.5 text-xs">
-                Product Title *
-              </label>
-              <input
-                type="text"
-                required
-                value={productTitle}
-                onChange={(e) => setProductTitle(e.target.value)}
-                placeholder=""
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-sm bg-white"
-              />
+          <div className="text-xs text-slate-500 font-extrabold">
+            Total Products: <strong className="text-blue-600">{filteredProducts.length}</strong>
+          </div>
+        </div>
+
+        {/* 3. 내가 올린 등록 제품 리스트 그리드 카탈로그 */}
+        {loading ? (
+          <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 space-y-3">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
+            <p className="text-xs font-bold text-slate-400">Loading your export products...</p>
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-300 space-y-4 p-8">
+            <Package className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
+            <div className="space-y-1">
+              <h3 className="text-sm font-extrabold text-slate-800">No Export Products Found</h3>
+              <p className="text-xs text-slate-400">You haven't uploaded any products yet or no product matches your search query.</p>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-slate-800 font-extrabold mb-1.5 text-xs">
-                  Category *
-                </label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-xs bg-white"
-                >
-                  <option value="Industrial Machinery">Industrial Machinery</option>
-                  <option value="K-Beauty & Cosmetics">K-Beauty & Cosmetics</option>
-                  <option value="K-Food & Beverages">K-Food & Beverages</option>
-                  <option value="Electronics & Smart IT">Electronics & Smart IT</option>
-                  <option value="General Manufacturing">General Manufacturing</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-800 font-extrabold mb-1.5 text-xs">
-                  Target FOB Price ($ USD)
-                </label>
-                <input
-                  type="text"
-                  value={fobPrice}
-                  onChange={(e) => setFobPrice(e.target.value)}
-                  placeholder=""
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-xs text-emerald-600 bg-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-800 font-extrabold mb-1.5 text-xs">
-                  Minimum Order Quantity (MOQ)
-                </label>
-                <input
-                  type="text"
-                  value={moq}
-                  onChange={(e) => setMoq(e.target.value)}
-                  placeholder=""
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-xs bg-white"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-slate-800 font-extrabold mb-1.5 text-xs">
-                Product Main Photo
-              </label>
-              <input
-                type="file"
-                ref={imageInputRef}
-                onChange={handleImageUpload}
-                accept="image/*"
-                className="hidden"
-              />
-
-              {productImage ? (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-center justify-between">
-                  <div className="flex items-center gap-3 truncate">
-                    <ImageIcon className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                    <span className="font-extrabold text-blue-900 truncate max-w-[300px]">{productImage.name}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setProductImage(null)}
-                    className="text-rose-600 hover:underline text-xs font-bold cursor-pointer"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  disabled={uploadingImage}
-                  onClick={() => imageInputRef.current?.click()}
-                  className="w-full py-4 bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 rounded-2xl flex items-center justify-center gap-2 text-slate-600 font-extrabold transition cursor-pointer"
-                >
-                  {uploadingImage ? (
-                    <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+            <button
+              type="button"
+              onClick={() => setIsRegisterModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 text-white font-extrabold text-xs rounded-xl shadow hover:bg-blue-500 transition cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Upload First Product</span>
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProducts.map((item) => (
+              <div
+                key={item.id}
+                className="bg-white rounded-3xl border border-slate-200 overflow-hidden hover:border-blue-400 hover:shadow-lg transition flex flex-col justify-between group"
+              >
+                {/* 메인 이미지 영역 */}
+                <div className="h-48 bg-slate-100 relative overflow-hidden flex items-center justify-center">
+                  {item.image_url ? (
+                    <img
+                      src={item.image_url}
+                      alt={item.title_en || item.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                    />
                   ) : (
-                    <>
-                      <ImageIcon className="w-5 h-5 text-blue-600" />
-                      <span>Upload Product Photo</span>
-                    </>
+                    <Package className="w-10 h-10 text-slate-300 stroke-1" />
                   )}
-                </button>
-              )}
-            </div>
 
-            <div>
-              <label className="block text-slate-800 font-extrabold mb-1.5 text-xs">
-                Technical Specifications & Features
-              </label>
-              <textarea
-                rows={4}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder=""
-                className="w-full p-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium leading-relaxed bg-white"
-              />
-            </div>
-
-            <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-500" />
-                  <span className="font-extrabold text-blue-950 text-xs">
-                    AI Automated B2B Detail Page Copywriting
+                  <span className="absolute top-3 left-3 text-[10px] font-extrabold text-blue-700 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-lg border border-blue-100 shadow-sm">
+                    {item.category || 'General'}
                   </span>
                 </div>
 
-                <button
-                  type="button"
-                  disabled={isAiGenerating || !productTitle.trim()}
-                  onClick={handleGenerateAiCopy}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {isAiGenerating ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  )}
-                  <span>{isAiGenerating ? 'Generating...' : 'Auto-Generate AI Copy'}</span>
-                </button>
-              </div>
+                {/* 상품 스펙 요약 정보 카드 */}
+                <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-black text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition">
+                      {item.title_en || item.title || item.title_ko}
+                    </h3>
+                    <p className="text-[11px] text-slate-400 font-medium truncate">
+                      {item.company_name || companyName}
+                    </p>
+                  </div>
 
-              {aiGeneratedContent && (
-                <div className="space-y-1 pt-1">
-                  <span className="text-[10px] font-bold text-blue-600 block">Generated Copy Preview:</span>
-                  <div className="p-4 bg-white rounded-xl border border-blue-200 text-xs text-slate-800 font-medium whitespace-pre-wrap leading-relaxed">
-                    {aiGeneratedContent}
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-bold text-[11px]">Target FOB Price:</span>
+                      <strong className="text-emerald-600 font-extrabold">{item.fob_price || item.price || 'Negotiable'}</strong>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-bold text-[11px]">MOQ:</span>
+                      <strong className="text-slate-800 font-bold">{item.moq || 'Negotiable'}</strong>
+                    </div>
+                  </div>
+
+                  {/* 카드 하단 액션 버튼 */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <Link
+                      href={`/products/${item.id}`}
+                      className="text-xs font-extrabold text-blue-600 hover:underline flex items-center gap-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>View Showroom</span>
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteProduct(item.id)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                      title="Delete Product"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-              )}
-            </div>
-
-            {errorMessage && (
-              <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl flex items-center gap-2 font-medium">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                <span>{errorMessage}</span>
               </div>
-            )}
-
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-              <Link
-                href="/seller/profile"
-                className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer"
-              >
-                Cancel
-              </Link>
-
-              <button
-                type="submit"
-                disabled={isSubmitting || uploadingImage}
-                className="px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Publishing...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>Publish Product to Showroom</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-          </form>
-        </div>
+            ))}
+          </div>
+        )}
       </main>
+
+      {/* 등록 모달 팝업 연동 */}
+      <ProductFormModal
+        isOpen={isRegisterModalOpen}
+        onClose={() => setIsRegisterModalOpen(false)}
+        onProductCreated={handleProductCreated}
+      />
     </div>
   );
 }
