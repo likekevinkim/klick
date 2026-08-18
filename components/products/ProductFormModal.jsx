@@ -170,7 +170,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
     } catch (err) {
       console.error('Video upload error:', err);
       alert('Failed to upload video file: ' + (err.message || 'Storage error'));
-    } fontally {
+    } finally {
       setUploadingVideo(false);
     }
   };
