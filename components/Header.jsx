@@ -65,7 +65,6 @@ export default function Header() {
       const { data: { session } } = await supabase.auth.getSession();
       const currentUser = session?.user || null;
 
-      // 비로그인 상태일 때는 강제로 카운트를 0으로 초기화하고 스토리지 정리
       if (!currentUser) {
         setUnreadChatCount(0);
         localStorage.setItem('klick_unread_chat_count', '0');
@@ -75,7 +74,6 @@ export default function Header() {
       const currentRole = currentUser?.user_metadata?.role || 'seller';
       const userIdStr = currentUser.id.toString();
 
-      // 내 소유의 대화방만 정확하게 조회
       let roomQuery = supabase.from('chat_rooms').select('id');
       if (currentRole === 'seller') {
         roomQuery = roomQuery.eq('seller_id', userIdStr);
@@ -85,7 +83,6 @@ export default function Header() {
 
       const { data: roomData } = await roomQuery;
 
-      // 내 대화방이 전혀 없으면 뱃지를 0으로 강제 초기화
       if (!roomData || roomData.length === 0) {
         setUnreadChatCount(0);
         localStorage.setItem('klick_unread_chat_count', '0');
@@ -101,7 +98,6 @@ export default function Header() {
       if (msgData && msgData.length > 0) {
         const opponentRole = currentRole === 'seller' ? 'buyer' : 'seller';
 
-        // 상대방이 발신한 메시지 중 is_read = false (또는 null)인 정밀 메시지만 카운트
         const unreadMsgs = msgData.filter((m) => {
           const isOpponent = m.sender_role === opponentRole;
           const isUnread = m.is_read === false || m.is_read === null;
@@ -123,7 +119,6 @@ export default function Header() {
   };
 
   useEffect(() => {
-    // 1. Supabase 세션 초기 조회 및 이중 재검증
     const fetchUserSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
@@ -137,7 +132,6 @@ export default function Header() {
     };
     fetchUserSession();
 
-    // 2. Supabase 세션 상태 변화 실시간 감지
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser(session.user);
@@ -149,18 +143,15 @@ export default function Header() {
       }
     });
 
-    // 3. 저장된 언어 불러오기 (기본값: EN)
     const savedCode = localStorage.getItem('klick_lang_code') || 'en';
     const savedLabel = localStorage.getItem('klick_lang_label') || 'EN';
     setCurrentLang(savedLabel);
 
-    // 4. 안읽은 메시지 수 정밀 초기화 및 실시간 리스너 등록
     const handleUnreadUpdate = () => {
       updateUnreadCountFromStorage();
     };
     window.addEventListener('klick_unread_chat_updated', handleUnreadUpdate);
 
-    // Supabase Realtime 기반 새 메시지 INSERT 즉시 감지 및 재계산
     const realtimeChannel = supabase
       .channel('public:chat_messages_header_count')
       .on(
@@ -172,7 +163,6 @@ export default function Header() {
       )
       .subscribe();
 
-    // 5. 구글 번역 스크립트 동적 주입 및 리스너 등록
     if (!document.getElementById('google-translate-script')) {
       const addScript = document.createElement('script');
       addScript.id = 'google-translate-script';
@@ -211,7 +201,6 @@ export default function Header() {
     };
   }, []);
 
-  // 6. 페이지 이동(pathname 변경) 감지 시 번역 쿠키 유지 및 수치 재스캔
   useEffect(() => {
     updateUnreadCountFromStorage();
 
@@ -312,7 +301,6 @@ export default function Header() {
               >
                 <div className="relative">
                   <User className="w-4 h-4 text-blue-400" />
-                  {/* 안읽은 메시지 수 뱃지 (0보다 클 때만 노출) */}
                   {unreadChatCount > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-md animate-pulse">
                       {unreadChatCount > 99 ? '99+' : unreadChatCount}
@@ -344,9 +332,9 @@ export default function Header() {
                         <span>My Company & Showroom</span>
                       </Link>
 
-                      {/* ★ Product Dashboard 클릭 시 등록된 내 상품 목록 카탈로그가 있는 마이페이지(/seller/profile)로 연결 */}
+                      {/* ★ Product Dashboard 클릭 시 등록된 제품 리스트가 보이는 /products 페이지로 연결 */}
                       <Link
-                        href="/seller/profile"
+                        href="/products"
                         onClick={() => setIsUserMenuOpen(false)}
                         className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
                       >
