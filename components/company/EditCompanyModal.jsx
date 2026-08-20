@@ -17,7 +17,11 @@ import {
   Heading, 
   Award,
   Link as LinkIcon,
-  Upload
+  Upload,
+  FileText,
+  ShieldCheck,
+  CheckCircle2,
+  ExternalLink
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -53,7 +57,11 @@ export default function EditCompanyModal({
   editVideoUrl,
   setEditVideoUrl,
   editCertifications,
-  setEditCertifications
+  setEditCertifications,
+  editBizCertKo,
+  setEditBizCertKo,
+  editBizCertEn,
+  setEditBizCertEn
 }) {
   if (!isOpen) return null;
 
@@ -64,6 +72,8 @@ export default function EditCompanyModal({
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadingBizCertKo, setUploadingBizCertKo] = useState(false);
+  const [uploadingBizCertEn, setUploadingBizCertEn] = useState(false);
 
   const [newGalleryUrl, setNewGalleryUrl] = useState('');
   const [newCertText, setNewCertText] = useState('');
@@ -161,6 +171,41 @@ export default function EditCompanyModal({
       alert('Failed to upload video file: ' + (err.message || 'Storage connection error'));
     } finally {
       setUploadingVideo(false);
+    }
+  };
+
+  // 4. 사업자등록증 파일 직접 업로드 (한글판 / 영문판 공용 헬퍼)
+  const handleBizCertFileUpload = async (e, lang) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const setUploading = lang === 'ko' ? setUploadingBizCertKo : setUploadingBizCertEn;
+    const setUrl = lang === 'ko' ? setEditBizCertKo : setEditBizCertEn;
+
+    try {
+      setUploading(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `bizcert_${lang}_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `biz-docs/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('company-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('company-images')
+        .getPublicUrl(filePath);
+
+      if (publicUrlData?.publicUrl) {
+        setUrl(publicUrlData.publicUrl);
+      }
+    } catch (err) {
+      console.error('Business registration certificate upload error:', err);
+      alert('Failed to upload business registration certificate: ' + (err.message || 'Storage connection error'));
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -479,6 +524,139 @@ export default function EditCompanyModal({
                 </span>
               ))}
             </div>
+          </div>
+
+          {/* 5-1. 사업자등록증 (한글판 / 영문판) — 둘 다 올려야 Verified Korean Company 마크 부여 */}
+          <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-200 space-y-3">
+            <label className="block font-extrabold text-slate-800 flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              Business Registration Certificate (사업자등록증)
+            </label>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Upload both the Korean and English versions to earn the <strong>Verified Korean Company</strong> badge shown to buyers. Image or PDF files accepted.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* 한글판 */}
+              <div className="space-y-2 p-3 bg-white rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-700">Korean Version (한글)</span>
+                  {editBizCertKo && (
+                    <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-[10px]">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Uploaded
+                    </span>
+                  )}
+                </div>
+
+                <label className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 hover:border-emerald-500 rounded-xl cursor-pointer flex items-center justify-center gap-2 transition text-slate-700 font-bold">
+                  {uploadingBizCertKo ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                  ) : (
+                    <Upload className="w-4 h-4 text-emerald-600" />
+                  )}
+                  <span>{uploadingBizCertKo ? 'Uploading...' : 'Upload File'}</span>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={(e) => handleBizCertFileUpload(e, 'ko')}
+                    className="hidden"
+                  />
+                </label>
+
+                <input
+                  type="url"
+                  value={editBizCertKo}
+                  onChange={(e) => setEditBizCertKo(e.target.value)}
+                  placeholder="Or paste file URL (https://...)"
+                  className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                />
+
+                {editBizCertKo && (
+                  <div className="flex items-center justify-between text-[10px]">
+                    <a
+                      href={editBizCertKo}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline flex items-center gap-1 font-bold"
+                    >
+                      <ExternalLink className="w-3 h-3" /> View File
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setEditBizCertKo('')}
+                      className="text-rose-600 hover:underline font-bold cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* 영문판 */}
+              <div className="space-y-2 p-3 bg-white rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-700">English Version</span>
+                  {editBizCertEn && (
+                    <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-[10px]">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Uploaded
+                    </span>
+                  )}
+                </div>
+
+                <label className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 hover:border-emerald-500 rounded-xl cursor-pointer flex items-center justify-center gap-2 transition text-slate-700 font-bold">
+                  {uploadingBizCertEn ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                  ) : (
+                    <Upload className="w-4 h-4 text-emerald-600" />
+                  )}
+                  <span>{uploadingBizCertEn ? 'Uploading...' : 'Upload File'}</span>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={(e) => handleBizCertFileUpload(e, 'en')}
+                    className="hidden"
+                  />
+                </label>
+
+                <input
+                  type="url"
+                  value={editBizCertEn}
+                  onChange={(e) => setEditBizCertEn(e.target.value)}
+                  placeholder="Or paste file URL (https://...)"
+                  className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                />
+
+                {editBizCertEn && (
+                  <div className="flex items-center justify-between text-[10px]">
+                    <a
+                      href={editBizCertEn}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline flex items-center gap-1 font-bold"
+                    >
+                      <ExternalLink className="w-3 h-3" /> View File
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setEditBizCertEn('')}
+                      className="text-rose-600 hover:underline font-bold cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {editBizCertKo && editBizCertEn ? (
+              <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-[11px] pt-1">
+                <ShieldCheck className="w-3.5 h-3.5" /> Both files uploaded — Verified Korean Company badge is active.
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-amber-600 font-bold text-[11px] pt-1">
+                <FileText className="w-3.5 h-3.5" /> Upload both versions to unlock the Verified badge.
+              </div>
+            )}
           </div>
 
           {/* 카테고리 및 비즈니스 타입 선택 */}

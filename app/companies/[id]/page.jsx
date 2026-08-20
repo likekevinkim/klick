@@ -82,6 +82,8 @@ export default function CompanyShowroomLandingPage() {
   const [editGalleryImages, setEditGalleryImages] = useState([]);
   const [editVideoUrl, setEditVideoUrl] = useState('');
   const [editCertifications, setEditCertifications] = useState([]);
+  const [editBizCertKo, setEditBizCertKo] = useState('');
+  const [editBizCertEn, setEditBizCertEn] = useState('');
 
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
 
@@ -204,6 +206,8 @@ export default function CompanyShowroomLandingPage() {
         setEditGalleryImages(fetchedCompany.gallery_images || []);
         setEditVideoUrl(fetchedCompany.video_url || '');
         setEditCertifications(fetchedCompany.certifications || []);
+        setEditBizCertKo(fetchedCompany.business_reg_cert_ko || '');
+        setEditBizCertEn(fetchedCompany.business_reg_cert_en || '');
       } else {
         setCompany(null);
       }
@@ -274,6 +278,8 @@ export default function CompanyShowroomLandingPage() {
         gallery_images: editGalleryImages,
         video_url: editVideoUrl,
         certifications: editCertifications,
+        business_reg_cert_ko: editBizCertKo,
+        business_reg_cert_en: editBizCertEn,
         updated_at: new Date().toISOString()
       };
 
@@ -344,9 +350,23 @@ export default function CompanyShowroomLandingPage() {
         <div className="max-w-6xl mx-auto space-y-6 relative z-10">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
-                <ShieldCheck className="w-3.5 h-3.5" /> Verified Korean Company
-              </span>
+              {company?.business_reg_cert_ko && company?.business_reg_cert_en ? (
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Verified Korean Company
+                </span>
+              ) : isOwner ? (
+                <button
+                  type="button"
+                  onClick={() => setIsEditCompanyModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30 cursor-pointer hover:bg-amber-500/30 transition"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" /> Upload Business Registration Cert to Get Verified
+                </button>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-slate-700/40 text-slate-400 text-xs font-bold border border-slate-600/40">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Not Yet Verified
+                </span>
+              )}
               {company?.business_type && (
                 <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold border border-blue-500/30">
                   <Factory className="w-3.5 h-3.5" /> {company.business_type}
@@ -812,6 +832,10 @@ export default function CompanyShowroomLandingPage() {
         setEditVideoUrl={setEditVideoUrl}
         editCertifications={editCertifications}
         setEditCertifications={setEditCertifications}
+        editBizCertKo={editBizCertKo}
+        setEditBizCertKo={setEditBizCertKo}
+        editBizCertEn={editBizCertEn}
+        setEditBizCertEn={setEditBizCertEn}
       />
 
       <ProductFormModal

@@ -92,9 +92,9 @@ function FactoriesDirectoryContent() {
           certDisplay = fac.certifications;
         }
 
-        // 대표 이미지: 셀러가 실제로 업로드하는 곳은 gallery_images라서 그 첫 장을 사용
-        // (cover_image 컬럼은 어느 화면에서도 채워지지 않아 항상 비어있음)
-        let coverImg = fac.cover_image || '';
+        // 대표 이미지: 셀러가 프로필 편집에서 고른 대표 사진은 banner_url에 저장됨
+        // (cover_image 컬럼은 어느 화면에서도 채워지지 않는 죽은 컬럼) — 없으면 갤러리 첫 장으로 대체
+        let coverImg = fac.banner_url || fac.cover_image || '';
         if (!coverImg && fac.gallery_images) {
           if (Array.isArray(fac.gallery_images) && fac.gallery_images.length > 0) {
             coverImg = fac.gallery_images[0];
@@ -119,7 +119,8 @@ function FactoriesDirectoryContent() {
           tagline: fac.tagline || fac.description || '',
           cover_image: coverImg,
           established_year: fac.established_year || (fac.created_at ? new Date(fac.created_at).getFullYear().toString() : ''),
-          product_count: liveProducts.length
+          product_count: liveProducts.length,
+          is_verified: !!(fac.business_reg_cert_ko && fac.business_reg_cert_en)
         };
       });
 
@@ -258,9 +259,11 @@ function FactoriesDirectoryContent() {
                       <Building2 className="w-12 h-12 text-slate-300 stroke-1" />
                     )}
 
-                    <span className="absolute top-3 left-3 bg-[#0F172A]/80 backdrop-blur-md text-emerald-400 text-[10px] font-extrabold px-2.5 py-1 rounded-lg border border-slate-700 flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5" /> Verified Company
-                    </span>
+                    {fac.is_verified && (
+                      <span className="absolute top-3 left-3 bg-[#0F172A]/80 backdrop-blur-md text-emerald-400 text-[10px] font-extrabold px-2.5 py-1 rounded-lg border border-slate-700 flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5" /> Verified Company
+                      </span>
+                    )}
 
                     <span className="absolute bottom-3 right-3 bg-blue-600 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-md flex items-center gap-1">
                       <Package className="w-3 h-3" /> {fac.product_count} Live Products
