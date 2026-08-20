@@ -1,9 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { Globe, Star, Clock, Package, MessageSquare, ShoppingBag, Layers, FileText, Ruler, Sparkles, Factory, Award } from 'lucide-react';
+import { Globe, Star, Clock, Package, MessageSquare, ShoppingBag, Layers, FileText, Ruler, Sparkles, Factory, Award, Heart, Eye } from 'lucide-react';
 
-export default function ProductDetailSpecs({ product, isOwner, avgRating = 0, reviewCount = 0 }) {
+export default function ProductDetailSpecs({
+  product,
+  isOwner,
+  avgRating = 0,
+  reviewCount = 0,
+  viewerRole = null,
+  isFavorited = false,
+  onToggleFavorite = null,
+  favoriteBusy = false
+}) {
   const displayTitle = product?.title_en || product?.title_ko || product?.title || 'Export Product';
 
   return (
@@ -12,9 +21,17 @@ export default function ProductDetailSpecs({ product, isOwner, avgRating = 0, re
       <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-              <Globe className="w-3.5 h-3.5" /> {product?.category}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                <Globe className="w-3.5 h-3.5" /> {product?.category}
+              </span>
+
+              {typeof product?.view_count === 'number' && (
+                <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-400" title="Total views">
+                  <Eye className="w-3.5 h-3.5" /> {product.view_count}
+                </span>
+              )}
+            </div>
 
             {/* Real rating/review count, computed from actual submitted reviews */}
             {reviewCount > 0 ? (
@@ -30,9 +47,27 @@ export default function ProductDetailSpecs({ product, isOwner, avgRating = 0, re
             )}
           </div>
 
-          <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight leading-snug">
-            {displayTitle}
-          </h1>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight leading-snug">
+              {displayTitle}
+            </h1>
+
+            {viewerRole === 'buyer' && onToggleFavorite && (
+              <button
+                type="button"
+                onClick={onToggleFavorite}
+                disabled={favoriteBusy}
+                title={isFavorited ? 'Remove from Saved Products' : 'Save this product'}
+                className={`flex-shrink-0 p-2.5 rounded-xl border transition cursor-pointer disabled:opacity-50 ${
+                  isFavorited
+                    ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100'
+                    : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-200'
+                }`}
+              >
+                <Heart className={`w-5 h-5 ${isFavorited ? 'fill-rose-500' : ''}`} />
+              </button>
+            )}
+          </div>
 
           {product?.tagline && (
             <p className="text-xs md:text-sm text-slate-600 leading-relaxed font-medium">

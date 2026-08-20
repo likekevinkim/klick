@@ -33,6 +33,10 @@ export default function ProductDetailPage() {
   const [viewerBuyerId, setViewerBuyerId] = useState(null);
   const [viewerBuyerName, setViewerBuyerName] = useState('');
 
+  // 바이어 찜하기 상태
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
+
   const reviewCount = reviews.length;
   const avgRating = reviewCount > 0
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount
@@ -79,6 +83,15 @@ export default function ProductDetailPage() {
 
       setProduct(foundProduct);
 
+      // 조회수는 정확한 카운터가 아니라 대략적인 관심도 지표 — 소유자 본인의 열람은 제외
+      if (foundProduct?.id && user?.id !== foundProduct.user_id) {
+        supabase
+          .from('products')
+          .update({ view_count: (foundProduct.view_count || 0) + 1 })
+          .eq('id', foundProduct.id)
+          .then(() => {});
+      }
+
       // 소유권 판단
       const userRole = user?.user_metadata?.role || 'seller';
       if (user && userRole === 'seller' && foundProduct?.user_id) {
@@ -105,6 +118,17 @@ export default function ProductDetailPage() {
 
         setViewerBuyerId(userIdStr);
         setViewerBuyerName(buyerRow?.buyer_name || buyerRow?.company_name || user.email?.split('@')[0] || 'Global Buyer');
+
+        if (foundProduct?.id) {
+          const { data: favRow } = await supabase
+            .from('buyer_favorites')
+            .select('id')
+            .eq('buyer_id', userIdStr)
+            .eq('product_id', foundProduct.id)
+            .maybeSingle();
+
+          setIsFavorited(!!favRow);
+        }
       }
 
       if (foundProduct?.id) {
@@ -121,6 +145,42 @@ export default function ProductDetailPage() {
       setIsOwner(false);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 바이어 찜하기 토글 (buyer_favorites 테이블에 insert/delete)
+  const handleToggleFavorite = async () => {
+    if (!viewerBuyerId) {
+      alert('Please sign in as a buyer to save products.');
+      return;
+    }
+    if (favoriteBusy || !product?.id) return;
+
+    try {
+      setFavoriteBusy(true);
+
+      if (isFavorited) {
+        const { error } = await supabase
+          .from('buyer_favorites')
+          .delete()
+          .eq('buyer_id', viewerBuyerId)
+          .eq('product_id', product.id);
+
+        if (error) throw error;
+        setIsFavorited(false);
+      } else {
+        const { error } = await supabase
+          .from('buyer_favorites')
+          .insert([{ buyer_id: viewerBuyerId, product_id: product.id }]);
+
+        if (error) throw error;
+        setIsFavorited(true);
+      }
+    } catch (err) {
+      console.error('Toggle favorite error:', err);
+      alert('Failed to update saved products: ' + (err.message || 'Database error'));
+    } finally {
+      setFavoriteBusy(false);
     }
   };
 
@@ -283,7 +343,16 @@ export default function ProductDetailPage() {
           <div className="space-y-10">
             <ProductDetailVisual product={product} />
 
-            <ProductDetailSpecs product={product} isOwner={isOwner} avgRating={avgRating} reviewCount={reviewCount} />
+            <ProductDetailSpecs
+              product={product}
+              isOwner={isOwner}
+              avgRating={avgRating}
+              reviewCount={reviewCount}
+              viewerRole={viewerRole}
+              isFavorited={isFavorited}
+              onToggleFavorite={handleToggleFavorite}
+              favoriteBusy={favoriteBusy}
+            />
 
             {/* 바이어 리뷰 세션 — product_reviews 테이블과 실제로 연동됨 */}
             <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">

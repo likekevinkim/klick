@@ -249,6 +249,10 @@ export default function ProductsDashboardPage() {
                   <span className="absolute top-3 left-3 text-[10px] font-extrabold text-blue-700 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-lg border border-blue-100 shadow-sm">
                     {item.category || 'General'}
                   </span>
+
+                  <span className="absolute top-3 right-3 text-[10px] font-extrabold text-slate-600 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm flex items-center gap-1" title="조회수">
+                    <Eye className="w-3 h-3" /> {item.view_count || 0}
+                  </span>
                 </div>
 
                 {/* 상품 스펙 요약 정보 카드 */}

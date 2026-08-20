@@ -16,7 +16,8 @@ import {
   FileText, 
   Home,
   Factory,
-  Package
+  Package,
+  Heart
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -424,6 +425,15 @@ export default function Header() {
                       >
                         <Building2 className="w-4 h-4 text-blue-500" />
                         <span>Buyer Profile Hub</span>
+                      </Link>
+
+                      <Link
+                        href="/buyer/favorites"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
+                      >
+                        <Heart className="w-4 h-4 text-rose-500" />
+                        <span>Saved Products</span>
                       </Link>
 
                       <Link
