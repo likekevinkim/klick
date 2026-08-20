@@ -15,7 +15,8 @@ import {
   MessageSquare, 
   FileText, 
   Home,
-  Factory
+  Factory,
+  Package
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -277,6 +278,18 @@ export default function Header() {
           >
             <Factory className="w-4 h-4 text-blue-400" />
             <span className="hidden sm:inline">Factories</span>
+          </Link>
+
+          <Link
+            href="/catalog"
+            className={`p-2 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+              pathname === '/catalog'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20'
+            }`}
+          >
+            <Package className="w-4 h-4 text-blue-400" />
+            <span className="hidden sm:inline">Products</span>
           </Link>
 
           <Link
