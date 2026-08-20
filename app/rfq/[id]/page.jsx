@@ -247,11 +247,12 @@ function RfqDetailContent() {
               </div>
             </div>
 
-            {/* 메인 상세 스펙 및 견적 제출 그리드 */}
+            {/* 메인 상세 스펙 및 견적 제출 그리드 — 셀러만 우측에 투찰 폼이 보이고,
+                바이어는 좌측 제안 목록이 전체 폭을 차지한다 (바이어는 투찰할 필요가 없음) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              
+
               {/* 왼쪽 영역: 바이어 상세 스펙 및 도면 파일 */}
-              <div className="lg:col-span-7 space-y-6">
+              <div className={userRole === 'seller' ? 'lg:col-span-7 space-y-6' : 'lg:col-span-12 space-y-6'}>
                 <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
                   <h2 className="text-lg font-extrabold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
                     <FileText className="w-5 h-5 text-blue-600" />
@@ -318,7 +319,7 @@ function RfqDetailContent() {
                       proposals.map((prop) => (
                         <div
                           key={prop.id}
-                          className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 text-xs"
+                          className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 text-xs"
                         >
                           <div className="flex items-center justify-between">
                             <span className="font-extrabold text-slate-900 flex items-center gap-1.5">
@@ -329,7 +330,27 @@ function RfqDetailContent() {
                               Offered: {prop.offered_price}
                             </span>
                           </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-[11px]">
+                            <div className="p-2 bg-white rounded-lg border border-slate-100">
+                              <span className="text-slate-400 font-bold block">MOQ</span>
+                              <span className="font-extrabold text-slate-800">{prop.offered_moq || 'N/A'}</span>
+                            </div>
+                            <div className="p-2 bg-white rounded-lg border border-slate-100">
+                              <span className="text-slate-400 font-bold block">Lead Time</span>
+                              <span className="font-extrabold text-slate-800">{prop.lead_time || 'N/A'}</span>
+                            </div>
+                          </div>
+
                           <p className="text-slate-600 leading-relaxed text-[11px] font-medium">{prop.proposal_message}</p>
+
+                          <Link
+                            href={`/chat?sellerId=${encodeURIComponent(prop.seller_id)}&company=${encodeURIComponent(prop.seller_company_name)}&title=${encodeURIComponent(rfq?.title || rfq?.product_name || 'RFQ Inquiry')}&rfqId=${encodeURIComponent(rfqId)}`}
+                            className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-blue-600 hover:underline"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>Message This Factory</span>
+                          </Link>
                         </div>
                       ))
                     )}
@@ -337,7 +358,8 @@ function RfqDetailContent() {
                 </div>
               </div>
 
-              {/* 오른쪽 영역: 한국 셀러 전용 견적 투찰 제출 폼 */}
+              {/* 오른쪽 영역: 한국 셀러 전용 견적 투찰 제출 폼 — 바이어는 투찰할 일이 없으므로 숨김 */}
+              {userRole === 'seller' && (
               <div className="lg:col-span-5 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
                 <div className="border-b border-slate-100 pb-3">
                   <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
@@ -424,6 +446,7 @@ function RfqDetailContent() {
                   </div>
                 </form>
               </div>
+              )}
             </div>
           </>
         )}
