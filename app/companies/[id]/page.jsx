@@ -350,23 +350,25 @@ export default function CompanyShowroomLandingPage() {
         <div className="max-w-6xl mx-auto space-y-6 relative z-10">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
-              {company?.business_reg_cert_ko && company?.business_reg_cert_en ? (
+              {company?.is_verified ? (
                 <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
                   <ShieldCheck className="w-3.5 h-3.5" /> Verified Korean Company
                 </span>
               ) : isOwner ? (
-                <button
-                  type="button"
-                  onClick={() => setIsEditCompanyModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30 cursor-pointer hover:bg-amber-500/30 transition"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5" /> Upload Business Registration Cert to Get Verified
-                </button>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-slate-700/40 text-slate-400 text-xs font-bold border border-slate-600/40">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Not Yet Verified
-                </span>
-              )}
+                company?.business_reg_cert_ko && company?.business_reg_cert_en ? (
+                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30">
+                    <ShieldCheck className="w-3.5 h-3.5" /> Verification Pending Review
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditCompanyModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30 cursor-pointer hover:bg-amber-500/30 transition"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" /> Upload Business Registration Cert to Get Verified
+                  </button>
+                )
+              ) : null}
               {company?.business_type && (
                 <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold border border-blue-500/30">
                   <Factory className="w-3.5 h-3.5" /> {company.business_type}

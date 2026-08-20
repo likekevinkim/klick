@@ -533,7 +533,7 @@ export default function EditCompanyModal({
               Business Registration Certificate (사업자등록증)
             </label>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              Upload both the Korean and English versions to earn the <strong>Verified Korean Company</strong> badge shown to buyers. Image or PDF files accepted.
+              Upload both the Korean and English versions to submit your company for review. Once a KLICK admin approves it, the <strong>Verified Korean Company</strong> badge appears to buyers. Image or PDF files accepted.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -650,11 +650,11 @@ export default function EditCompanyModal({
 
             {editBizCertKo && editBizCertEn ? (
               <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-[11px] pt-1">
-                <ShieldCheck className="w-3.5 h-3.5" /> Both files uploaded — Verified Korean Company badge is active.
+                <CheckCircle2 className="w-3.5 h-3.5" /> Both files uploaded — save to submit for admin review.
               </div>
             ) : (
               <div className="flex items-center gap-1.5 text-amber-600 font-bold text-[11px] pt-1">
-                <FileText className="w-3.5 h-3.5" /> Upload both versions to unlock the Verified badge.
+                <FileText className="w-3.5 h-3.5" /> Upload both versions to submit for the Verified badge.
               </div>
             )}
           </div>

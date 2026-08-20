@@ -120,7 +120,7 @@ function FactoriesDirectoryContent() {
           cover_image: coverImg,
           established_year: fac.established_year || (fac.created_at ? new Date(fac.created_at).getFullYear().toString() : ''),
           product_count: liveProducts.length,
-          is_verified: !!(fac.business_reg_cert_ko && fac.business_reg_cert_en)
+          is_verified: !!fac.is_verified
         };
       });
 
