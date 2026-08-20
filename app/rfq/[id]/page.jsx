@@ -156,11 +156,13 @@ function RfqDetailContent() {
         setProposals([{ ...newProposal, id: Date.now().toString() }, ...proposals]);
       }
 
-      // RFQ 테이블 quote_count + 1 증가 업데이트
-      await supabase
-        .from('public_rfqs')
-        .update({ quote_count: (rfq?.quote_count || 0) + 1 })
-        .eq('id', rfqId);
+      // RFQ 테이블 quote_count + 1 증가 업데이트 — 글쓴 바이어가 아닌 셀러가 하는
+      // 동작이라 RLS를 우회하는 서버 라우트를 통해 처리한다.
+      fetch('/api/rfq/increment-quote-count', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rfqId })
+      }).catch(() => {});
 
       setSubmitSuccess(true);
       setOfferedPrice('');

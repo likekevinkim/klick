@@ -83,13 +83,15 @@ export default function ProductDetailPage() {
 
       setProduct(foundProduct);
 
-      // 조회수는 정확한 카운터가 아니라 대략적인 관심도 지표 — 소유자 본인의 열람은 제외
+      // 조회수는 정확한 카운터가 아니라 대략적인 관심도 지표 — 소유자 본인의 열람은 제외.
+      // products RLS가 "본인 상품만 수정 가능"으로 제한돼 있어서, 남의 조회수를 올리는
+      // 이 동작은 서버 라우트(서비스 롤 키)를 통해서만 가능하다.
       if (foundProduct?.id && user?.id !== foundProduct.user_id) {
-        supabase
-          .from('products')
-          .update({ view_count: (foundProduct.view_count || 0) + 1 })
-          .eq('id', foundProduct.id)
-          .then(() => {});
+        fetch('/api/products/view', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productId: foundProduct.id })
+        }).catch(() => {});
       }
 
       // 소유권 판단
