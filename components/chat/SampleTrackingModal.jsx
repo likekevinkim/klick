@@ -4,16 +4,22 @@
 import { useState, useEffect } from 'react';
 import { Truck, X, PackageCheck } from 'lucide-react';
 
-export default function SampleTrackingModal({ isOpen, onClose, room, userRole, onUpdateTracking }) {
+export default function SampleTrackingModal({ isOpen, onClose, room, trackingMsg, userRole, onUpdateTracking }) {
   const [courierCompany, setCourierCompany] = useState('');
   const [trackingNo, setTrackingNo] = useState('');
 
+  // Viewing a specific past shipment message is always read-only, even for the seller
+  const isViewingRecord = !!trackingMsg;
+
   useEffect(() => {
-    if (room) {
-      setCourierCompany(room.courier || 'DHL Express');
-      setTrackingNo(room.tracking_no || 'DHL-8829-4019-KR');
+    if (trackingMsg?.file) {
+      setCourierCompany(trackingMsg.file.courier || '');
+      setTrackingNo(trackingMsg.file.trackingNo || '');
+    } else if (room) {
+      setCourierCompany(room.courier || '');
+      setTrackingNo(room.tracking_no || '');
     }
-  }, [room]);
+  }, [room, trackingMsg]);
 
   if (!isOpen || !room) return null;
 
@@ -30,10 +36,10 @@ export default function SampleTrackingModal({ isOpen, onClose, room, userRole, o
           <div>
             <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
               <Truck className="w-5 h-5 text-amber-500" />
-              Sample Shipping Status
+              {isViewingRecord ? 'Shipment Update' : 'Send Shipping Update'}
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Specific sample tracking for: <span className="font-bold text-slate-800">{room.product_title}</span>
+              Shipping status for: <span className="font-bold text-slate-800">{room.product_title}</span>
             </p>
           </div>
 
@@ -64,9 +70,9 @@ export default function SampleTrackingModal({ isOpen, onClose, room, userRole, o
             </div>
           </div>
 
-          {userRole === 'seller' ? (
+          {userRole === 'seller' && !isViewingRecord ? (
             <div className="space-y-2 border-t border-slate-100 pt-3">
-              <label className="block text-xs font-bold text-slate-700">Update Tracking Information (Seller Only):</label>
+              <label className="block text-xs font-bold text-slate-700">Enter Tracking Information:</label>
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="text"
@@ -100,13 +106,13 @@ export default function SampleTrackingModal({ isOpen, onClose, room, userRole, o
             Close
           </button>
 
-          {userRole === 'seller' && (
+          {userRole === 'seller' && !isViewingRecord && (
             <button
               type="button"
               onClick={handleSave}
               className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer"
             >
-              Save Tracking Info
+              Send Shipping Update
             </button>
           )}
         </div>

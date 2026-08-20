@@ -101,6 +101,7 @@ function ChatContent() {
 
   const [isSampleModalOpen, setIsSampleModalOpen] = useState(false);
   const [selectedRoomForSample, setSelectedRoomForSample] = useState(null);
+  const [selectedTrackingMsg, setSelectedTrackingMsg] = useState(null);
 
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentQuoteData, setPaymentQuoteData] = useState(null);
@@ -635,8 +636,9 @@ function ChatContent() {
     setIsQuoteDocModalOpen(true);
   };
 
-  const handleOpenSampleModal = (room) => {
+  const handleOpenSampleModal = (room, msg = null) => {
     setSelectedRoomForSample(room);
+    setSelectedTrackingMsg(msg);
     setIsSampleModalOpen(true);
   };
 
@@ -644,6 +646,52 @@ function ChatContent() {
     setRooms((prevRooms) =>
       prevRooms.map((r) => (r.id === roomId ? { ...r, courier, tracking_no: trackingNo } : r))
     );
+
+    // Post the shipping update into the chat thread so the buyer sees it as a message
+    try {
+      const room = roomsRef.current.find((r) => r.id === roomId);
+      const opponentLang = getOpponentLang(room, 'seller');
+      const trackingText = `[Shipping Update] ${courier} — Tracking No: ${trackingNo}`;
+      const trackingTrans = await translateTextWithApi(trackingText, opponentLang);
+
+      const trackingMsgPayload = {
+        room_id: roomId,
+        sender_id: user?.id ? user.id.toString() : 'guest_seller',
+        sender_role: 'seller',
+        message: trackingText,
+        translated_message: trackingTrans,
+        is_quote: false,
+        is_read: false,
+        file: { type: 'tracking', courier, trackingNo },
+        created_at: new Date().toISOString()
+      };
+
+      const { data: insertedTrackingMsg } = await supabase
+        .from('chat_messages')
+        .insert([trackingMsgPayload])
+        .select()
+        .single();
+
+      if (insertedTrackingMsg) {
+        setRoomMessagesMap((prevMap) => ({
+          ...prevMap,
+          [roomId]: [...(prevMap[roomId] || []), insertedTrackingMsg],
+        }));
+      }
+
+      await supabase
+        .from('chat_rooms')
+        .update({ last_message: `📦 Shipping update: ${courier}`, updated_at: new Date().toISOString() })
+        .eq('id', roomId);
+
+      setRooms((prevRooms) =>
+        prevRooms.map((r) =>
+          r.id === roomId ? { ...r, last_message: `📦 Shipping update: ${courier}`, updated_at: new Date().toISOString() } : r
+        )
+      );
+    } catch (err) {
+      console.error('Failed to post tracking message:', err);
+    }
 
     try {
       await supabase
@@ -822,6 +870,7 @@ function ChatContent() {
         isOpen={isSampleModalOpen}
         onClose={() => setIsSampleModalOpen(false)}
         room={selectedRoomForSample}
+        trackingMsg={selectedTrackingMsg}
         userRole={userRole}
         onUpdateTracking={handleUpdateTracking}
       />

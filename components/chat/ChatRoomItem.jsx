@@ -199,6 +199,12 @@ export default function ChatRoomItem({
 
   const productName = room.product_title || room.title || '';
 
+  // A deal only exists once the buyer has accepted a quote in this room —
+  // gates the seller's shipping-update action so it isn't a standing button.
+  const hasAcceptedOrder = messages.some(
+    (m) => m.sender_role === 'buyer' && m.message?.startsWith('We accept this quotation')
+  );
+
   return (
     <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm transition hover:border-blue-400">
       {/* 1. Accordion Header */}
@@ -274,14 +280,16 @@ export default function ChatRoomItem({
                 </button>
               )}
 
-              <button
-                type="button"
-                onClick={() => onOpenSampleModal(room)}
-                className="px-3 py-1.5 bg-[#0F172A] hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer"
-              >
-                <Truck className="w-3.5 h-3.5 text-amber-400" />
-                <span>Product Tracking</span>
-              </button>
+              {userRole === 'seller' && hasAcceptedOrder && (
+                <button
+                  type="button"
+                  onClick={() => onOpenSampleModal(room)}
+                  className="px-3 py-1.5 bg-[#0F172A] hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Truck className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Send Shipping Update</span>
+                </button>
+              )}
             </div>
 
             <span className="text-[10px] text-slate-400 font-bold">
@@ -340,7 +348,7 @@ export default function ChatRoomItem({
                       )}
 
                       {/* File Attachment */}
-                      {msg.file && (
+                      {msg.file && msg.file.type !== 'tracking' && (
                         <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 mt-1 ${isMine ? 'bg-blue-700/60 border-blue-500' : 'bg-slate-50 border-slate-200'}`}>
                           <div className="flex items-center gap-2 truncate">
                             {msg.file.type === 'image' ? (
@@ -363,6 +371,28 @@ export default function ChatRoomItem({
                             View
                           </a>
                         </div>
+                      )}
+
+                      {/* Shipping / Tracking Update Card — click to view details */}
+                      {msg.file?.type === 'tracking' && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenSampleModal(room, msg)}
+                          className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 mt-1 w-full text-left cursor-pointer transition ${
+                            isMine ? 'bg-blue-700/60 border-blue-500 hover:bg-blue-700/80' : 'bg-amber-50 border-amber-200 hover:bg-amber-100'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <Truck className={`w-4 h-4 flex-shrink-0 ${isMine ? 'text-amber-300' : 'text-amber-600'}`} />
+                            <div className="truncate">
+                              <span className="font-extrabold block truncate">Shipment Update — {msg.file.courier}</span>
+                              <span className="text-[9px] opacity-75">Tap to view tracking details</span>
+                            </div>
+                          </div>
+                          <span className="px-2.5 py-1 bg-white text-slate-900 font-extrabold text-[10px] rounded-lg shadow flex-shrink-0">
+                            View
+                          </span>
+                        </button>
                       )}
 
                       {/* Official Quotation Card */}
