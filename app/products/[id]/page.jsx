@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronRight, Edit3, Trash2, Loader2, Star, CheckCircle2, User, Package } from 'lucide-react';
+import { ChevronRight, Edit3, Trash2, Loader2, Star, CheckCircle2, User, Package, Image as ImageIcon } from 'lucide-react';
 import ProductDetailVisual from '@/components/products/ProductDetailVisual';
 import ProductDetailSpecs from '@/components/products/ProductDetailSpecs';
 import ProductFormModal from '@/components/products/ProductFormModal';
@@ -26,6 +26,8 @@ export default function ProductDetailPage() {
   const [reviews, setReviews] = useState([]);
   const [newRating, setNewRating] = useState(5);
   const [newReviewText, setNewRatingText] = useState('');
+  const [newReviewPhotos, setNewReviewPhotos] = useState([]);
+  const [uploadingReviewPhoto, setUploadingReviewPhoto] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
 
   // Only a signed-in buyer can leave a review, using their verified name
@@ -119,7 +121,7 @@ export default function ProductDetailPage() {
           .maybeSingle();
 
         setViewerBuyerId(userIdStr);
-        setViewerBuyerName(buyerRow?.buyer_name || buyerRow?.company_name || user.email?.split('@')[0] || 'Global Buyer');
+        setViewerBuyerName(buyerRow?.buyer_name || buyerRow?.company_name || 'Global Buyer');
 
         if (foundProduct?.id) {
           const { data: favRow } = await supabase
@@ -140,7 +142,28 @@ export default function ProductDetailPage() {
           .eq('product_id', foundProduct.id)
           .order('created_at', { ascending: false });
 
-        setReviews(reviewRows || []);
+        // 리뷰 작성 시점에 저장해둔 이름 스냅샷 대신, 현재 실제 바이어 이름으로
+        // 항상 다시 해석해서 보여준다 (이메일 앞부분이 뜨는 걸 막고, 이름 바꾼
+        // 경우에도 최신 이름이 나오도록).
+        const reviewList = reviewRows || [];
+        const buyerIds = [...new Set(reviewList.map((r) => r.buyer_auth_user_id).filter(Boolean))];
+
+        if (buyerIds.length > 0) {
+          const { data: buyerRows } = await supabase
+            .from('buyers')
+            .select('auth_user_id, buyer_name, company_name')
+            .in('auth_user_id', buyerIds);
+
+          const nameById = new Map(
+            (buyerRows || []).map((b) => [b.auth_user_id, b.buyer_name || b.company_name])
+          );
+
+          reviewList.forEach((r) => {
+            r.buyer_name = nameById.get(r.buyer_auth_user_id) || r.buyer_name || 'Global Buyer';
+          });
+        }
+
+        setReviews(reviewList);
       }
     } catch (error) {
       console.error('Failed to load product detail:', error);
@@ -186,6 +209,47 @@ export default function ProductDetailPage() {
     }
   };
 
+  // 리뷰에 첨부할 실제 구매 상품 사진 업로드 (여러 장 가능)
+  const handleReviewPhotoUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    try {
+      setUploadingReviewPhoto(true);
+      const uploaded = [];
+
+      for (const file of files) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `review_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `review_photos/${fileName}`;
+
+        const { error: uploadErr } = await supabase.storage
+          .from('company-images')
+          .upload(filePath, file);
+
+        if (uploadErr) throw uploadErr;
+
+        const { data: publicUrlData } = supabase.storage
+          .from('company-images')
+          .getPublicUrl(filePath);
+
+        if (publicUrlData?.publicUrl) uploaded.push(publicUrlData.publicUrl);
+      }
+
+      setNewReviewPhotos((prev) => [...prev, ...uploaded]);
+    } catch (err) {
+      console.error('Review photo upload error:', err);
+      alert('Failed to upload photo: ' + (err.message || 'Storage error'));
+    } finally {
+      setUploadingReviewPhoto(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveReviewPhoto = (idx) => {
+    setNewReviewPhotos((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const handleAddReview = async (e) => {
     e.preventDefault();
     if (!newReviewText.trim()) return;
@@ -210,6 +274,7 @@ export default function ProductDetailPage() {
           buyer_name: viewerBuyerName,
           rating: Number(newRating),
           comment: newReviewText.trim(),
+          photos: newReviewPhotos,
         }])
         .select()
         .single();
@@ -222,6 +287,7 @@ export default function ProductDetailPage() {
       setReviews((prev) => [insertedReview, ...prev]);
       setNewRatingText('');
       setNewRating(5);
+      setNewReviewPhotos([]);
       alert('Thank you! Your review and rating have been submitted.');
     } catch (err) {
       console.error('Review submit error:', err);
@@ -402,6 +468,45 @@ export default function ProductDetailPage() {
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Photos of the Actual Product You Received (Optional)
+                    </label>
+
+                    <label className="w-full sm:w-auto inline-flex px-3.5 py-2 bg-white border border-slate-300 hover:border-blue-500 rounded-xl cursor-pointer items-center justify-center gap-2 transition text-slate-700 font-bold text-[11px]">
+                      {uploadingReviewPhoto ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                      ) : (
+                        <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
+                      )}
+                      <span>{uploadingReviewPhoto ? 'Uploading...' : 'Add Photo'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleReviewPhotoUpload}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {newReviewPhotos.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        {newReviewPhotos.map((url, idx) => (
+                          <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 group">
+                            <img src={url} alt={`Review photo ${idx + 1}`} className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveReviewPhoto(idx)}
+                              className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center cursor-pointer text-white text-[10px] font-bold"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex justify-end">
                     <button
                       type="submit"
@@ -456,6 +561,22 @@ export default function ProductDetailPage() {
                     <p className="text-xs text-slate-700 font-medium pl-9 leading-relaxed">
                       "{rev.comment}"
                     </p>
+
+                    {Array.isArray(rev.photos) && rev.photos.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pl-9 pt-1">
+                        {rev.photos.map((url, idx) => (
+                          <a
+                            key={idx}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 block"
+                          >
+                            <img src={url} alt={`${rev.buyer_name} review photo ${idx + 1}`} className="w-full h-full object-cover" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
