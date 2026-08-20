@@ -270,34 +270,34 @@ export default function Header() {
 
           <Link
             href="/factories"
-            className={`p-2 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+            className={`p-2 lg:px-3.5 lg:py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
               pathname === '/factories'
                 ? 'bg-blue-600 text-white shadow-md'
                 : 'bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20'
             }`}
           >
             <Factory className="w-4 h-4 text-blue-400" />
-            <span className="hidden sm:inline">Factories</span>
+            <span className="hidden lg:inline">Factories</span>
           </Link>
 
           <Link
             href="/catalog"
-            className={`p-2 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+            className={`p-2 lg:px-3.5 lg:py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
               pathname === '/catalog'
                 ? 'bg-blue-600 text-white shadow-md'
                 : 'bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20'
             }`}
           >
             <Package className="w-4 h-4 text-blue-400" />
-            <span className="hidden sm:inline">Products</span>
+            <span className="hidden lg:inline">Products</span>
           </Link>
 
           <Link
             href="/rfq"
-            className="p-2 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition cursor-pointer flex items-center gap-1.5"
+            className="p-2 lg:px-3.5 lg:py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition cursor-pointer flex items-center gap-1.5"
           >
             <FileText className="w-4 h-4 text-emerald-400" />
-            <span className="hidden sm:inline">RFQ Board</span>
+            <span className="hidden lg:inline">RFQ Board</span>
           </Link>
 
           {user ? (
@@ -308,7 +308,7 @@ export default function Header() {
                   setIsUserMenuOpen(!isUserMenuOpen);
                   setIsLangOpen(false);
                 }}
-                className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5 relative"
+                className="px-2.5 py-1.5 lg:px-3.5 lg:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1.5 relative"
               >
                 <div className="relative">
                   <User className="w-4 h-4 text-blue-400" />
@@ -319,7 +319,7 @@ export default function Header() {
                   )}
                 </div>
 
-                <span className="font-extrabold hidden sm:inline">
+                <span className="font-extrabold hidden lg:inline">
                   {userRole === 'seller' ? 'Seller Hub' : 'Buyer Hub'}
                 </span>
                 
@@ -414,10 +414,10 @@ export default function Header() {
           ) : (
             <Link
               href="/login"
-              className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5"
+              className="px-2.5 py-1.5 lg:px-3.5 lg:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5"
             >
               <UserCheck className="w-4 h-4 text-blue-400" />
-              <span className="hidden sm:inline">Sign In / Up</span>
+              <span className="hidden lg:inline">Sign In / Up</span>
             </Link>
           )}
 
@@ -428,12 +428,12 @@ export default function Header() {
                 setIsLangOpen(!isLangOpen);
                 setIsUserMenuOpen(false);
               }}
-              className="px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1"
+              className="px-2 py-1.5 lg:px-3 lg:py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer flex items-center gap-1"
               aria-label="Select Language"
             >
               <Globe className="w-4 h-4 text-blue-400 flex-shrink-0" />
-              <span className="notranslate hidden sm:inline" translate="no">{currentLang}</span>
-              <ChevronDown className="w-3 h-3 text-slate-400 hidden sm:inline" />
+              <span className="notranslate hidden lg:inline" translate="no">{currentLang}</span>
+              <ChevronDown className="w-3 h-3 text-slate-400 hidden lg:inline" />
             </button>
 
             {isLangOpen && (
