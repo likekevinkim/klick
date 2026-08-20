@@ -92,6 +92,22 @@ function FactoriesDirectoryContent() {
           certDisplay = fac.certifications;
         }
 
+        // 대표 이미지: 셀러가 실제로 업로드하는 곳은 gallery_images라서 그 첫 장을 사용
+        // (cover_image 컬럼은 어느 화면에서도 채워지지 않아 항상 비어있음)
+        let coverImg = fac.cover_image || '';
+        if (!coverImg && fac.gallery_images) {
+          if (Array.isArray(fac.gallery_images) && fac.gallery_images.length > 0) {
+            coverImg = fac.gallery_images[0];
+          } else if (typeof fac.gallery_images === 'string') {
+            try {
+              const parsed = JSON.parse(fac.gallery_images);
+              if (Array.isArray(parsed) && parsed.length > 0) coverImg = parsed[0];
+            } catch (e) {
+              coverImg = fac.gallery_images;
+            }
+          }
+        }
+
         return {
           id: fac.id,
           target_id: sellerTargetId, // 쇼룸 URL 파라미터로 연결될 고유 셀러 ID
@@ -101,7 +117,7 @@ function FactoriesDirectoryContent() {
           location: fac.location || 'South Korea',
           certifications: certDisplay,
           tagline: fac.tagline || fac.description || '',
-          cover_image: fac.cover_image || '',
+          cover_image: coverImg,
           established_year: fac.established_year || (fac.created_at ? new Date(fac.created_at).getFullYear().toString() : ''),
           product_count: liveProducts.length
         };
