@@ -181,6 +181,7 @@ function RfqDetailContent() {
   const buyerCompany = rfq?.company_name || rfq?.buyer_company_name || 'Global Buyer';
   const buyerCountry = rfq?.country || 'United States';
   const orderQuantity = rfq?.order_quantity || rfq?.moq || rfq?.target_quantity || '1 Unit';
+  const isRfqOwner = !!(user?.id && rfq?.user_id && user.id === rfq.user_id);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 antialiased">
@@ -292,7 +293,7 @@ function RfqDetailContent() {
                   </div>
                 </div>
 
-                {/* 이미 제출된 다른 셀러 투찰 내역 */}
+                {/* 이미 제출된 다른 셀러 투찰 내역 — RFQ를 올린 바이어 본인만 내용을 볼 수 있음 */}
                 <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
                   <h3 className="text-base font-extrabold text-slate-900 border-b border-slate-100 pb-3 flex items-center justify-between">
                     <span>Submitted Factory Proposals ({proposals.length})</span>
@@ -300,7 +301,14 @@ function RfqDetailContent() {
                   </h3>
 
                   <div className="space-y-3">
-                    {proposals.length === 0 ? (
+                    {!isRfqOwner ? (
+                      <div className="text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-1">
+                        <ShieldCheck className="w-5 h-5 text-slate-300 mx-auto" />
+                        <p className="text-xs text-slate-400 font-semibold">
+                          Quote details are private and only visible to the buyer who posted this request.
+                        </p>
+                      </div>
+                    ) : proposals.length === 0 ? (
                       <div className="text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                         <p className="text-xs text-slate-400 font-semibold">Be the first Korean manufacturer to submit a quote!</p>
                       </div>
