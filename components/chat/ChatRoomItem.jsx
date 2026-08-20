@@ -539,7 +539,7 @@ export default function ChatRoomItem({
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="flex items-center gap-2">
+            <form onSubmit={handleSubmit} className="flex items-center gap-1.5 sm:gap-2">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -558,7 +558,7 @@ export default function ChatRoomItem({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-xl transition cursor-pointer border border-slate-200"
+                className="shrink-0 p-2 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 text-slate-600 rounded-xl transition cursor-pointer border border-slate-200"
                 title="Attach Document / Spec Sheet"
               >
                 <Paperclip className="w-4 h-4" />
@@ -567,7 +567,7 @@ export default function ChatRoomItem({
               <button
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
-                className="p-2 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-600 text-slate-600 rounded-xl transition cursor-pointer border border-slate-200"
+                className="shrink-0 p-2 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-600 text-slate-600 rounded-xl transition cursor-pointer border border-slate-200"
                 title="Attach Image / Catalog"
               >
                 <ImageIcon className="w-4 h-4" />
@@ -579,15 +579,15 @@ export default function ChatRoomItem({
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder=""
-                className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white font-medium"
+                className="flex-1 min-w-0 px-3 sm:px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white font-medium"
               />
 
               <button
                 type="submit"
                 disabled={(!inputText.trim() && !attachedFile) || uploadingFile}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                className="shrink-0 px-3 sm:px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
               >
-                <span>Send</span>
+                <span className="hidden sm:inline">Send</span>
                 <Send className="w-3.5 h-3.5" />
               </button>
             </form>
