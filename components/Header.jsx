@@ -20,6 +20,38 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
+// 국가 코드 -> 지원 언어 코드 매핑. 목록에 없는 국가는 영어(en)가 기본값.
+const COUNTRY_TO_LANG = {
+  KR: 'ko',
+  CN: 'zh-CN', HK: 'zh-CN', TW: 'zh-CN', MO: 'zh-CN', SG: 'zh-CN',
+  JP: 'ja',
+  ES: 'es', MX: 'es', AR: 'es', CO: 'es', CL: 'es', PE: 'es', VE: 'es',
+  EC: 'es', GT: 'es', CU: 'es', BO: 'es', DO: 'es', HN: 'es', PY: 'es',
+  SV: 'es', NI: 'es', CR: 'es', PA: 'es', UY: 'es', GQ: 'es',
+  SA: 'ar', AE: 'ar', EG: 'ar', IQ: 'ar', JO: 'ar', KW: 'ar', LB: 'ar',
+  LY: 'ar', MA: 'ar', OM: 'ar', QA: 'ar', SY: 'ar', TN: 'ar', YE: 'ar',
+  BH: 'ar', DZ: 'ar', SD: 'ar'
+};
+
+// 접속 IP의 국가를 서버에 물어보고, 지원하는 언어면 그 언어로, 아니면 영어로 매핑.
+async function detectLanguageFromIp(languages) {
+  const fallback = languages.find((l) => l.code === 'en') || languages[0];
+
+  try {
+    const res = await fetch('/api/geo');
+    if (!res.ok) return fallback;
+
+    const { country } = await res.json();
+    const langCode = COUNTRY_TO_LANG[country];
+    if (!langCode) return fallback;
+
+    return languages.find((l) => l.code === langCode) || fallback;
+  } catch (err) {
+    console.error('IP-based language detection failed:', err);
+    return fallback;
+  }
+}
+
 export default function Header() {
   const router = useRouter();
   const [currentLang, setCurrentLang] = useState('EN');
@@ -142,10 +174,6 @@ export default function Header() {
       }
     });
 
-    const savedCode = localStorage.getItem('klick_lang_code') || 'en';
-    const savedLabel = localStorage.getItem('klick_lang_label') || 'EN';
-    setCurrentLang(savedLabel);
-
     const handleUnreadUpdate = () => {
       updateUnreadCountFromStorage();
     };
@@ -162,36 +190,54 @@ export default function Header() {
       )
       .subscribe();
 
-    if (!document.getElementById('google-translate-script')) {
-      const addScript = document.createElement('script');
-      addScript.id = 'google-translate-script';
-      addScript.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
-      addScript.async = true;
-      document.body.appendChild(addScript);
+    const initLanguageAndTranslate = async () => {
+      const hasStoredChoice = localStorage.getItem('klick_lang_code') !== null;
+      let savedCode = localStorage.getItem('klick_lang_code') || 'en';
+      let savedLabel = localStorage.getItem('klick_lang_label') || 'EN';
 
-      window.googleTranslateElementInit = () => {
-        new window.google.translate.TranslateElement(
-          {
-            pageLanguage: 'en',
-            includedLanguages: 'en,ko,zh-CN,ja,es,ar',
-            autoDisplay: false,
-          },
-          'google_translate_element'
-        );
+      // 처음 방문한 사용자는 접속 IP 위치를 기반으로 언어를 자동으로 골라줌.
+      // 지원하지 않는 지역이면 영어가 기본값 (detectLanguageFromIp가 이미 그렇게 처리).
+      if (!hasStoredChoice) {
+        const detected = await detectLanguageFromIp(languages);
+        savedCode = detected.code;
+        savedLabel = detected.label;
+        localStorage.setItem('klick_lang_code', savedCode);
+        localStorage.setItem('klick_lang_label', savedLabel);
+      }
 
-        if (savedCode && savedCode !== 'en') {
-          setTimeout(() => {
-            setGoogleTranslateCookie(savedCode);
-          }, 200);
-        }
-      };
-    } else {
-      if (savedCode && savedCode !== 'en') {
+      setCurrentLang(savedLabel);
+
+      if (!document.getElementById('google-translate-script')) {
+        const addScript = document.createElement('script');
+        addScript.id = 'google-translate-script';
+        addScript.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+        addScript.async = true;
+        document.body.appendChild(addScript);
+
+        window.googleTranslateElementInit = () => {
+          new window.google.translate.TranslateElement(
+            {
+              pageLanguage: 'en',
+              includedLanguages: 'en,ko,zh-CN,ja,es,ar',
+              autoDisplay: false,
+            },
+            'google_translate_element'
+          );
+
+          if (savedCode && savedCode !== 'en') {
+            setTimeout(() => {
+              setGoogleTranslateCookie(savedCode);
+            }, 200);
+          }
+        };
+      } else if (savedCode && savedCode !== 'en') {
         setTimeout(() => {
           setGoogleTranslateCookie(savedCode);
         }, 200);
       }
-    }
+    };
+
+    initLanguageAndTranslate();
 
     return () => {
       authListener?.subscription?.unsubscribe();
