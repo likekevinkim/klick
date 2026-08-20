@@ -237,7 +237,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
       }
     } catch (err) {
       console.error('Cover upload error:', err);
-      alert('Failed to upload cover photo: ' + (err.message || 'Storage error'));
+      alert('대표 사진 업로드에 실패했습니다: ' + (err.message || 'Storage error'));
     } finally {
       setUploadingCover(false);
     }
@@ -268,7 +268,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
       }
     } catch (err) {
       console.error('Video upload error:', err);
-      alert('Failed to upload video file: ' + (err.message || 'Storage error'));
+      alert('영상 업로드에 실패했습니다: ' + (err.message || 'Storage error'));
     } finally {
       setUploadingVideo(false);
     }
@@ -306,7 +306,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
       setGalleryImages((prev) => [...prev, ...uploaded]);
     } catch (err) {
       console.error('Gallery upload error:', err);
-      alert('Failed to upload gallery photos: ' + (err.message || 'Storage error'));
+      alert('사진 업로드에 실패했습니다: ' + (err.message || 'Storage error'));
     } finally {
       setUploadingGallery(false);
       if (galleryInputRef.current) galleryInputRef.current.value = '';
@@ -352,7 +352,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
   // AI 짧은 요약 생성 (바이어가 제일 먼저 읽는 3줄 요약)
   const handleAiSummaryGenerate = async () => {
     if (!titleKo && !titleEn) {
-      alert('Please enter a Product Title (Korean or English) first.');
+      alert('상품명을 먼저 입력해주세요 (한글 또는 영문).');
       return;
     }
 
@@ -397,7 +397,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
 
   const handleAiAutoGenerate = async () => {
     if (!titleKo && !titleEn) {
-      alert('Please enter a Product Title (Korean or English) first.');
+      alert('상품명을 먼저 입력해주세요 (한글 또는 영문).');
       return;
     }
 
@@ -504,7 +504,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
       const currentUser = session?.user;
 
       if (!currentUser) {
-        alert('Login is required to register a product.');
+        alert('상품을 등록하려면 로그인이 필요합니다.');
         return;
       }
 
@@ -518,12 +518,12 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
 
       if (error) throw error;
 
-      alert('Product registered successfully to Global Showroom!');
+      alert('상품이 성공적으로 등록되었습니다!');
       if (onProductCreated) onProductCreated(data);
       onClose();
     } catch (err) {
       console.error('Submit product error:', err);
-      setErrorMessage(`Failed to ${isEditMode ? 'update' : 'register'} product: ` + (err.message || 'Database error'));
+      setErrorMessage(`상품 ${isEditMode ? '수정' : '등록'}에 실패했습니다: ` + (err.message || 'Database error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -533,18 +533,18 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
 
   return (
     <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl p-6 md:p-8 max-w-4xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto animate-fadeIn text-xs">
+      <div className="bg-white rounded-3xl p-6 md:p-8 max-w-4xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto animate-fadeIn text-sm">
 
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="space-y-1">
             <h2 className="text-base md:text-lg font-black text-slate-900 flex items-center gap-2">
               <Plus className="w-5 h-5 text-blue-600" />
-              {isEditMode ? 'Edit Export Product Specification' : 'Register New Export Product Specification'}
+              {isEditMode ? '수출 상품 정보 수정' : '신규 수출 상품 등록'}
             </h2>
-            <p className="text-[11px] text-slate-500 font-medium">
+            <p className="text-sm text-slate-500 font-medium">
               {isEditMode
-                ? 'Update pictures, video, factory info, tiered pricing, and specification content for this product.'
-                : 'Upload pictures, video, factory info, tiered pricing, and detailed specification content for this product.'}
+                ? '사진, 영상, 공장 정보, 수량별 가격, 상세 설명을 수정할 수 있어요. 모두 나중에 다시 고칠 수 있습니다.'
+                : '아래 순서대로 하나씩 입력해주세요. 사진, 영상, 공장 정보, 수량별 가격, 상세 설명 — 전부 나중에 수정 가능합니다.'}
             </p>
           </div>
 
@@ -561,25 +561,25 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
 
           {/* 1. 기본 정보 */}
           <div className="space-y-3">
-            <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
-              <span>1. BASIC PRODUCT INFORMATION</span>
+            <h3 className="text-sm font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
+              <span>1단계. 기본 상품 정보</span>
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-700 font-extrabold mb-1">Product Title (Korean) *</label>
+                <label className="block text-slate-700 font-extrabold mb-1">상품명 (한글) *</label>
                 <input
                   type="text"
                   required
                   value={titleKo}
                   onChange={(e) => setTitleKo(e.target.value)}
-                  placeholder=""
+                  placeholder="예: 고압 유압 밸브"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-slate-900 bg-white"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-700 font-extrabold mb-1">Product Title (English)</label>
+                <label className="block text-slate-700 font-extrabold mb-1">상품명 (영문, 비워두면 AI가 자동 번역)</label>
                 <input
                   type="text"
                   value={titleEn}
@@ -591,64 +591,64 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
             </div>
 
             <div>
-              <label className="block text-slate-700 font-extrabold mb-1">Tagline (One-line Selling Point)</label>
+              <label className="block text-slate-700 font-extrabold mb-1">한 줄 소개 (핵심 세일즈 포인트)</label>
               <input
                 type="text"
                 value={tagline}
                 onChange={(e) => setTagline(e.target.value)}
-                placeholder="e.g. Industrial-grade hydraulic valve engineered for 24/7 heavy operation"
+                placeholder="예: 24시간 연속 가동에도 견디는 산업용 고압 유압 밸브"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium text-slate-900 bg-white"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-slate-700 font-extrabold mb-1">Category *</label>
+                <label className="block text-slate-700 font-extrabold mb-1">카테고리 *</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold bg-white"
                 >
-                  <option value="Industrial Machinery">Industrial Machinery</option>
-                  <option value="K-Beauty & Cosmetics">K-Beauty & Cosmetics</option>
-                  <option value="K-Food & Beverages">K-Food & Beverages</option>
-                  <option value="Electronics & Smart IT">Electronics & Smart IT</option>
-                  <option value="General Manufacturing">General Manufacturing</option>
+                  <option value="Industrial Machinery">산업 기계</option>
+                  <option value="K-Beauty & Cosmetics">K-뷰티 / 화장품</option>
+                  <option value="K-Food & Beverages">K-푸드 / 음료</option>
+                  <option value="Electronics & Smart IT">전자 / 스마트 IT</option>
+                  <option value="General Manufacturing">일반 제조업</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-slate-700 font-extrabold mb-1">MOQ *</label>
+                <label className="block text-slate-700 font-extrabold mb-1">최소 주문 수량 (MOQ) *</label>
                 <input
                   type="text"
                   required
                   value={moq}
                   onChange={(e) => setMoq(e.target.value)}
-                  placeholder=""
+                  placeholder="예: 500개"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold bg-white"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-700 font-extrabold mb-1">Lead Time *</label>
+                <label className="block text-slate-700 font-extrabold mb-1">제작/납기 기간 *</label>
                 <input
                   type="text"
                   required
                   value={leadTime}
                   onChange={(e) => setLeadTime(e.target.value)}
-                  placeholder=""
+                  placeholder="예: 15-20일"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold bg-white"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-700 font-extrabold mb-1">Dimensions & Weight Specification</label>
+              <label className="block text-slate-700 font-extrabold mb-1">크기 및 무게 정보 (선택)</label>
               <input
                 type="text"
                 value={dimensions}
                 onChange={(e) => setDimensions(e.target.value)}
-                placeholder=""
+                placeholder="예: 30 x 20 x 15 cm, 2.5kg"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium bg-white"
               />
             </div>
@@ -656,35 +656,35 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
 
           {/* 2. 제조사 프로필 & 인증 & OEM/ODM */}
           <div className="space-y-3">
-            <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
+            <h3 className="text-sm font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-blue-600" />
-              <span>2. MANUFACTURER PROFILE, CERTIFICATIONS & OEM/ODM</span>
+              <span>2단계. 제조사 정보 및 인증</span>
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-slate-700 font-extrabold mb-1">Company / Factory Name *</label>
+                <label className="block text-slate-700 font-extrabold mb-1">회사 / 공장명 *</label>
                 <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-extrabold text-slate-900 flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                  <span className="truncate">{loadingProfile ? 'Loading...' : companyName}</span>
+                  <span className="truncate">{loadingProfile ? '불러오는 중...' : companyName}</span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-700 font-extrabold mb-1">Factory Location *</label>
+                <label className="block text-slate-700 font-extrabold mb-1">공장 위치 *</label>
                 <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 font-extrabold text-slate-900 flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                  <span className="truncate">{loadingProfile ? 'Loading...' : factoryLocation}</span>
+                  <span className="truncate">{loadingProfile ? '불러오는 중...' : factoryLocation}</span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-700 font-extrabold mb-1">Certifications (Optional)</label>
+                <label className="block text-slate-700 font-extrabold mb-1">보유 인증 (선택)</label>
                 <input
                   type="text"
                   value={certifications}
                   onChange={(e) => setCertifications(e.target.value)}
-                  placeholder="e.g. ISO 9001, CE Certified"
+                  placeholder="예: ISO 9001, CE 인증"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold bg-white"
                 />
               </div>
@@ -692,7 +692,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
 
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
               <label className="block text-slate-700 font-extrabold flex items-center gap-1.5">
-                <Factory className="w-3.5 h-3.5 text-blue-600" /> OEM / ODM Support
+                <Factory className="w-3.5 h-3.5 text-blue-600" /> OEM / ODM 가능 여부
               </label>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <select
@@ -700,15 +700,15 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
                   onChange={(e) => setOemOdmAvailable(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold bg-white"
                 >
-                  <option value="Available">Available</option>
-                  <option value="Not Available">Not Available</option>
+                  <option value="Available">가능</option>
+                  <option value="Not Available">불가능</option>
                 </select>
 
                 <input
                   type="text"
                   value={oemOdmNote}
                   onChange={(e) => setOemOdmNote(e.target.value)}
-                  placeholder="e.g. Custom logo, packaging, private label (min. 500 units)"
+                  placeholder="예: 로고 각인, 맞춤 포장 가능 (최소 500개부터)"
                   disabled={oemOdmAvailable !== 'Available'}
                   className="md:col-span-2 w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium bg-white disabled:bg-slate-100 disabled:text-slate-400"
                 />
@@ -719,21 +719,21 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
           {/* 3. 제품 속성 스펙 테이블 */}
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-              <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
+              <h3 className="text-sm font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-blue-600" />
-                <span>3. PRODUCT ATTRIBUTE SPECIFICATIONS TABLE</span>
+                <span>3단계. 상세 스펙표</span>
               </h3>
 
               <button
                 type="button"
                 onClick={handleAddAttribute}
-                className="text-blue-600 hover:underline font-extrabold text-xs flex items-center gap-1 cursor-pointer"
+                className="text-blue-600 hover:underline font-extrabold text-sm flex items-center gap-1 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" /> Add Attribute
+                <Plus className="w-3.5 h-3.5" /> 항목 추가
               </button>
             </div>
 
-            <p className="text-[11px] text-slate-400">e.g. Model No. / Material / Working Pressure / Country of Origin</p>
+            <p className="text-sm text-slate-400">예: 모델명 / 재질 / 작동 압력 / 원산지 — 바이어가 궁금해할 만한 정보를 자유롭게 추가하세요.</p>
 
             <div className="space-y-2">
               {attributes.map((attr) => (
@@ -743,7 +743,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
                       type="text"
                       value={attr.name}
                       onChange={(e) => handleAttributeChange(attr.id, 'name', e.target.value)}
-                      placeholder="Attribute name (e.g. Model No.)"
+                      placeholder="항목명 (예: 모델명)"
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-slate-900 bg-white"
                     />
                   </div>
@@ -752,7 +752,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
                       type="text"
                       value={attr.value}
                       onChange={(e) => handleAttributeChange(attr.id, 'value', e.target.value)}
-                      placeholder="Value (e.g. HV-300-KR)"
+                      placeholder="값 (예: HV-300-KR)"
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium text-slate-900 bg-white"
                     />
                   </div>
@@ -761,7 +761,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
                       type="button"
                       onClick={() => handleRemoveAttribute(attr.id)}
                       className="text-rose-500 hover:text-rose-700 p-1 cursor-pointer"
-                      title="Delete Attribute"
+                      title="삭제"
                     >
                       <X className="w-4 h-4 mx-auto" />
                     </button>
@@ -774,24 +774,26 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
           {/* 4. 수량별 단가 */}
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-              <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
-                <span>4. WHOLESALE TIERED FOB PRICING ($ USD)</span>
+              <h3 className="text-sm font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
+                <span>4단계. 수량별 단가 (달러 기준)</span>
               </h3>
 
               <button
                 type="button"
                 onClick={handleAddTier}
-                className="text-blue-600 hover:underline font-extrabold text-xs flex items-center gap-1 cursor-pointer"
+                className="text-blue-600 hover:underline font-extrabold text-sm flex items-center gap-1 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" /> Add Tier Range
+                <Plus className="w-3.5 h-3.5" /> 구간 추가
               </button>
             </div>
 
-            <div className="grid grid-cols-12 gap-3 text-[11px] font-extrabold text-slate-700 px-1">
-              <div className="col-span-3">Min Qty</div>
-              <div className="col-span-3">Max Qty</div>
-              <div className="col-span-5">Unit FOB Price ($ USD)</div>
-              <div className="col-span-1 text-center">Del</div>
+            <p className="text-sm text-slate-400">주문 수량이 많아질수록 개당 가격을 낮게 매길 수 있어요. 구간을 나눠서 입력해주세요.</p>
+
+            <div className="grid grid-cols-12 gap-3 text-sm font-extrabold text-slate-700 px-1">
+              <div className="col-span-3">최소 수량</div>
+              <div className="col-span-3">최대 수량</div>
+              <div className="col-span-5">개당 가격 (USD)</div>
+              <div className="col-span-1 text-center">삭제</div>
             </div>
 
             <div className="space-y-2">
@@ -802,7 +804,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
                       type="text"
                       value={tier.minQty}
                       onChange={(e) => handleTierChange(tier.id, 'minQty', e.target.value)}
-                      placeholder="Min Qty"
+                      placeholder="예: 100"
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-slate-900 bg-white"
                     />
                   </div>
@@ -812,7 +814,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
                       type="text"
                       value={tier.maxQty}
                       onChange={(e) => handleTierChange(tier.id, 'maxQty', e.target.value)}
-                      placeholder="Max Qty"
+                      placeholder="예: 499"
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-slate-900 bg-white"
                     />
                   </div>
@@ -823,7 +825,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
                       type="text"
                       value={tier.price}
                       onChange={(e) => handleTierChange(tier.id, 'price', e.target.value)}
-                      placeholder="Unit Price"
+                      placeholder="개당 가격"
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-extrabold text-emerald-600 bg-white"
                     />
                   </div>
@@ -834,7 +836,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
                         type="button"
                         onClick={() => handleRemoveTier(tier.id)}
                         className="text-rose-500 hover:text-rose-700 p-1 cursor-pointer"
-                        title="Delete Tier"
+                        title="삭제"
                       >
                         <X className="w-4 h-4 mx-auto" />
                       </button>
@@ -847,13 +849,13 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
 
           {/* 5. 사진 & 영상 */}
           <div className="space-y-3">
-            <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
-              <span>5. PRODUCT PHOTOS & FACTORY DEMO VIDEO</span>
+            <h3 className="text-sm font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
+              <span>5단계. 상품 사진 및 공장 영상</span>
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-700 font-extrabold mb-1">Main Cover Image *</label>
+                <label className="block text-slate-700 font-extrabold mb-1">대표 사진 *</label>
                 <input
                   type="file"
                   ref={coverInputRef}
@@ -871,9 +873,9 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
                     <button
                       type="button"
                       onClick={() => setCoverImage(null)}
-                      className="text-rose-600 hover:underline font-bold text-[10px] cursor-pointer"
+                      className="text-rose-600 hover:underline font-bold text-sm cursor-pointer"
                     >
-                      Remove
+                      삭제
                     </button>
                   </div>
                 ) : (
@@ -888,8 +890,8 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
                     ) : (
                       <>
                         <Upload className="w-5 h-5 text-blue-600" />
-                        <span className="font-extrabold">Click to Select Cover Image File</span>
-                        <span className="text-[10px] text-slate-400">PNG, JPG, WEBP</span>
+                        <span className="font-extrabold">클릭해서 대표 사진 올리기</span>
+                        <span className="text-sm text-slate-400">PNG, JPG, WEBP</span>
                       </>
                     )}
                   </button>
@@ -897,7 +899,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
               </div>
 
               <div>
-                <label className="block text-slate-700 font-extrabold mb-1">Factory Demo Video File</label>
+                <label className="block text-slate-700 font-extrabold mb-1">공장 소개 영상 (선택)</label>
                 <input
                   type="file"
                   ref={videoInputRef}
@@ -915,9 +917,9 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
                     <button
                       type="button"
                       onClick={() => setDemoVideo(null)}
-                      className="text-rose-600 hover:underline font-bold text-[10px] cursor-pointer"
+                      className="text-rose-600 hover:underline font-bold text-sm cursor-pointer"
                     >
-                      Remove
+                      삭제
                     </button>
                   </div>
                 ) : (
@@ -932,8 +934,8 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
                     ) : (
                       <>
                         <Video className="w-5 h-5 text-rose-500" />
-                        <span className="font-extrabold">Click to Upload Demo Video File</span>
-                        <span className="text-[10px] text-slate-400">MP4, MOV, WEBM</span>
+                        <span className="font-extrabold">클릭해서 영상 올리기</span>
+                        <span className="text-sm text-slate-400">MP4, MOV, WEBM</span>
                       </>
                     )}
                   </button>
@@ -942,7 +944,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
             </div>
 
             <div>
-              <label className="block text-slate-700 font-extrabold mb-1">Additional Gallery Photos (Multiple)</label>
+              <label className="block text-slate-700 font-extrabold mb-1">추가 사진 (여러 장 올릴 수 있어요)</label>
               <input
                 type="file"
                 ref={galleryInputRef}
@@ -963,7 +965,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
                 ) : (
                   <>
                     <ImageIcon className="w-4 h-4 text-blue-600" />
-                    <span className="font-extrabold">Add Gallery Photos</span>
+                    <span className="font-extrabold">사진 추가하기</span>
                   </>
                 )}
               </button>
@@ -990,23 +992,23 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
           {/* 6. AI 요약 (바이어가 가장 먼저 보는 짧은 요약) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-              <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
+              <h3 className="text-sm font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-amber-500" />
-                <span>6. AI PRODUCT SUMMARY (SHORT BUYER-FACING)</span>
+                <span>6단계. AI 짧은 요약</span>
               </h3>
 
               <button
                 type="button"
                 disabled={isAiSummaryGenerating}
                 onClick={handleAiSummaryGenerate}
-                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-sm rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 {isAiSummaryGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-amber-300" />}
-                <span>AI Generate Summary</span>
+                <span>AI로 요약 만들기</span>
               </button>
             </div>
 
-            <p className="text-[11px] text-slate-400">2-3 sentence summary shown at the top of the product detail page.</p>
+            <p className="text-sm text-slate-400">상품 상세페이지 맨 위에 보이는 2~3문장 요약이에요. 위 정보를 입력한 뒤 버튼을 누르면 AI가 자동으로 써줍니다. 직접 수정도 가능해요.</p>
 
             <textarea
               rows={3}
@@ -1020,20 +1022,22 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
           {/* 7. 상세 스펙 에디터 (전체 상세페이지 설명) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-              <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
-                <span>7. DETAILED SPECIFICATIONS RICH EDITOR</span>
+              <h3 className="text-sm font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
+                <span>7단계. 상세 설명 (전체 상세페이지)</span>
               </h3>
 
               <button
                 type="button"
                 disabled={isAiGenerating}
                 onClick={handleAiAutoGenerate}
-                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-sm rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 {isAiGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-amber-300" />}
-                <span>AI Auto-Generate Full Spec Sheet</span>
+                <span>AI로 전체 상세페이지 자동 작성</span>
               </button>
             </div>
+
+            <p className="text-sm text-slate-400">타이틀과 스펙만 입력했다면, 버튼 한 번으로 AI가 영문 상세 설명 전체를 자동으로 써드려요. 이후 직접 수정도 가능합니다.</p>
 
             <div className="p-2 bg-slate-50 border border-slate-200 rounded-t-2xl flex items-center gap-2 border-b-0 text-slate-600">
               <button type="button" className="p-1.5 hover:bg-slate-200 rounded-lg"><Bold className="w-3.5 h-3.5" /></button>
@@ -1052,7 +1056,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
           </div>
 
           {errorMessage && (
-            <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2 font-medium">
+            <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl flex items-center gap-2 font-medium">
               <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
               <span>{errorMessage}</span>
             </div>
@@ -1064,7 +1068,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
               onClick={onClose}
               className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer"
             >
-              Cancel
+              취소
             </button>
 
             <button
@@ -1075,12 +1079,12 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>{isEditMode ? 'Saving Changes...' : 'Publishing Product...'}</span>
+                  <span>{isEditMode ? '저장 중...' : '등록 중...'}</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>{isEditMode ? 'Save Changes' : 'Publish Product to Database'}</span>
+                  <span>{isEditMode ? '변경사항 저장' : '상품 등록하기'}</span>
                 </>
               )}
             </button>
