@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { FileText, X, Printer, ShieldCheck, Upload } from 'lucide-react';
+import { FileText, X, Printer, ShieldCheck, Upload, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 // Small inline-editable field that still reads cleanly on the printed sheet
@@ -27,11 +27,7 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
   const [sealUrl, setSealUrl] = useState('');
   const [uploadingSeal, setUploadingSeal] = useState(false);
 
-  const [productName, setProductName] = useState('');
-  const [hsCode, setHsCode] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [unitPrice, setUnitPrice] = useState('');
-  const [totalAmount, setTotalAmount] = useState('');
+  const [items, setItems] = useState([{ id: 1, productName: '', hsCode: '', quantity: '', unitPrice: '' }]);
 
   const [sellerCompany, setSellerCompany] = useState('');
   const [sellerAddress, setSellerAddress] = useState('');
@@ -61,11 +57,19 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
   useEffect(() => {
     if (!isOpen) return;
 
-    setProductName(msg?.product_name || room?.product_title || room?.title || '');
-    setHsCode('');
-    setQuantity(msg?.quote_moq || '');
-    setUnitPrice(msg?.quote_price || '');
-    setTotalAmount('');
+    const parseLeadingNumber = (str) => {
+      if (!str) return '';
+      const match = str.toString().match(/[\d.]+/);
+      return match ? match[0] : '';
+    };
+
+    setItems([{
+      id: Date.now(),
+      productName: msg?.product_name || room?.product_title || room?.title || '',
+      hsCode: '',
+      quantity: parseLeadingNumber(msg?.quote_moq),
+      unitPrice: parseLeadingNumber(msg?.quote_price),
+    }]);
 
     setSellerCompany(room?.seller_profile_name || room?.seller_name || room?.company_name || 'Korean Manufacturer Co., Ltd.');
     setSellerAddress('');
@@ -130,6 +134,27 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
     reader.onerror = () => setUploadingSeal(false);
     reader.readAsDataURL(file);
   };
+
+  const handleAddItem = () => {
+    setItems((prev) => [...prev, { id: Date.now(), productName: '', hsCode: '', quantity: '', unitPrice: '' }]);
+  };
+
+  const handleRemoveItem = (id) => {
+    setItems((prev) => (prev.length > 1 ? prev.filter((item) => item.id !== id) : prev));
+  };
+
+  const handleItemChange = (id, field, value) => {
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
+  };
+
+  const getItemTotal = (item) => {
+    const qty = parseFloat(item.quantity);
+    const price = parseFloat(item.unitPrice);
+    if (!qty || !price) return 0;
+    return qty * price;
+  };
+
+  const grandTotal = items.reduce((sum, item) => sum + getItemTotal(item), 0);
 
   const docTitles = {
     PI: 'PROFORMA INVOICE',
@@ -220,13 +245,13 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Exporter / Seller</span>
               <Field label="Company Name" value={sellerCompany} onChange={setSellerCompany} />
-              <Field label="Address" value={sellerAddress} onChange={setSellerAddress} placeholder="Factory / office address" />
+              <Field label="Address" value={sellerAddress} onChange={setSellerAddress} />
             </div>
 
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Importer / Buyer</span>
               <Field label="Company Name" value={buyerCompany} onChange={setBuyerCompany} />
-              <Field label="Address" value={buyerAddress} onChange={setBuyerAddress} placeholder="Delivery / billing address" />
+              <Field label="Address" value={buyerAddress} onChange={setBuyerAddress} />
             </div>
           </div>
 
@@ -236,7 +261,7 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
             <Field label="Incoterm" value={incoterm} onChange={setIncoterm} />
             <Field label="Country of Origin" value={countryOfOrigin} onChange={setCountryOfOrigin} />
             <Field label="Port of Loading" value={portOfLoading} onChange={setPortOfLoading} />
-            <Field label="Port of Discharge" value={portOfDischarge} onChange={setPortOfDischarge} placeholder="e.g. Los Angeles, USA" />
+            <Field label="Port of Discharge" value={portOfDischarge} onChange={setPortOfDischarge} />
             {docType === 'BL' && (
               <Field label="Freight" value={freightTerm} onChange={setFreightTerm} />
             )}
@@ -245,15 +270,24 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
           {/* BL-specific shipping details */}
           {docType === 'BL' && (
             <div className="grid grid-cols-3 gap-4 text-xs border-b border-slate-200 pb-6">
-              <Field label="Vessel / Voyage No." value={vesselVoyage} onChange={setVesselVoyage} placeholder="e.g. EVER GIVEN / 0421W" />
-              <Field label="Container / Seal No." value={containerSealNo} onChange={setContainerSealNo} placeholder="e.g. TCLU1234567 / SL998877" />
+              <Field label="Vessel / Voyage No." value={vesselVoyage} onChange={setVesselVoyage} />
+              <Field label="Container / Seal No." value={containerSealNo} onChange={setContainerSealNo} />
               <Field label="Marks & Numbers" value={marksNumbers} onChange={setMarksNumbers} />
             </div>
           )}
 
           {/* Item Specs Table */}
           <div className="space-y-3">
-            <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Item Specifications</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Item Specifications</h3>
+              <button
+                type="button"
+                onClick={handleAddItem}
+                className="text-[11px] font-extrabold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer print:hidden"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Item
+              </button>
+            </div>
 
             <table className="w-full text-left text-xs border-collapse">
               <thead>
@@ -261,19 +295,58 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
                   <th className="p-3 rounded-l-xl">Description of Goods</th>
                   <th className="p-3">HS Code</th>
                   <th className="p-3">Quantity</th>
-                  <th className="p-3">Unit Price</th>
-                  <th className="p-3 rounded-r-xl text-right">Total Amount</th>
+                  <th className="p-3">Unit Price (USD)</th>
+                  <th className="p-3 text-right">Total (USD)</th>
+                  <th className="p-3 rounded-r-xl w-8 print:hidden"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 font-medium">
-                <tr>
-                  <td className="p-3"><Field label="" value={productName} onChange={setProductName} placeholder="Product name" /></td>
-                  <td className="p-3"><Field label="" value={hsCode} onChange={setHsCode} placeholder="e.g. 8481.80" /></td>
-                  <td className="p-3"><Field label="" value={quantity} onChange={setQuantity} placeholder="e.g. 500 Units" /></td>
-                  <td className="p-3"><Field label="" value={unitPrice} onChange={setUnitPrice} placeholder="e.g. 145.00 USD" /></td>
-                  <td className="p-3 text-right"><Field label="" value={totalAmount} onChange={setTotalAmount} placeholder="Total USD" /></td>
-                </tr>
+                {items.map((item) => (
+                  <tr key={item.id}>
+                    <td className="p-3"><Field label="" value={item.productName} onChange={(v) => handleItemChange(item.id, 'productName', v)} /></td>
+                    <td className="p-3"><Field label="" value={item.hsCode} onChange={(v) => handleItemChange(item.id, 'hsCode', v)} /></td>
+                    <td className="p-3 w-24">
+                      <input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)}
+                        className="w-full bg-transparent border-0 border-b border-dashed border-slate-300 focus:border-blue-500 focus:outline-none text-xs font-bold text-slate-900 py-0.5 print:border-none"
+                      />
+                    </td>
+                    <td className="p-3 w-28">
+                      <input
+                        type="number"
+                        value={item.unitPrice}
+                        onChange={(e) => handleItemChange(item.id, 'unitPrice', e.target.value)}
+                        className="w-full bg-transparent border-0 border-b border-dashed border-slate-300 focus:border-blue-500 focus:outline-none text-xs font-bold text-slate-900 py-0.5 print:border-none"
+                      />
+                    </td>
+                    <td className="p-3 text-right font-extrabold text-slate-900">
+                      {getItemTotal(item).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="p-3 print:hidden">
+                      {items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(item.id)}
+                          className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-900">
+                  <td colSpan={4} className="p-3 text-right font-extrabold text-slate-900">Grand Total</td>
+                  <td className="p-3 text-right font-black text-blue-600">
+                    {grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td className="print:hidden"></td>
+                </tr>
+              </tfoot>
             </table>
           </div>
 
@@ -282,10 +355,10 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
             <div className="space-y-3 border-t border-slate-200 pt-6">
               <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Package Details</h3>
               <div className="grid grid-cols-4 gap-4 text-xs">
-                <Field label="No. of Packages" value={packageCount} onChange={setPackageCount} placeholder="e.g. 20 Cartons" />
-                <Field label="Gross Weight" value={grossWeight} onChange={setGrossWeight} placeholder="e.g. 480 kg" />
-                <Field label="Net Weight" value={netWeight} onChange={setNetWeight} placeholder="e.g. 450 kg" />
-                <Field label="Measurement" value={measurement} onChange={setMeasurement} placeholder="e.g. 2.4 CBM" />
+                <Field label="No. of Packages" value={packageCount} onChange={setPackageCount} />
+                <Field label="Gross Weight" value={grossWeight} onChange={setGrossWeight} />
+                <Field label="Net Weight" value={netWeight} onChange={setNetWeight} />
+                <Field label="Measurement" value={measurement} onChange={setMeasurement} />
               </div>
             </div>
           )}
