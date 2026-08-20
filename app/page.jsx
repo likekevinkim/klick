@@ -86,7 +86,7 @@ export default function HomePage() {
             const { data: prodData } = await supabase
               .from('products')
               .select('id')
-              .eq('company_id', userObj.id);
+              .eq('user_id', userObj.id);
 
             const hasCompanyDetails = compData && (compData.description || compData.certifications);
             const hasProducts = prodData && prodData.length > 0;

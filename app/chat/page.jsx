@@ -765,6 +765,52 @@ function ChatContent() {
     setIsQuoteDocModalOpen(true);
   };
 
+  // Post a generated trade document (PI/CI/PL/BL) into the chat thread so the other party can view it
+  const handleSendDocument = async (room, docSnapshot, summaryText) => {
+    try {
+      const opponentLang = getOpponentLang(room, userRoleRef.current);
+      const summaryTrans = await translateTextWithApi(summaryText, opponentLang);
+
+      const docMsgPayload = {
+        room_id: room.id,
+        sender_id: user?.id ? user.id.toString() : 'guest_seller',
+        sender_role: userRoleRef.current,
+        message: summaryText,
+        translated_message: summaryTrans,
+        is_quote: false,
+        is_read: false,
+        file: { type: 'trade_doc', ...docSnapshot },
+        created_at: new Date().toISOString()
+      };
+
+      const { data: insertedDocMsg } = await supabase
+        .from('chat_messages')
+        .insert([docMsgPayload])
+        .select()
+        .single();
+
+      if (insertedDocMsg) {
+        setRoomMessagesMap((prevMap) => ({
+          ...prevMap,
+          [room.id]: [...(prevMap[room.id] || []), insertedDocMsg],
+        }));
+      }
+
+      await supabase
+        .from('chat_rooms')
+        .update({ last_message: `📄 ${summaryText}`, updated_at: new Date().toISOString() })
+        .eq('id', room.id);
+
+      setRooms((prevRooms) =>
+        prevRooms.map((r) =>
+          r.id === room.id ? { ...r, last_message: `📄 ${summaryText}`, updated_at: new Date().toISOString() } : r
+        )
+      );
+    } catch (err) {
+      console.error('Failed to send trade document:', err);
+    }
+  };
+
   const handleOpenSampleModal = (room, msg = null) => {
     setSelectedRoomForSample(room);
     setSelectedTrackingMsg(msg);
@@ -994,6 +1040,7 @@ function ChatContent() {
         msg={selectedMsgForDoc}
         room={selectedRoomForDoc}
         userRole={userRole}
+        onSendDocument={handleSendDocument}
       />
 
       <SampleTrackingModal

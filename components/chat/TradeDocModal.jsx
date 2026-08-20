@@ -6,7 +6,7 @@ import { FileText, X, Printer, ShieldCheck, Upload, Plus, Trash2 } from 'lucide-
 import { supabase } from '@/lib/supabase';
 
 // Small inline-editable field that still reads cleanly on the printed sheet
-function Field({ label, value, onChange, className = '', placeholder = '' }) {
+function Field({ label, value, onChange, className = '', placeholder = '', disabled = false }) {
   return (
     <div className={className}>
       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">{label}</span>
@@ -15,13 +15,16 @@ function Field({ label, value, onChange, className = '', placeholder = '' }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-transparent border-0 border-b border-dashed border-slate-300 focus:border-blue-500 focus:outline-none text-xs font-bold text-slate-900 py-0.5 print:border-none"
+        disabled={disabled}
+        className="w-full bg-transparent border-0 border-b border-dashed border-slate-300 focus:border-blue-500 focus:outline-none text-xs font-bold text-slate-900 py-0.5 print:border-none disabled:opacity-100 disabled:cursor-default"
       />
     </div>
   );
 }
 
-export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) {
+export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, onSendDocument }) {
+  // A message-linked trade doc (msg.file.type === 'trade_doc') is a historical record — read-only
+  const isViewingSent = msg?.file?.type === 'trade_doc';
   const [docType, setDocType] = useState('PI'); // PI, CI, PL, BL
   const sealInputRef = useRef(null);
   const [sealUrl, setSealUrl] = useState('');
@@ -57,6 +60,37 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
   useEffect(() => {
     if (!isOpen) return;
 
+    // Reopening a previously sent document — restore its exact snapshot, read-only
+    if (isViewingSent) {
+      const doc = msg.file;
+      setDocType(doc.docType || 'PI');
+      setItems(
+        Array.isArray(doc.items) && doc.items.length > 0
+          ? doc.items.map((it, idx) => ({ id: Date.now() + idx, ...it }))
+          : [{ id: Date.now(), productName: '', hsCode: '', quantity: '', unitPrice: '' }]
+      );
+      setSellerCompany(doc.sellerCompany || '');
+      setSellerAddress(doc.sellerAddress || '');
+      setBuyerCompany(doc.buyerCompany || '');
+      setBuyerAddress(doc.buyerAddress || '');
+      setInvoiceNo(doc.invoiceNo || '');
+      setIssueDate(doc.issueDate || '');
+      setPaymentTerms(doc.paymentTerms || '');
+      setIncoterm(doc.incoterm || '');
+      setPortOfLoading(doc.portOfLoading || '');
+      setPortOfDischarge(doc.portOfDischarge || '');
+      setCountryOfOrigin(doc.countryOfOrigin || '');
+      setPackageCount(doc.packageCount || '');
+      setGrossWeight(doc.grossWeight || '');
+      setNetWeight(doc.netWeight || '');
+      setMeasurement(doc.measurement || '');
+      setVesselVoyage(doc.vesselVoyage || '');
+      setContainerSealNo(doc.containerSealNo || '');
+      setMarksNumbers(doc.marksNumbers || '');
+      setFreightTerm(doc.freightTerm || '');
+      return;
+    }
+
     const parseLeadingNumber = (str) => {
       if (!str) return '';
       const match = str.toString().match(/[\d.]+/);
@@ -85,7 +119,7 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
     setMeasurement('');
     setVesselVoyage('');
     setContainerSealNo('');
-  }, [isOpen, msg, room]);
+  }, [isOpen, msg, room, isViewingSent]);
 
   // Load the seller's saved official seal, if any, so it's reused automatically next time
   useEffect(() => {
@@ -163,6 +197,40 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
     BL: 'BILL OF LADING (DRAFT)',
   };
 
+  const handleSendDoc = () => {
+    if (!onSendDocument) return;
+
+    const docSnapshot = {
+      docTitle: docTitles[docType],
+      docType,
+      invoiceNo,
+      issueDate,
+      paymentTerms,
+      incoterm,
+      portOfLoading,
+      portOfDischarge,
+      countryOfOrigin,
+      sellerCompany,
+      sellerAddress,
+      buyerCompany,
+      buyerAddress,
+      items: items.map(({ productName, hsCode, quantity, unitPrice }) => ({ productName, hsCode, quantity, unitPrice })),
+      grandTotal,
+      packageCount,
+      grossWeight,
+      netWeight,
+      measurement,
+      vesselVoyage,
+      containerSealNo,
+      marksNumbers,
+      freightTerm,
+    };
+
+    const summaryText = `[Trade Document Sent] ${docTitles[docType]} — ${invoiceNo}`;
+    onSendDocument(room, docSnapshot, summaryText);
+    onClose();
+  };
+
   return (
     <div className="fixed inset-0 z-[999999] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-3xl w-full border border-slate-200 shadow-2xl overflow-hidden my-8 animate-fadeIn">
@@ -177,7 +245,9 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
               <h3 className="text-base font-extrabold flex items-center gap-2">
                 Official B2B Trade Document Generator
               </h3>
-              <p className="text-xs text-slate-400">Fields default from this chat — edit anything before printing.</p>
+              <p className="text-xs text-slate-400">
+                {isViewingSent ? 'Sent document — view only.' : 'Fields default from this chat — edit anything before printing.'}
+              </p>
             </div>
           </div>
 
@@ -197,10 +267,11 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
               <button
                 key={type}
                 type="button"
+                disabled={isViewingSent}
                 onClick={() => setDocType(type)}
-                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${
+                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition ${isViewingSent ? 'cursor-default' : 'cursor-pointer'} ${
                   docType === type ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-700 hover:bg-slate-200'
-                }`}
+                } ${isViewingSent && docType !== type ? 'opacity-40' : ''}`}
               >
                 {type === 'PI' && 'Proforma Invoice (PI)'}
                 {type === 'CI' && 'Commercial Invoice (CI)'}
@@ -235,8 +306,8 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
             </div>
 
             <div className="grid grid-cols-2 gap-x-4 text-right">
-              <Field label="Document No." value={invoiceNo} onChange={setInvoiceNo} />
-              <Field label="Date" value={issueDate} onChange={setIssueDate} />
+              <Field label="Document No." value={invoiceNo} onChange={setInvoiceNo} disabled={isViewingSent} />
+              <Field label="Date" value={issueDate} onChange={setIssueDate} disabled={isViewingSent} />
             </div>
           </div>
 
@@ -244,35 +315,35 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
           <div className="grid grid-cols-2 gap-6 text-xs border-b border-slate-200 pb-6">
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Exporter / Seller</span>
-              <Field label="Company Name" value={sellerCompany} onChange={setSellerCompany} />
-              <Field label="Address" value={sellerAddress} onChange={setSellerAddress} />
+              <Field label="Company Name" value={sellerCompany} onChange={setSellerCompany} disabled={isViewingSent} />
+              <Field label="Address" value={sellerAddress} onChange={setSellerAddress} disabled={isViewingSent} />
             </div>
 
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Importer / Buyer</span>
-              <Field label="Company Name" value={buyerCompany} onChange={setBuyerCompany} />
-              <Field label="Address" value={buyerAddress} onChange={setBuyerAddress} />
+              <Field label="Company Name" value={buyerCompany} onChange={setBuyerCompany} disabled={isViewingSent} />
+              <Field label="Address" value={buyerAddress} onChange={setBuyerAddress} disabled={isViewingSent} />
             </div>
           </div>
 
           {/* Shipment Terms */}
           <div className="grid grid-cols-3 gap-4 text-xs border-b border-slate-200 pb-6">
-            <Field label="Payment Terms" value={paymentTerms} onChange={setPaymentTerms} />
-            <Field label="Incoterm" value={incoterm} onChange={setIncoterm} />
-            <Field label="Country of Origin" value={countryOfOrigin} onChange={setCountryOfOrigin} />
-            <Field label="Port of Loading" value={portOfLoading} onChange={setPortOfLoading} />
-            <Field label="Port of Discharge" value={portOfDischarge} onChange={setPortOfDischarge} />
+            <Field label="Payment Terms" value={paymentTerms} onChange={setPaymentTerms} disabled={isViewingSent} />
+            <Field label="Incoterm" value={incoterm} onChange={setIncoterm} disabled={isViewingSent} />
+            <Field label="Country of Origin" value={countryOfOrigin} onChange={setCountryOfOrigin} disabled={isViewingSent} />
+            <Field label="Port of Loading" value={portOfLoading} onChange={setPortOfLoading} disabled={isViewingSent} />
+            <Field label="Port of Discharge" value={portOfDischarge} onChange={setPortOfDischarge} disabled={isViewingSent} />
             {docType === 'BL' && (
-              <Field label="Freight" value={freightTerm} onChange={setFreightTerm} />
+              <Field label="Freight" value={freightTerm} onChange={setFreightTerm} disabled={isViewingSent} />
             )}
           </div>
 
           {/* BL-specific shipping details */}
           {docType === 'BL' && (
             <div className="grid grid-cols-3 gap-4 text-xs border-b border-slate-200 pb-6">
-              <Field label="Vessel / Voyage No." value={vesselVoyage} onChange={setVesselVoyage} />
-              <Field label="Container / Seal No." value={containerSealNo} onChange={setContainerSealNo} />
-              <Field label="Marks & Numbers" value={marksNumbers} onChange={setMarksNumbers} />
+              <Field label="Vessel / Voyage No." value={vesselVoyage} onChange={setVesselVoyage} disabled={isViewingSent} />
+              <Field label="Container / Seal No." value={containerSealNo} onChange={setContainerSealNo} disabled={isViewingSent} />
+              <Field label="Marks & Numbers" value={marksNumbers} onChange={setMarksNumbers} disabled={isViewingSent} />
             </div>
           )}
 
@@ -280,13 +351,15 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Item Specifications</h3>
-              <button
-                type="button"
-                onClick={handleAddItem}
-                className="text-[11px] font-extrabold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer print:hidden"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add Item
-              </button>
+              {!isViewingSent && (
+                <button
+                  type="button"
+                  onClick={handleAddItem}
+                  className="text-[11px] font-extrabold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer print:hidden"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Item
+                </button>
+              )}
             </div>
 
             <table className="w-full text-left text-xs border-collapse">
@@ -297,44 +370,48 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
                   <th className="p-3">Quantity</th>
                   <th className="p-3">Unit Price (USD)</th>
                   <th className="p-3 text-right">Total (USD)</th>
-                  <th className="p-3 rounded-r-xl w-8 print:hidden"></th>
+                  {!isViewingSent && <th className="p-3 rounded-r-xl w-8 print:hidden"></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 font-medium">
                 {items.map((item) => (
                   <tr key={item.id}>
-                    <td className="p-3"><Field label="" value={item.productName} onChange={(v) => handleItemChange(item.id, 'productName', v)} /></td>
-                    <td className="p-3"><Field label="" value={item.hsCode} onChange={(v) => handleItemChange(item.id, 'hsCode', v)} /></td>
+                    <td className="p-3"><Field label="" value={item.productName} onChange={(v) => handleItemChange(item.id, 'productName', v)} disabled={isViewingSent} /></td>
+                    <td className="p-3"><Field label="" value={item.hsCode} onChange={(v) => handleItemChange(item.id, 'hsCode', v)} disabled={isViewingSent} /></td>
                     <td className="p-3 w-24">
                       <input
                         type="number"
                         value={item.quantity}
+                        disabled={isViewingSent}
                         onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)}
-                        className="w-full bg-transparent border-0 border-b border-dashed border-slate-300 focus:border-blue-500 focus:outline-none text-xs font-bold text-slate-900 py-0.5 print:border-none"
+                        className="w-full bg-transparent border-0 border-b border-dashed border-slate-300 focus:border-blue-500 focus:outline-none text-xs font-bold text-slate-900 py-0.5 print:border-none disabled:opacity-100"
                       />
                     </td>
                     <td className="p-3 w-28">
                       <input
                         type="number"
                         value={item.unitPrice}
+                        disabled={isViewingSent}
                         onChange={(e) => handleItemChange(item.id, 'unitPrice', e.target.value)}
-                        className="w-full bg-transparent border-0 border-b border-dashed border-slate-300 focus:border-blue-500 focus:outline-none text-xs font-bold text-slate-900 py-0.5 print:border-none"
+                        className="w-full bg-transparent border-0 border-b border-dashed border-slate-300 focus:border-blue-500 focus:outline-none text-xs font-bold text-slate-900 py-0.5 print:border-none disabled:opacity-100"
                       />
                     </td>
                     <td className="p-3 text-right font-extrabold text-slate-900">
                       {getItemTotal(item).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
-                    <td className="p-3 print:hidden">
-                      {items.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(item.id)}
-                          className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </td>
+                    {!isViewingSent && (
+                      <td className="p-3 print:hidden">
+                        {items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(item.id)}
+                            className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -344,7 +421,7 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
                   <td className="p-3 text-right font-black text-blue-600">
                     {grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
-                  <td className="print:hidden"></td>
+                  {!isViewingSent && <td className="print:hidden"></td>}
                 </tr>
               </tfoot>
             </table>
@@ -355,10 +432,10 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
             <div className="space-y-3 border-t border-slate-200 pt-6">
               <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Package Details</h3>
               <div className="grid grid-cols-4 gap-4 text-xs">
-                <Field label="No. of Packages" value={packageCount} onChange={setPackageCount} />
-                <Field label="Gross Weight" value={grossWeight} onChange={setGrossWeight} />
-                <Field label="Net Weight" value={netWeight} onChange={setNetWeight} />
-                <Field label="Measurement" value={measurement} onChange={setMeasurement} />
+                <Field label="No. of Packages" value={packageCount} onChange={setPackageCount} disabled={isViewingSent} />
+                <Field label="Gross Weight" value={grossWeight} onChange={setGrossWeight} disabled={isViewingSent} />
+                <Field label="Net Weight" value={netWeight} onChange={setNetWeight} disabled={isViewingSent} />
+                <Field label="Measurement" value={measurement} onChange={setMeasurement} disabled={isViewingSent} />
               </div>
             </div>
           )}
@@ -404,14 +481,25 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole }) 
         </div>
 
         {/* Modal Footer */}
-        <div className="p-6 bg-slate-50 border-t border-slate-200 flex items-center justify-end">
+        <div className="p-6 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer"
+            className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl transition cursor-pointer"
           >
-            Close Document
+            Close
           </button>
+
+          {!isViewingSent && userRole === 'seller' && onSendDocument && (
+            <button
+              type="button"
+              onClick={handleSendDoc}
+              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer flex items-center gap-1.5"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Send to Chat</span>
+            </button>
+          )}
         </div>
 
       </div>

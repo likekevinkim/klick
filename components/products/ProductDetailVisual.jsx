@@ -210,7 +210,7 @@ export default function ProductDetailVisual({ product }) {
           </button>
 
           <Link
-            href={`/companies/${product?.company_id || 1}`}
+            href={`/companies/${product?.user_id || 1}`}
             className="w-full py-2.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <span>Visit Official Factory Showroom</span>

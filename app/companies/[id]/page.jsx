@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import EditCompanyModal from '@/components/company/EditCompanyModal';
-import AddProductModal from '@/components/company/AddProductModal';
+import ProductFormModal from '@/components/products/ProductFormModal';
 import VideoModal from '@/components/company/VideoModal';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -84,15 +84,6 @@ export default function CompanyShowroomLandingPage() {
   const [editCertifications, setEditCertifications] = useState([]);
 
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
-  const [isSavingProduct, setIsSavingProduct] = useState(false);
-
-  const [productTitleKo, setProductTitleKo] = useState('');
-  const [productTitleEn, setProductTitleEn] = useState('');
-  const [productCategory, setProductCategory] = useState('Industrial Machinery');
-  const [productPrice, setProductPrice] = useState('145.00');
-  const [productMoq, setProductMoq] = useState('500 Units');
-  const [productImageUrl, setProductImageUrl] = useState('');
-  const [productDescriptionKo, setProductDescriptionKo] = useState('');
 
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [selectedVideoUrl, setSelectedVideoUrl] = useState('');
@@ -228,7 +219,7 @@ export default function CompanyShowroomLandingPage() {
           const { data: matchedProducts } = await supabase
             .from('products')
             .select('*')
-            .or(`user_id.eq.${targetSellerUserId},company_id.eq.${targetSellerUserId}`)
+            .eq('user_id', targetSellerUserId)
             .order('created_at', { ascending: false });
 
           setProducts(matchedProducts || []);
@@ -334,54 +325,12 @@ export default function CompanyShowroomLandingPage() {
     }
   };
 
-  const handleCreateShowroomProduct = async (e) => {
-    e.preventDefault();
-    if (!user) {
-      alert('로그인이 필요한 서비스입니다.');
-      router.push('/login');
-      return;
+  // Register New Product와 동일한 ProductFormModal을 쓰므로, 등록 성공 시 목록에 바로 반영만 하면 됨
+  const handleProductCreated = (newProduct) => {
+    if (newProduct) {
+      setProducts((prev) => [newProduct, ...prev]);
     }
-
-    try {
-      setIsSavingProduct(true);
-      const companyNameForProduct = company?.company_name_en || company?.company_name || user?.user_metadata?.company_name_en || 'Verified Korean Manufacturer';
-
-      const newProductPayload = {
-        user_id: user.id,
-        company_id: user.id,
-        company_name: companyNameForProduct,
-        title_ko: productTitleKo,
-        title_en: productTitleEn || productTitleKo,
-        category: productCategory,
-        price: productPrice,
-        moq: productMoq,
-        image_url: productImageUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&q=60',
-        description_ko: productDescriptionKo,
-        description_en: `[AI Generated] High-durability ${productCategory} product manufactured by ${companyNameForProduct}.`,
-        tagline: 'Verified South Korean Factory Export Product',
-        created_at: new Date().toISOString()
-      };
-
-      const { error } = await supabase.from('products').insert([newProductPayload]);
-
-      if (error) {
-        alert('제품 등록 중 오류가 발생했습니다: ' + error.message);
-      } else {
-        alert('신규 제품이 Showroom 및 Product Dashboard에 동시에 등록되었습니다!');
-        setIsAddProductModalOpen(false);
-
-        setProductTitleKo('');
-        setProductTitleEn('');
-        setProductImageUrl('');
-        setProductDescriptionKo('');
-
-        fetchExactCompanyProfile();
-      }
-    } catch (err) {
-      console.error('Create product error:', err);
-    } finally {
-      setIsSavingProduct(false);
-    }
+    setIsAddProductModalOpen(false);
   };
 
   const handleOpenVideo = (url) => {
@@ -910,25 +859,10 @@ export default function CompanyShowroomLandingPage() {
         setEditCertifications={setEditCertifications}
       />
 
-      <AddProductModal
+      <ProductFormModal
         isOpen={isAddProductModalOpen}
         onClose={() => setIsAddProductModalOpen(false)}
-        onSubmit={handleCreateShowroomProduct}
-        isSaving={isSavingProduct}
-        productTitleKo={productTitleKo}
-        setProductTitleKo={setProductTitleKo}
-        productTitleEn={productTitleEn}
-        setProductTitleEn={setProductTitleEn}
-        productCategory={productCategory}
-        setProductCategory={setProductCategory}
-        productPrice={productPrice}
-        setProductPrice={setProductPrice}
-        productMoq={productMoq}
-        setProductMoq={setProductMoq}
-        productImageUrl={productImageUrl}
-        setProductImageUrl={setProductImageUrl}
-        productDescriptionKo={productDescriptionKo}
-        setProductDescriptionKo={setProductDescriptionKo}
+        onProductCreated={handleProductCreated}
       />
 
       <VideoModal

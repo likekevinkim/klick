@@ -72,7 +72,7 @@ function FactoriesDirectoryContent() {
       if (compError) throw compError;
 
       // 2. 각 셀러가 등록한 라이브 상품 개수를 구하기 위해 products 테이블 조회
-      const { data: dbProducts } = await supabase.from('products').select('company_id, user_id');
+      const { data: dbProducts } = await supabase.from('products').select('user_id');
 
       // 3. 순수 DB 데이터 기반 매핑
       const mappedList = (dbCompanies || []).map((fac) => {
@@ -81,7 +81,7 @@ function FactoriesDirectoryContent() {
 
         // 해당 셀러의 등록 상품 수 계산
         const liveProducts = (dbProducts || []).filter(
-          (p) => p.company_id === sellerTargetId || p.user_id === sellerTargetId || p.company_id === fac.id
+          (p) => p.user_id === sellerTargetId
         );
 
         // 인증서 문자열 변환

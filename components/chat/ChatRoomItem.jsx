@@ -396,6 +396,28 @@ export default function ChatRoomItem({
                         </button>
                       )}
 
+                      {/* Trade Document Card — click to view the sent PI/CI/PL/BL */}
+                      {msg.file?.type === 'trade_doc' && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenDocModal(msg, room)}
+                          className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 mt-1 w-full text-left cursor-pointer transition ${
+                            isMine ? 'bg-blue-700/60 border-blue-500 hover:bg-blue-700/80' : 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <FileText className={`w-4 h-4 flex-shrink-0 ${isMine ? 'text-blue-300' : 'text-blue-600'}`} />
+                            <div className="truncate">
+                              <span className="font-extrabold block truncate">{msg.file.docTitle} — {msg.file.invoiceNo}</span>
+                              <span className="text-[9px] opacity-75">Tap to view document</span>
+                            </div>
+                          </div>
+                          <span className="px-2.5 py-1 bg-white text-slate-900 font-extrabold text-[10px] rounded-lg shadow flex-shrink-0">
+                            View
+                          </span>
+                        </button>
+                      )}
+
                       {/* Official Quotation Card */}
                       {msg.is_quote && (
                         <div className="p-3.5 bg-[#0F172A] text-white rounded-xl border border-slate-800 space-y-2 mt-2">
