@@ -30,6 +30,14 @@ export default function ProductDetailPage() {
   const [uploadingReviewPhoto, setUploadingReviewPhoto] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  // 내가 쓴 리뷰 수정 상태
+  const [editingReviewId, setEditingReviewId] = useState(null);
+  const [editRating, setEditRating] = useState(5);
+  const [editText, setEditText] = useState('');
+  const [editPhotos, setEditPhotos] = useState([]);
+  const [uploadingEditPhoto, setUploadingEditPhoto] = useState(false);
+  const [savingEditReview, setSavingEditReview] = useState(false);
+
   // Only a signed-in buyer can leave a review, using their verified name
   const [viewerRole, setViewerRole] = useState(null);
   const [viewerBuyerId, setViewerBuyerId] = useState(null);
@@ -143,25 +151,35 @@ export default function ProductDetailPage() {
           .order('created_at', { ascending: false });
 
         // 리뷰 작성 시점에 저장해둔 이름 스냅샷 대신, 현재 실제 바이어 이름으로
-        // 항상 다시 해석해서 보여준다 (이메일 앞부분이 뜨는 걸 막고, 이름 바꾼
-        // 경우에도 최신 이름이 나오도록).
+        // 항상 다시 해석해서 보여준다. 예전에 저장된 이메일-앞부분 스냅샷은
+        // 절대 그대로 다시 쓰지 않는다 (이메일 형태면 무조건 버림).
         const reviewList = reviewRows || [];
         const buyerIds = [...new Set(reviewList.map((r) => r.buyer_auth_user_id).filter(Boolean))];
+        const looksLikeEmail = (s) => typeof s === 'string' && s.includes('@');
+        const nameById = new Map();
 
         if (buyerIds.length > 0) {
-          const { data: buyerRows } = await supabase
-            .from('buyers')
-            .select('auth_user_id, buyer_name, company_name')
-            .in('auth_user_id', buyerIds);
+          const [{ data: buyerRows }, { data: buyerProfileRows }] = await Promise.all([
+            supabase.from('buyers').select('auth_user_id, buyer_name, company_name').in('auth_user_id', buyerIds),
+            supabase.from('buyer_profiles').select('auth_user_id, company_name').in('auth_user_id', buyerIds)
+          ]);
 
-          const nameById = new Map(
-            (buyerRows || []).map((b) => [b.auth_user_id, b.buyer_name || b.company_name])
-          );
-
-          reviewList.forEach((r) => {
-            r.buyer_name = nameById.get(r.buyer_auth_user_id) || r.buyer_name || 'Global Buyer';
+          (buyerProfileRows || []).forEach((b) => {
+            if (b.company_name) nameById.set(b.auth_user_id, b.company_name);
+          });
+          (buyerRows || []).forEach((b) => {
+            const resolved = b.buyer_name || b.company_name;
+            if (resolved) nameById.set(b.auth_user_id, resolved);
           });
         }
+
+        reviewList.forEach((r) => {
+          const live = nameById.get(r.buyer_auth_user_id);
+          const stored = r.buyer_name;
+          r.buyer_name = live && !looksLikeEmail(live)
+            ? live
+            : (stored && !looksLikeEmail(stored) ? stored : 'Global Buyer');
+        });
 
         setReviews(reviewList);
       }
@@ -209,33 +227,37 @@ export default function ProductDetailPage() {
     }
   };
 
-  // 리뷰에 첨부할 실제 구매 상품 사진 업로드 (여러 장 가능)
+  // 사진 여러 장을 Storage에 올리고 public URL 배열을 돌려주는 공용 헬퍼
+  // (새 리뷰 작성 / 기존 리뷰 수정 둘 다에서 재사용)
+  const uploadReviewPhotos = async (files) => {
+    const uploaded = [];
+    for (const file of files) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `review_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `review_photos/${fileName}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from('company-images')
+        .upload(filePath, file);
+
+      if (uploadErr) throw uploadErr;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('company-images')
+        .getPublicUrl(filePath);
+
+      if (publicUrlData?.publicUrl) uploaded.push(publicUrlData.publicUrl);
+    }
+    return uploaded;
+  };
+
   const handleReviewPhotoUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
     try {
       setUploadingReviewPhoto(true);
-      const uploaded = [];
-
-      for (const file of files) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `review_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const filePath = `review_photos/${fileName}`;
-
-        const { error: uploadErr } = await supabase.storage
-          .from('company-images')
-          .upload(filePath, file);
-
-        if (uploadErr) throw uploadErr;
-
-        const { data: publicUrlData } = supabase.storage
-          .from('company-images')
-          .getPublicUrl(filePath);
-
-        if (publicUrlData?.publicUrl) uploaded.push(publicUrlData.publicUrl);
-      }
-
+      const uploaded = await uploadReviewPhotos(files);
       setNewReviewPhotos((prev) => [...prev, ...uploaded]);
     } catch (err) {
       console.error('Review photo upload error:', err);
@@ -248,6 +270,86 @@ export default function ProductDetailPage() {
 
   const handleRemoveReviewPhoto = (idx) => {
     setNewReviewPhotos((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  // 내가 쓴 리뷰 수정
+  const handleEditReviewPhotoUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    try {
+      setUploadingEditPhoto(true);
+      const uploaded = await uploadReviewPhotos(files);
+      setEditPhotos((prev) => [...prev, ...uploaded]);
+    } catch (err) {
+      console.error('Review photo upload error:', err);
+      alert('Failed to upload photo: ' + (err.message || 'Storage error'));
+    } finally {
+      setUploadingEditPhoto(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveEditPhoto = (idx) => {
+    setEditPhotos((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleStartEditReview = (rev) => {
+    setEditingReviewId(rev.id);
+    setEditRating(rev.rating);
+    setEditText(rev.comment || '');
+    setEditPhotos(Array.isArray(rev.photos) ? rev.photos : []);
+  };
+
+  const handleCancelEditReview = () => {
+    setEditingReviewId(null);
+  };
+
+  const handleSaveEditReview = async (reviewId) => {
+    if (!editText.trim()) return;
+
+    try {
+      setSavingEditReview(true);
+
+      const { error } = await supabase
+        .from('product_reviews')
+        .update({ rating: Number(editRating), comment: editText.trim(), photos: editPhotos })
+        .eq('id', reviewId)
+        .eq('buyer_auth_user_id', viewerBuyerId);
+
+      if (error) throw error;
+
+      setReviews((prev) =>
+        prev.map((r) =>
+          r.id === reviewId ? { ...r, rating: Number(editRating), comment: editText.trim(), photos: editPhotos } : r
+        )
+      );
+      setEditingReviewId(null);
+    } catch (err) {
+      console.error('Review update error:', err);
+      alert('Failed to update review: ' + (err.message || 'Database error'));
+    } finally {
+      setSavingEditReview(false);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!confirm('Delete this review? This cannot be undone.')) return;
+
+    try {
+      const { error } = await supabase
+        .from('product_reviews')
+        .delete()
+        .eq('id', reviewId)
+        .eq('buyer_auth_user_id', viewerBuyerId);
+
+      if (error) throw error;
+
+      setReviews((prev) => prev.filter((r) => r.id !== reviewId));
+    } catch (err) {
+      console.error('Review delete error:', err);
+      alert('Failed to delete review: ' + (err.message || 'Database error'));
+    }
   };
 
   const handleAddReview = async (e) => {
@@ -533,52 +635,153 @@ export default function ProductDetailPage() {
               )}
 
               <div className="space-y-3 pt-2">
-                {reviews.map((rev) => (
-                  <div key={rev.id} className="p-4 bg-slate-50/60 rounded-2xl border border-slate-100 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-extrabold text-xs">
-                          <User className="w-4 h-4" />
+                {reviews.map((rev) => {
+                  const isMyReview = viewerBuyerId && rev.buyer_auth_user_id === viewerBuyerId;
+                  const isEditing = editingReviewId === rev.id;
+
+                  if (isEditing) {
+                    return (
+                      <div key={rev.id} className="p-4 bg-blue-50/60 rounded-2xl border border-blue-200 space-y-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">Rating</label>
+                          <select
+                            value={editRating}
+                            onChange={(e) => setEditRating(Number(e.target.value))}
+                            className="w-full sm:w-64 px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-amber-600"
+                          >
+                            <option value={5}>★★★★★ (5.0 - Excellent Quality)</option>
+                            <option value={4}>★★★★☆ (4.0 - Very Good)</option>
+                            <option value={3}>★★★☆☆ (3.0 - Average)</option>
+                            <option value={2}>★★☆☆☆ (2.0 - Below Expectations)</option>
+                            <option value={1}>★☆☆☆☆ (1.0 - Poor)</option>
+                          </select>
                         </div>
-                        <span className="text-xs font-extrabold text-slate-900">{rev.buyer_name}</span>
+
+                        <textarea
+                          rows={2}
+                          required
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          className="w-full p-3 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                        />
+
+                        <div>
+                          <label className="w-full sm:w-auto inline-flex px-3.5 py-2 bg-white border border-slate-300 hover:border-blue-500 rounded-xl cursor-pointer items-center justify-center gap-2 transition text-slate-700 font-bold text-[11px]">
+                            {uploadingEditPhoto ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                            ) : (
+                              <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
+                            )}
+                            <span>{uploadingEditPhoto ? 'Uploading...' : 'Add Photo'}</span>
+                            <input type="file" accept="image/*" multiple onChange={handleEditReviewPhotoUpload} className="hidden" />
+                          </label>
+
+                          {editPhotos.length > 0 && (
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              {editPhotos.map((url, idx) => (
+                                <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 group">
+                                  <img src={url} alt={`Review photo ${idx + 1}`} className="w-full h-full object-cover" />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveEditPhoto(idx)}
+                                    className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center cursor-pointer text-white text-[10px] font-bold"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={handleCancelEditReview}
+                            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={savingEditReview}
+                            onClick={() => handleSaveEditReview(rev.id)}
+                            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>{savingEditReview ? 'Saving...' : 'Save Changes'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={rev.id} className="p-4 bg-slate-50/60 rounded-2xl border border-slate-100 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-extrabold text-xs">
+                            <User className="w-4 h-4" />
+                          </div>
+                          <span className="text-xs font-extrabold text-slate-900">{rev.buyer_name}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1 text-amber-500 text-xs font-bold">
+                          <div className="flex">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-3.5 h-3.5 ${i < rev.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-slate-400 text-[10px] ml-1">
+                            {rev.created_at ? new Date(rev.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : ''}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-1 text-amber-500 text-xs font-bold">
-                        <div className="flex">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`w-3.5 h-3.5 ${i < rev.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`}
-                            />
+                      <p className="text-xs text-slate-700 font-medium pl-9 leading-relaxed">
+                        "{rev.comment}"
+                      </p>
+
+                      {Array.isArray(rev.photos) && rev.photos.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pl-9 pt-1">
+                          {rev.photos.map((url, idx) => (
+                            <a
+                              key={idx}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 block"
+                            >
+                              <img src={url} alt={`${rev.buyer_name} review photo ${idx + 1}`} className="w-full h-full object-cover" />
+                            </a>
                           ))}
                         </div>
-                        <span className="text-slate-400 text-[10px] ml-1">
-                          {rev.created_at ? new Date(rev.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : ''}
-                        </span>
-                      </div>
-                    </div>
+                      )}
 
-                    <p className="text-xs text-slate-700 font-medium pl-9 leading-relaxed">
-                      "{rev.comment}"
-                    </p>
-
-                    {Array.isArray(rev.photos) && rev.photos.length > 0 && (
-                      <div className="flex flex-wrap gap-2 pl-9 pt-1">
-                        {rev.photos.map((url, idx) => (
-                          <a
-                            key={idx}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 block"
+                      {isMyReview && (
+                        <div className="pl-9 pt-1 flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditReview(rev)}
+                            className="text-[11px] font-extrabold text-blue-600 hover:underline cursor-pointer"
                           >
-                            <img src={url} alt={`${rev.buyer_name} review photo ${idx + 1}`} className="w-full h-full object-cover" />
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReview(rev.id)}
+                            className="text-[11px] font-extrabold text-rose-600 hover:underline cursor-pointer"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
