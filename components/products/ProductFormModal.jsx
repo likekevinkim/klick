@@ -1,25 +1,26 @@
-// components/products/ProductFormModal.jsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { 
-  X, 
-  Plus, 
-  Upload, 
-  Video, 
-  Sparkles, 
-  Building2, 
-  MapPin, 
-  ShieldCheck, 
-  Loader2, 
-  Image as ImageIcon, 
-  Film, 
-  Bold, 
-  Italic, 
-  Heading, 
+import {
+  X,
+  Plus,
+  Upload,
+  Video,
+  Sparkles,
+  Building2,
+  MapPin,
+  ShieldCheck,
+  Loader2,
+  Image as ImageIcon,
+  Film,
+  Bold,
+  Italic,
+  Heading,
   List,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Layers,
+  Factory
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -30,6 +31,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
 
   const [titleKo, setTitleKo] = useState('');
   const [titleEn, setTitleEn] = useState('');
+  const [tagline, setTagline] = useState('');
   const [category, setCategory] = useState('Industrial Machinery');
   const [moq, setMoq] = useState('');
   const [leadTime, setLeadTime] = useState('');
@@ -37,15 +39,34 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
 
   const [certifications, setCertifications] = useState('');
 
+  // OEM/ODM 지원 여부
+  const [oemOdmAvailable, setOemOdmAvailable] = useState('Available');
+  const [oemOdmNote, setOemOdmNote] = useState('');
+
   const [pricingTiers, setTieredPricing] = useState([
     { id: 1, minQty: '', maxQty: '', price: '' },
     { id: 2, minQty: '', maxQty: '', price: '' }
+  ]);
+
+  // 제품 속성 스펙 테이블 (반복 입력)
+  const [attributes, setAttributes] = useState([
+    { id: 1, name: '', value: '' },
+    { id: 2, name: '', value: '' },
+    { id: 3, name: '', value: '' }
   ]);
 
   const [coverImage, setCoverImage] = useState(null);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [demoVideo, setDemoVideo] = useState(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+
+  // 추가 갤러리 사진 (복수)
+  const [galleryImages, setGalleryImages] = useState([]);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+
+  // AI 짧은 요약 (바이어에게 가장 먼저 보이는 요약문)
+  const [aiSummary, setAiSummary] = useState('');
+  const [isAiSummaryGenerating, setIsAiSummaryGenerating] = useState(false);
 
   const [detailsText, setDetailsText] = useState('');
   const [isAiGenerating, setIsAiGenerating] = useState(false);
@@ -55,6 +76,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
 
   const coverInputRef = useRef(null);
   const videoInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -165,6 +187,49 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
     }
   };
 
+  // 갤러리 사진 여러 장 업로드 (알리바바 상세페이지 스타일 멀티 이미지)
+  const handleGalleryUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    try {
+      setUploadingGallery(true);
+      const uploaded = [];
+
+      for (const file of files) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `gallery_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `product_gallery/${fileName}`;
+
+        const { error: uploadErr } = await supabase.storage
+          .from('company-images')
+          .upload(filePath, file);
+
+        if (uploadErr) throw uploadErr;
+
+        const { data: publicUrlData } = supabase.storage
+          .from('company-images')
+          .getPublicUrl(filePath);
+
+        if (publicUrlData?.publicUrl) {
+          uploaded.push({ name: file.name, url: publicUrlData.publicUrl });
+        }
+      }
+
+      setGalleryImages((prev) => [...prev, ...uploaded]);
+    } catch (err) {
+      console.error('Gallery upload error:', err);
+      alert('Failed to upload gallery photos: ' + (err.message || 'Storage error'));
+    } finally {
+      setUploadingGallery(false);
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveGalleryImage = (idx) => {
+    setGalleryImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const handleAddTier = () => {
     setTieredPricing((prev) => [
       ...prev,
@@ -180,6 +245,67 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
     setTieredPricing((prev) =>
       prev.map((tier) => (tier.id === id ? { ...tier, [field]: value } : tier))
     );
+  };
+
+  // 제품 속성 스펙 테이블 핸들러 (Model No., 재질, 인증 등 자유 입력)
+  const handleAddAttribute = () => {
+    setAttributes((prev) => [...prev, { id: Date.now(), name: '', value: '' }]);
+  };
+
+  const handleRemoveAttribute = (id) => {
+    setAttributes((prev) => prev.filter((attr) => attr.id !== id));
+  };
+
+  const handleAttributeChange = (id, field, value) => {
+    setAttributes((prev) =>
+      prev.map((attr) => (attr.id === id ? { ...attr, [field]: value } : attr))
+    );
+  };
+
+  // AI 짧은 요약 생성 (바이어가 제일 먼저 읽는 3줄 요약)
+  const handleAiSummaryGenerate = async () => {
+    if (!titleKo && !titleEn) {
+      alert('Please enter a Product Title (Korean or English) first.');
+      return;
+    }
+
+    try {
+      setIsAiSummaryGenerating(true);
+      const mainTitle = titleEn || titleKo;
+      const validAttrs = attributes.filter((a) => a.name.trim() && a.value.trim());
+
+      const res = await fetch('/api/ai/generate-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'summary',
+          title: mainTitle,
+          category,
+          companyName,
+          attributes: validAttrs,
+          certifications,
+          moq,
+          leadTime
+        })
+      });
+
+      const data = await res.json();
+
+      if (data?.generatedText) {
+        setAiSummary(data.generatedText);
+      } else {
+        setAiSummary(
+          `${mainTitle} is a factory-direct export product manufactured by ${companyName || 'a verified Korean supplier'} in ${factoryLocation}. It ships with MOQ ${moq || 'negotiable'} and a lead time of ${leadTime || '15-20 days'}, backed by ${certifications || 'standard export certification'}.`
+        );
+      }
+    } catch (err) {
+      console.error('AI summary generation error:', err);
+      setAiSummary(
+        `${titleEn || titleKo} is a factory-direct export product manufactured by ${companyName || 'a verified Korean supplier'} in ${factoryLocation}.`
+      );
+    } finally {
+      setIsAiSummaryGenerating(false);
+    }
   };
 
   const handleAiAutoGenerate = async () => {
@@ -227,11 +353,20 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
         ? `${detailsText}\n\n[Product Dimensions & Weight]\n${dimensions}`
         : detailsText;
 
+      const validAttributes = attributes
+        .filter((a) => a.name.trim() && a.value.trim())
+        .map((a) => ({ name: a.name.trim(), value: a.value.trim() }));
+
+      const oemOdmValue = oemOdmAvailable === 'Available'
+        ? `Available${oemOdmNote.trim() ? ' - ' + oemOdmNote.trim() : ''}`
+        : 'Not Available';
+
       const payload = {
         user_id: userIdStr,
         title: mainTitle,
         title_ko: titleKo,
         title_en: titleEn,
+        tagline: tagline,
         company_name: companyName,
         location: factoryLocation,
         category: category,
@@ -239,12 +374,17 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
         lead_time: leadTime,
         dimensions: dimensions,
         certifications: certifications || 'Standard Production Spec',
+        oem_odm: oemOdmValue,
         fob_price: mainFobPrice,
         price: mainFobPrice,
         tiered_pricing: pricingTiers,
+        attributes: validAttributes,
+        ai_summary: aiSummary,
         description: fullDescription,
         details: fullDescription,
+        description_en: fullDescription,
         image_url: coverImage?.url || null,
+        gallery_images: galleryImages.map((g) => g.url),
         video_url: demoVideo?.url || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -274,7 +414,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
   return (
     <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl p-6 md:p-8 max-w-4xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto animate-fadeIn text-xs">
-        
+
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="space-y-1">
             <h2 className="text-base md:text-lg font-black text-slate-900 flex items-center gap-2">
@@ -296,7 +436,8 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
         </div>
 
         <form onSubmit={handleSubmitProduct} className="space-y-6">
-          
+
+          {/* 1. 기본 정보 */}
           <div className="space-y-3">
             <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
               <span>1. BASIC PRODUCT INFORMATION</span>
@@ -325,6 +466,17 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-slate-900 bg-white"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-extrabold mb-1">Tagline (One-line Selling Point)</label>
+              <input
+                type="text"
+                value={tagline}
+                onChange={(e) => setTagline(e.target.value)}
+                placeholder="e.g. Industrial-grade hydraulic valve engineered for 24/7 heavy operation"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium text-slate-900 bg-white"
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -380,10 +532,11 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
             </div>
           </div>
 
+          {/* 2. 제조사 프로필 & 인증 & OEM/ODM */}
           <div className="space-y-3">
             <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-blue-600" />
-              <span>2. MANUFACTURER PROFILE & COMPLIANCE CERTIFICATIONS</span>
+              <span>2. MANUFACTURER PROFILE, CERTIFICATIONS & OEM/ODM</span>
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -409,17 +562,98 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
                   type="text"
                   value={certifications}
                   onChange={(e) => setCertifications(e.target.value)}
-                  placeholder=""
+                  placeholder="e.g. ISO 9001, CE Certified"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold bg-white"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+              <label className="block text-slate-700 font-extrabold flex items-center gap-1.5">
+                <Factory className="w-3.5 h-3.5 text-blue-600" /> OEM / ODM Support
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <select
+                  value={oemOdmAvailable}
+                  onChange={(e) => setOemOdmAvailable(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold bg-white"
+                >
+                  <option value="Available">Available</option>
+                  <option value="Not Available">Not Available</option>
+                </select>
+
+                <input
+                  type="text"
+                  value={oemOdmNote}
+                  onChange={(e) => setOemOdmNote(e.target.value)}
+                  placeholder="e.g. Custom logo, packaging, private label (min. 500 units)"
+                  disabled={oemOdmAvailable !== 'Available'}
+                  className="md:col-span-2 w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium bg-white disabled:bg-slate-100 disabled:text-slate-400"
                 />
               </div>
             </div>
           </div>
 
+          {/* 3. 제품 속성 스펙 테이블 */}
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
               <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
-                <span>3. WHOLESALE TIERED FOB PRICING ($ USD)</span>
+                <Layers className="w-4 h-4 text-blue-600" />
+                <span>3. PRODUCT ATTRIBUTE SPECIFICATIONS TABLE</span>
+              </h3>
+
+              <button
+                type="button"
+                onClick={handleAddAttribute}
+                className="text-blue-600 hover:underline font-extrabold text-xs flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Attribute
+              </button>
+            </div>
+
+            <p className="text-[11px] text-slate-400">e.g. Model No. / Material / Working Pressure / Country of Origin</p>
+
+            <div className="space-y-2">
+              {attributes.map((attr) => (
+                <div key={attr.id} className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-5">
+                    <input
+                      type="text"
+                      value={attr.name}
+                      onChange={(e) => handleAttributeChange(attr.id, 'name', e.target.value)}
+                      placeholder="Attribute name (e.g. Model No.)"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-slate-900 bg-white"
+                    />
+                  </div>
+                  <div className="col-span-6">
+                    <input
+                      type="text"
+                      value={attr.value}
+                      onChange={(e) => handleAttributeChange(attr.id, 'value', e.target.value)}
+                      placeholder="Value (e.g. HV-300-KR)"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium text-slate-900 bg-white"
+                    />
+                  </div>
+                  <div className="col-span-1 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAttribute(attr.id)}
+                      className="text-rose-500 hover:text-rose-700 p-1 cursor-pointer"
+                      title="Delete Attribute"
+                    >
+                      <X className="w-4 h-4 mx-auto" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 4. 수량별 단가 */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+              <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
+                <span>4. WHOLESALE TIERED FOB PRICING ($ USD)</span>
               </h3>
 
               <button
@@ -489,9 +723,10 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
             </div>
           </div>
 
+          {/* 5. 사진 & 영상 */}
           <div className="space-y-3">
             <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
-              <span>4. PRODUCT PHOTOS & FACTORY DEMO VIDEO</span>
+              <span>5. PRODUCT PHOTOS & FACTORY DEMO VIDEO</span>
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -583,12 +818,88 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
                 )}
               </div>
             </div>
+
+            <div>
+              <label className="block text-slate-700 font-extrabold mb-1">Additional Gallery Photos (Multiple)</label>
+              <input
+                type="file"
+                ref={galleryInputRef}
+                onChange={handleGalleryUpload}
+                accept="image/*"
+                multiple
+                className="hidden"
+              />
+
+              <button
+                type="button"
+                disabled={uploadingGallery}
+                onClick={() => galleryInputRef.current?.click()}
+                className="w-full py-3.5 bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 rounded-2xl flex items-center justify-center gap-2 text-slate-600 transition cursor-pointer mb-2"
+              >
+                {uploadingGallery ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                ) : (
+                  <>
+                    <ImageIcon className="w-4 h-4 text-blue-600" />
+                    <span className="font-extrabold">Add Gallery Photos</span>
+                  </>
+                )}
+              </button>
+
+              {galleryImages.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {galleryImages.map((img, idx) => (
+                    <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 group">
+                      <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveGalleryImage(idx)}
+                        className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center cursor-pointer"
+                      >
+                        <X className="w-4 h-4 text-white" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
+          {/* 6. AI 요약 (바이어가 가장 먼저 보는 짧은 요약) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
               <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
-                <span>5. DETAILED SPECIFICATIONS RICH EDITOR</span>
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <span>6. AI PRODUCT SUMMARY (SHORT BUYER-FACING)</span>
+              </h3>
+
+              <button
+                type="button"
+                disabled={isAiSummaryGenerating}
+                onClick={handleAiSummaryGenerate}
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {isAiSummaryGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-amber-300" />}
+                <span>AI Generate Summary</span>
+              </button>
+            </div>
+
+            <p className="text-[11px] text-slate-400">2-3 sentence summary shown at the top of the product detail page.</p>
+
+            <textarea
+              rows={3}
+              value={aiSummary}
+              onChange={(e) => setAiSummary(e.target.value)}
+              placeholder=""
+              className="w-full p-4 rounded-2xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium leading-relaxed bg-white"
+            />
+          </div>
+
+          {/* 7. 상세 스펙 에디터 (전체 상세페이지 설명) */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+              <h3 className="text-xs font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
+                <span>7. DETAILED SPECIFICATIONS RICH EDITOR</span>
               </h3>
 
               <button
@@ -598,7 +909,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
                 className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 {isAiGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-amber-300" />}
-                <span>AI Auto-Generate Spec Sheet</span>
+                <span>AI Auto-Generate Full Spec Sheet</span>
               </button>
             </div>
 
@@ -636,7 +947,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
 
             <button
               type="submit"
-              disabled={isSubmitting || uploadingCover || uploadingVideo}
+              disabled={isSubmitting || uploadingCover || uploadingVideo || uploadingGallery}
               className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isSubmitting ? (

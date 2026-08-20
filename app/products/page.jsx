@@ -1,4 +1,3 @@
-// app/products/page.jsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -15,7 +14,8 @@ import {
   Building2, 
   MapPin, 
   Search, 
-  PlusCircle
+  PlusCircle,
+  Award
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import ProductFormModal from '@/components/products/ProductFormModal';
@@ -134,6 +134,23 @@ export default function ProductsDashboardPage() {
     );
   });
 
+  // 카드에 노출할 짧은 설명 스니펫 (AI 요약 우선, 없으면 상세설명 앞부분)
+  const getSummarySnippet = (item) => {
+    const raw = item.tagline || item.ai_summary || item.description || item.details || '';
+    if (!raw) return 'No description provided yet.';
+    return raw.length > 90 ? `${raw.slice(0, 90)}...` : raw;
+  };
+
+  // 카드에 노출할 인증 배지 목록 (콤마 구분 문자열 -> 배열, 최대 2개만 표시)
+  const getCertBadges = (item) => {
+    if (!item.certifications) return [];
+    return item.certifications
+      .split(',')
+      .map((c) => c.trim())
+      .filter(Boolean)
+      .slice(0, 2);
+  };
+
   if (!mounted) return null;
 
   return (
@@ -242,13 +259,33 @@ export default function ProductsDashboardPage() {
 
                 {/* 상품 스펙 요약 정보 카드 */}
                 <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <h3 className="text-sm font-black text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition">
                       {item.title_en || item.title || item.title_ko}
                     </h3>
                     <p className="text-[11px] text-slate-400 font-medium truncate">
                       {item.company_name || companyName}
                     </p>
+
+                    {/* 제품설명 요약 스니펫 */}
+                    <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2">
+                      {getSummarySnippet(item)}
+                    </p>
+
+                    {/* 인증내역 배지 */}
+                    {getCertBadges(item).length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {getCertBadges(item).map((cert, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100"
+                          >
+                            <Award className="w-2.5 h-2.5" />
+                            {cert}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1 text-xs">

@@ -1,10 +1,11 @@
-// components/products/ProductDetailSpecs.jsx
 'use client';
 
 import Link from 'next/link';
-import { Globe, Star, Clock, Package, MessageSquare, ShoppingBag, Layers, FileText, Ruler } from 'lucide-react';
+import { Globe, Star, Clock, Package, MessageSquare, ShoppingBag, Layers, FileText, Ruler, Sparkles, Factory, Award } from 'lucide-react';
 
 export default function ProductDetailSpecs({ product, isOwner }) {
+  const displayTitle = product?.title_en || product?.title_ko || product?.title || 'Export Product';
+
   return (
     <div className="space-y-8">
       {/* 1. 알리바바 B2B 핵심: 수량별 구간 단가표 (Tiered FOB Pricing) & 발주 요약 */}
@@ -24,13 +25,26 @@ export default function ProductDetailSpecs({ product, isOwner }) {
           </div>
 
           <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight leading-snug">
-            {product?.title_en}
+            {displayTitle}
           </h1>
 
-          <p className="text-xs md:text-sm text-slate-600 leading-relaxed font-medium">
-            {product?.tagline}
-          </p>
+          {product?.tagline && (
+            <p className="text-xs md:text-sm text-slate-600 leading-relaxed font-medium">
+              {product.tagline}
+            </p>
+          )}
         </div>
+
+        {/* AI 요약 (바이어가 가장 먼저 읽는 짧은 요약) */}
+        {product?.ai_summary && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-start gap-2.5">
+            <Sparkles className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-extrabold text-blue-700 uppercase tracking-wider block">AI Product Summary</span>
+              <p className="text-xs text-blue-950 leading-relaxed font-medium">{product.ai_summary}</p>
+            </div>
+          </div>
+        )}
 
         {/* 알리바바 B2B 수량별 단가 구간 (Tiered Pricing Box) */}
         <div className="p-5 bg-slate-900 text-white rounded-2xl border border-slate-800 space-y-3">
@@ -39,14 +53,18 @@ export default function ProductDetailSpecs({ product, isOwner }) {
           </span>
 
           <div className="grid grid-cols-3 gap-2 text-center pt-1 border-t border-slate-800">
-            {(product?.tiered_pricing || [
-              { range: '100 - 499 Units', price: `$${product?.price}` },
-              { range: '500 - 1,999 Units', price: '$132.00' },
-              { range: '2,000+ Units', price: '$118.00' }
+            {(product?.tiered_pricing?.length > 0 ? product.tiered_pricing : [
+              { minQty: '100', maxQty: '499', price: product?.price?.replace(/[^0-9.]/g, '') || '150.00' },
+              { minQty: '500', maxQty: '1999', price: '132.00' },
+              { minQty: '2000', maxQty: '', price: '118.00' }
             ]).map((tier, idx) => (
               <div key={idx} className="p-3 bg-slate-800/80 rounded-xl border border-slate-700/60 space-y-0.5">
-                <span className="text-slate-400 text-[10px] block font-bold">{tier.range}</span>
-                <span className="text-emerald-400 font-extrabold text-sm md:text-base">{tier.price}</span>
+                <span className="text-slate-400 text-[10px] block font-bold">
+                  {tier.range || `${tier.minQty}${tier.maxQty ? ` - ${tier.maxQty}` : '+'} Units`}
+                </span>
+                <span className="text-emerald-400 font-extrabold text-sm md:text-base">
+                  {tier.price?.toString().startsWith('$') ? tier.price : `$${tier.price}`}
+                </span>
               </div>
             ))}
           </div>
@@ -72,7 +90,7 @@ export default function ProductDetailSpecs({ product, isOwner }) {
             <span className="text-slate-400 text-[10px] font-bold block flex items-center gap-1">
               <Ruler className="w-3.5 h-3.5 text-blue-600" /> Dimensions & Weight
             </span>
-            <span className="font-extrabold text-slate-800 truncate block">{product?.product_size || '240 x 180 x 120 mm / 4.5kg'}</span>
+            <span className="font-extrabold text-slate-800 truncate block">{product?.dimensions || 'Available upon request'}</span>
           </div>
         </div>
 
@@ -96,10 +114,9 @@ export default function ProductDetailSpecs({ product, isOwner }) {
         </div>
       </div>
 
-      {/* 2. 가로 폭이 상단 제품 정보와 동일하게 확장된 스펙 표 & 상세 사양서 (lg:col-span-12 전체 너비) */}
       <div className="space-y-8">
-        
-        {/* [스펙 카드 1]: B2B 속성 스펙 테이블 (전체 너비) */}
+
+        {/* [스펙 카드 1]: B2B 속성 스펙 테이블 */}
         <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
           <div className="border-b border-slate-100 pb-4">
             <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -110,25 +127,55 @@ export default function ProductDetailSpecs({ product, isOwner }) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            {(product?.attributes || [
-              { name: 'Model No.', value: 'HV-300-KR' },
-              { name: 'Working Pressure', value: 'Max 350 Bar (5,076 PSI)' },
-              { name: 'Flow Rate', value: '120 L/min' },
-              { name: 'Body Material', value: 'Ductile Iron GGG40 / Heavy Alloy' },
-              { name: 'Operating Temp', value: '-20°C to +80°C' },
-              { name: 'Certification', value: 'ISO 9001:2015, CE Certified' },
-              { name: 'Country of Origin', value: 'South Korea (Made in Korea)' },
-              { name: 'OEM / ODM', value: 'Available (Custom Logo & Packaging)' }
+            {(product?.attributes?.length > 0 ? product.attributes : [
+              { name: 'Category', value: product?.category || 'General Manufacturing' },
+              { name: 'Country of Origin', value: product?.location || 'South Korea (Made in Korea)' },
+              { name: 'Certification', value: product?.certifications || 'Standard Export Certification' },
+              { name: 'OEM / ODM', value: product?.oem_odm || 'Contact Supplier' }
             ]).map((attr, idx) => (
               <div key={idx} className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
                 <span className="text-slate-500 font-bold">{attr.name}</span>
-                <span className="font-extrabold text-slate-800">{attr.value}</span>
+                <span className="font-extrabold text-slate-800 text-right">{attr.value}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* [스펙 카드 2]: AI 카피라이팅 & 리치 에디터로 제작된 기획 상세 설명 (전체 너비) */}
+        {/* [스펙 카드 2]: 인증서 & OEM/ODM 강조 카드 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+            <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+              <Award className="w-4.5 h-4.5 text-amber-500" />
+              Certifications & Compliance
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {(product?.certifications || 'Standard Export Certification')
+                .split(',')
+                .map((c) => c.trim())
+                .filter(Boolean)
+                .map((cert, idx) => (
+                  <span
+                    key={idx}
+                    className="text-xs font-extrabold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100"
+                  >
+                    {cert}
+                  </span>
+                ))}
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+            <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+              <Factory className="w-4.5 h-4.5 text-blue-600" />
+              OEM / ODM Support
+            </h2>
+            <p className="text-xs text-slate-700 font-medium leading-relaxed">
+              {product?.oem_odm || 'Contact the supplier to confirm OEM/ODM customization options.'}
+            </p>
+          </div>
+        </div>
+
+        {/* [스펙 카드 3]: 상세 사양서 / 상세페이지 설명 (글, 사진, 영상 텍스트 콘텐츠) */}
         <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
           <div className="border-b border-slate-100 pb-4">
             <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -138,7 +185,7 @@ export default function ProductDetailSpecs({ product, isOwner }) {
           </div>
 
           <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-xs md:text-sm text-slate-800 whitespace-pre-line leading-relaxed font-mono">
-            {product?.description_en}
+            {product?.description_en || product?.description || product?.details || 'No additional description provided.'}
           </div>
         </div>
       </div>
