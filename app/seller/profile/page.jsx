@@ -480,7 +480,7 @@ export default function SellerCompanyProfilePage() {
                           {item.category}
                         </span>
                         <h4 className="text-xs font-extrabold text-slate-900 truncate">{item.title_en || item.title}</h4>
-                        <p className="text-[11px] font-bold text-emerald-600">${item.price || item.fob_price} USD</p>
+                        <p className="text-[11px] font-bold text-emerald-600">{item.price || item.fob_price || '$0.00 USD'}</p>
                       </div>
                     </div>
 

@@ -751,7 +751,7 @@ export default function CompanyShowroomLandingPage() {
                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 grid grid-cols-2 gap-2 text-xs">
                           <div>
                             <span className="text-slate-400 block text-[10px]">FOB Price</span>
-                            <span className="font-extrabold text-blue-600">${item.price || '0.00'} USD</span>
+                            <span className="font-extrabold text-blue-600">{item.price || '$0.00 USD'}</span>
                           </div>
                           <div>
                             <span className="text-slate-400 block text-[10px]">Min Order</span>

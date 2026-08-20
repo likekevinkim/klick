@@ -372,7 +372,7 @@ export default function HomePage() {
 
                   <div className="pt-1 border-t border-slate-100 space-y-0.5">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-sm font-extrabold text-emerald-600">${item.price || '0.00'}</span>
+                      <span className="text-sm font-extrabold text-emerald-600">{item.price || '$0.00'}</span>
                       <span className="text-[10px] text-slate-400 font-semibold">/ Unit</span>
                     </div>
 
