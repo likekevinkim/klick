@@ -145,7 +145,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
     setGalleryImages(galleryUrls.map((url, idx) => ({ name: `Gallery Image ${idx + 1}`, url })));
 
     setAiSummary(data.ai_summary || '');
-    setDetailsText(data.description_en || data.description || data.details || '');
+    setDetailsText(data.description || data.details || '');
   };
 
   // 등록 모드: 새로 열 때마다 폼 초기화
@@ -465,7 +465,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
         ai_summary: aiSummary,
         description: fullDescription,
         details: fullDescription,
-        description_en: fullDescription,
         image_url: coverImage?.url || null,
         gallery_images: galleryImages.map((g) => g.url),
         video_url: demoVideo?.url || null,

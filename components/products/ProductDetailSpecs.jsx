@@ -185,7 +185,7 @@ export default function ProductDetailSpecs({ product, isOwner }) {
           </div>
 
           <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-xs md:text-sm text-slate-800 whitespace-pre-line leading-relaxed font-mono">
-            {product?.description_en || product?.description || product?.details || 'No additional description provided.'}
+            {product?.description || product?.details || 'No additional description provided.'}
           </div>
         </div>
       </div>
