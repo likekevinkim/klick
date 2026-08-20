@@ -59,6 +59,9 @@ function ChatContent() {
   const paramCompany = searchParams.get('company');
   const paramTitle = searchParams.get('title');
   const paramSellerId = searchParams.get('sellerId');
+  const paramBuyerId = searchParams.get('buyerId');
+  const paramRfqId = searchParams.get('rfqId');
+  const paramRfqTitle = searchParams.get('rfqTitle');
 
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
@@ -193,7 +196,7 @@ function ChatContent() {
       supabase.removeChannel(msgChannel);
       supabase.removeChannel(roomChannel);
     };
-  }, [paramProductId, paramCompany, paramTitle, paramSellerId]);
+  }, [paramProductId, paramCompany, paramTitle, paramSellerId, paramBuyerId, paramRfqId, paramRfqTitle]);
 
   useEffect(() => {
     if (!activeRoomId) return;
@@ -344,6 +347,26 @@ function ChatContent() {
           }));
         }
 
+        // Keep seller company names fresh too (mirrors the buyer lookup above),
+        // so a buyer viewing the room always sees the seller's current company name.
+        const sellerUserIds = currentRoomsList.map((r) => r.seller_id).filter(Boolean);
+        if (sellerUserIds.length > 0) {
+          const { data: sellerCompanies } = await supabase
+            .from('companies')
+            .select('user_id, company_name_en, company_name')
+            .in('user_id', sellerUserIds);
+
+          const sellerNameMap = {};
+          (sellerCompanies || []).forEach((c) => {
+            sellerNameMap[c.user_id] = c.company_name_en || c.company_name;
+          });
+
+          currentRoomsList = currentRoomsList.map((r) => ({
+            ...r,
+            seller_profile_name: sellerNameMap[r.seller_id] || r.seller_name || r.company_name || 'Korean Manufacturer'
+          }));
+        }
+
         const roomIds = currentRoomsList.map((r) => r.id);
         const { data: msgData } = await supabase
           .from('chat_messages')
@@ -388,24 +411,118 @@ function ChatContent() {
         }
       }
 
-      // Direct URL Parameters
-      if (paramCompany || paramTitle) {
+      // Direct URL Parameters — two directions: a buyer messaging a seller (company/title/sellerId),
+      // or a seller messaging a buyer (buyerId, from a buyer profile or an RFQ listing).
+      if (paramBuyerId) {
+        const targetBuyerId = paramBuyerId;
+        const rfqProductTitle = paramTitle
+          ? decodeURIComponent(paramTitle)
+          : (paramRfqTitle ? decodeURIComponent(paramRfqTitle) : 'Sourcing Inquiry');
+
+        let matchedRoom = currentRoomsList.find(
+          (r) => r.buyer_id === targetBuyerId || r.buyer_id === targetBuyerId?.toString()
+        );
+
+        if (!matchedRoom) {
+          // Resolve our own (seller's) company name
+          const { data: myCompany } = await supabase
+            .from('companies')
+            .select('company_name_en, company_name')
+            .eq('user_id', userIdStr)
+            .maybeSingle();
+          const meta = currentUserObj.user_metadata || {};
+          const mySellerName = myCompany?.company_name_en || myCompany?.company_name || meta.company_name_en || meta.company_name || 'Korean Manufacturer';
+
+          // Resolve the target buyer's company name
+          let buyerDisplayName = paramCompany ? decodeURIComponent(paramCompany) : '';
+          if (!buyerDisplayName) {
+            const { data: buyerProf } = await supabase
+              .from('buyer_profiles')
+              .select('contact_person, company_name')
+              .eq('user_id', targetBuyerId)
+              .maybeSingle();
+            buyerDisplayName = buyerProf?.company_name || buyerProf?.contact_person || 'Global Buyer';
+          }
+
+          const newRoomPayload = {
+            product_id: paramRfqId ? null : (paramProductId ? paramProductId.toString() : null),
+            product_title: rfqProductTitle,
+            buyer_id: targetBuyerId,
+            buyer_name: buyerDisplayName,
+            seller_id: userIdStr,
+            seller_name: mySellerName,
+            company_name: mySellerName,
+            title: rfqProductTitle,
+            seller_lang: 'ko',
+            buyer_lang: 'en',
+            last_message: 'Inquiry initialized.',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+
+          const { data: createdRoomData, error: createError } = await supabase
+            .from('chat_rooms')
+            .insert([newRoomPayload])
+            .select();
+
+          if (!createError && createdRoomData && createdRoomData.length > 0) {
+            matchedRoom = { ...createdRoomData[0], unread_count: 0, buyer_profile_name: buyerDisplayName };
+            currentRoomsList = [matchedRoom, ...currentRoomsList];
+
+            const initialMsgText = `Hello! We saw your sourcing request${rfqProductTitle ? ` for [${rfqProductTitle}]` : ''} and would like to offer our products. Could we discuss your requirements?`;
+            const initialTrans = await translateTextWithApi(initialMsgText, matchedRoom.buyer_lang || 'en');
+
+            const initialMsg = {
+              room_id: matchedRoom.id,
+              sender_id: userIdStr,
+              sender_role: 'seller',
+              message: initialMsgText,
+              translated_message: initialTrans,
+              is_quote: false,
+              is_read: false,
+              created_at: new Date().toISOString()
+            };
+
+            await supabase.from('chat_messages').insert([initialMsg]);
+            setRoomMessagesMap((prev) => ({
+              ...prev,
+              [matchedRoom.id]: [{ ...initialMsg, _translatedFor: matchedRoom.buyer_lang || 'en' }]
+            }));
+          }
+        }
+
+        if (matchedRoom) {
+          setActiveRoomId(matchedRoom.id);
+          await markRoomMessagesAsRead(matchedRoom.id, currentRole);
+        }
+      } else if (paramCompany || paramTitle) {
         const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product Inquiry';
         const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Verified Korean Company';
 
         let matchedRoom = currentRoomsList.find(
-          (r) => (r.product_title === companyTitle || r.title === companyTitle) && 
+          (r) => (r.product_title === companyTitle || r.title === companyTitle) &&
                  (r.seller_name === companySeller || r.seller_id === paramSellerId)
         );
 
         if (!matchedRoom) {
           const targetSellerIdPayload = paramSellerId && paramSellerId.trim() !== '' ? paramSellerId : 'seller_default';
 
+          // Resolve our own (buyer's) real name instead of falling back straight to the email prefix
+          let myBuyerName = currentUserObj?.email ? currentUserObj.email.split('@')[0] : 'Global Buyer';
+          const { data: myBuyerProfile } = await supabase
+            .from('buyer_profiles')
+            .select('contact_person, company_name')
+            .eq('user_id', userIdStr)
+            .maybeSingle();
+          if (myBuyerProfile?.contact_person || myBuyerProfile?.company_name) {
+            myBuyerName = myBuyerProfile.contact_person || myBuyerProfile.company_name;
+          }
+
           const newRoomPayload = {
             product_id: paramProductId ? paramProductId.toString() : null,
             product_title: companyTitle,
             buyer_id: userIdStr,
-            buyer_name: currentUserObj?.email ? currentUserObj.email.split('@')[0] : 'Global Buyer',
+            buyer_name: myBuyerName,
             seller_id: targetSellerIdPayload,
             seller_name: companySeller,
             company_name: companySeller,
@@ -864,6 +981,7 @@ function ChatContent() {
         onClose={() => setIsQuoteDocModalOpen(false)}
         msg={selectedMsgForDoc}
         room={selectedRoomForDoc}
+        userRole={userRole}
       />
 
       <SampleTrackingModal
