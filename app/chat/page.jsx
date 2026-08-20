@@ -574,6 +574,19 @@ function ChatContent() {
               ...prev,
               [matchedRoom.id]: [{ ...initialMsg, _translatedFor: matchedRoom.seller_lang || 'ko' }]
             }));
+
+            // 셀러에게 "새 문의가 왔어요" 이메일 알림 — 실패해도 채팅 자체엔 영향 없음
+            if (targetSellerIdPayload !== 'seller_default') {
+              fetch('/api/notify/new-inquiry', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  sellerId: targetSellerIdPayload,
+                  buyerName: myBuyerName,
+                  productTitle: companyTitle
+                })
+              }).catch(() => {});
+            }
           }
         }
 
