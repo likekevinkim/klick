@@ -453,12 +453,12 @@ export default function HomePage() {
             <div className="space-y-3">
               <h2 className="text-xl font-extrabold text-slate-900 leading-snug">
                 {userRole === 'seller'
-                  ? '공장 상세 스펙 및 세부 프로필을 지금 등록하시겠습니까?'
+                  ? 'Would you like to complete your factory profile now?'
                   : 'Would you like to complete your buyer sourcing profile now?'}
               </h2>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {userRole === 'seller'
-                  ? '공장 위치, 주요 생산 설비, 품질 인증서(ISO/CE) 및 판매 물품을 사전에 세밀히 등록하시면 해외 바이어들에게 3배 더 많은 견적 문의를 받을 수 있습니다.'
+                  ? 'Add your factory location, key production equipment, and quality certifications (ISO/CE) in detail to receive up to 3x more quote inquiries from global buyers.'
                   : 'Complete your buyer sourcing profile to receive direct wholesale factory quotes and verified manufacturer discounts.'}
               </p>
             </div>
@@ -469,7 +469,7 @@ export default function HomePage() {
                 onClick={handleCloseOnboarding}
                 className="py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
               >
-                {userRole === 'seller' ? '나중에 작성하기 (둘러보기)' : 'Skip for Now (Explore First)'}
+                {userRole === 'seller' ? 'Skip for Now (Explore First)' : 'Skip for Now (Explore First)'}
               </button>
 
               <button
@@ -478,7 +478,7 @@ export default function HomePage() {
                 className="py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Edit3 className="w-4 h-4" />
-                <span>{userRole === 'seller' ? '지금 정보 입력하기' : 'Complete Profile Now'}</span>
+                <span>{userRole === 'seller' ? 'Complete Profile Now' : 'Complete Profile Now'}</span>
               </button>
             </div>
           </div>

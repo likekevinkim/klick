@@ -250,7 +250,7 @@ export default function CompanyShowroomLandingPage() {
       const activeUser = session?.user || user;
 
       if (!activeUser) {
-        alert('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.');
+        alert('Your login session has expired. Please sign in again.');
         router.push('/login');
         return;
       }
@@ -311,7 +311,7 @@ export default function CompanyShowroomLandingPage() {
         }
       }
 
-      alert('회사 정보가 성공적으로 DB에 저장되었습니다!');
+      alert('Company profile saved successfully!');
 
       setCompany(updatedPayload);
       setIsEditCompanyModalOpen(false);
@@ -319,7 +319,7 @@ export default function CompanyShowroomLandingPage() {
       await fetchExactCompanyProfile();
     } catch (err) {
       console.error('Company save error:', err);
-      alert('회사 프로필 저장 중 오류가 발생했습니다: ' + (err.message || '데이터베이스 연동 오류'));
+      alert('An error occurred while saving your company profile: ' + (err.message || 'Database connection error'));
     } finally {
       setIsSavingCompany(false);
     }
@@ -475,17 +475,6 @@ export default function CompanyShowroomLandingPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {isOwner && (
-              <button
-                type="button"
-                onClick={() => setIsAddProductModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Product to Showroom</span>
-              </button>
-            )}
-
             {!isOwner && (
               <button
                 type="button"
@@ -738,22 +727,10 @@ export default function CompanyShowroomLandingPage() {
                 <Package className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
                 <h3 className="text-base font-bold text-slate-800">No Showroom Products Yet</h3>
                 <p className="text-xs text-slate-500">
-                  {isOwner 
+                  {isOwner
                     ? 'Click "Add Showroom Product" above to publish your first export product!'
                     : 'This company has not registered any public showroom catalog items.'}
                 </p>
-                {isOwner && (
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsAddProductModalOpen(true)}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Add First Showroom Product</span>
-                    </button>
-                  </div>
-                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

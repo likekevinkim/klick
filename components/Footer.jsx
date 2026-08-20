@@ -9,19 +9,19 @@ export default function Footer() {
     <footer className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800 text-xs">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
         
-        {/* 1. 회사 소개 및 로고 */}
+        {/* 1. Company intro & logo */}
         <div className="space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 text-white font-black text-lg">
             <Building2 className="w-6 h-6 text-blue-500" />
             <span>KLICK</span>
           </div>
           <p className="leading-relaxed font-medium max-w-sm">
-            KLICK은 한국 제조업체와 글로벌 바이어를 직접 연결하는 B2B 수출 플랫폼입니다. 
-            언어 장벽 없이 투명하고 빠른 글로벌 무역을 지원합니다.
+            KLICK is a B2B export platform that directly connects Korean manufacturers with global buyers.
+            We support transparent, fast global trade with no language barrier.
           </p>
         </div>
 
-        {/* 2. 고객센터 (Customer Center) */}
+        {/* 2. Customer Center */}
         <div className="space-y-4">
           <h3 className="text-white font-extrabold uppercase tracking-wider">Customer Center</h3>
           <div className="space-y-2.5 font-medium">
@@ -35,39 +35,39 @@ export default function Footer() {
             </p>
             <p className="flex items-start gap-2 hover:text-white transition">
               <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" /> 
-              <span>서울특별시 강남구 테헤란로 123, 45층 TRUE K CO., LTD.</span>
+              <span>45F, 123 Teheran-ro, Gangnam-gu, Seoul, South Korea — TRUE K CO., LTD.</span>
             </p>
           </div>
         </div>
 
-        {/* 3. 법적 고지 및 약관 (Legal & Policy) */}
+        {/* 3. Legal & Policy */}
         <div className="space-y-4">
           <h3 className="text-white font-extrabold uppercase tracking-wider">Legal & Policy</h3>
           <ul className="space-y-2.5 font-medium">
             <li>
               <Link href="/terms" className="hover:text-white transition">
-                이용약관 (Terms of Service)
+                Terms of Service
               </Link>
             </li>
             <li>
               <Link href="/privacy" className="hover:text-white transition font-bold text-blue-400">
-                개인정보처리방침 (Privacy Policy)
+                Privacy Policy
               </Link>
             </li>
             <li>
               <Link href="/about" className="hover:text-white transition">
-                회사소개 (About Us)
+                About Us
               </Link>
             </li>
           </ul>
         </div>
       </div>
 
-      {/* 하단 사업자 정보 및 카피라이트 */}
+      {/* Bottom business info & copyright */}
       <div className="max-w-7xl mx-auto px-6 mt-12 pt-6 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 font-medium text-[10px] text-slate-500">
         <div className="space-y-1 text-center md:text-left">
-          <p>상호명: TRUE K CO., LTD. | 사업자등록번호: 829-32-00630</p>
-          <p>통신판매업신고: 2026-서울송파-01234 | 개인정보보호책임자 : 김보안 </p>
+          <p>Company Name: TRUE K CO., LTD. | Business Registration No.: 829-32-00630</p>
+          <p>E-Commerce Registration No.: 2026-Seoul Songpa-01234 | Privacy Officer: Bo-an Kim</p>
         </div>
         <p>© {new Date().getFullYear()} KLICK Corporation. All rights reserved.</p>
       </div>

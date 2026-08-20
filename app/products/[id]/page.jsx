@@ -22,11 +22,24 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 실시간 바이어 리뷰 상태
+  // 실시간 바이어 리뷰 상태 — product_reviews 테이블과 연동
   const [reviews, setReviews] = useState([]);
   const [newRating, setNewRating] = useState(5);
   const [newReviewText, setNewRatingText] = useState('');
-  const [buyerName, setBuyerName] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+
+  // Only a signed-in buyer can leave a review, using their verified name
+  const [viewerRole, setViewerRole] = useState(null);
+  const [viewerBuyerId, setViewerBuyerId] = useState(null);
+  const [viewerBuyerName, setViewerBuyerName] = useState('');
+
+  const reviewCount = reviews.length;
+  const avgRating = reviewCount > 0
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount
+    : 0;
+  const hasAlreadyReviewed = viewerBuyerId
+    ? reviews.some((r) => r.buyer_auth_user_id === viewerBuyerId)
+    : false;
 
   // 셀러 수정 모달 상태
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -79,6 +92,30 @@ export default function ProductDetailPage() {
       } else {
         setIsOwner(false);
       }
+
+      setViewerRole(user ? userRole : null);
+
+      if (user && userRole === 'buyer') {
+        const userIdStr = user.id.toString();
+        const { data: buyerRow } = await supabase
+          .from('buyers')
+          .select('buyer_name, company_name')
+          .eq('auth_user_id', userIdStr)
+          .maybeSingle();
+
+        setViewerBuyerId(userIdStr);
+        setViewerBuyerName(buyerRow?.buyer_name || buyerRow?.company_name || user.email?.split('@')[0] || 'Global Buyer');
+      }
+
+      if (foundProduct?.id) {
+        const { data: reviewRows } = await supabase
+          .from('product_reviews')
+          .select('*')
+          .eq('product_id', foundProduct.id)
+          .order('created_at', { ascending: false });
+
+        setReviews(reviewRows || []);
+      }
     } catch (error) {
       console.error('Failed to load product detail:', error);
       setIsOwner(false);
@@ -87,33 +124,48 @@ export default function ProductDetailPage() {
     }
   };
 
-  const handleAddReview = (e) => {
+  const handleAddReview = async (e) => {
     e.preventDefault();
     if (!newReviewText.trim()) return;
 
-    const newReviewObj = {
-      id: Date.now(),
-      buyer_name: buyerName.trim() || 'Global Buyer',
-      rating: Number(newRating),
-      comment: newReviewText.trim(),
-      created_at: new Date().toISOString().split('T')[0]
-    };
+    if (!viewerBuyerId) {
+      alert('Please sign in as a buyer to leave a review.');
+      return;
+    }
+    if (hasAlreadyReviewed) {
+      alert("You've already reviewed this product.");
+      return;
+    }
 
-    const updatedReviews = [newReviewObj, ...reviews];
-    setReviews(updatedReviews);
+    try {
+      setSubmittingReview(true);
 
-    const totalRating = updatedReviews.reduce((sum, r) => sum + r.rating, 0);
-    const avgRating = (totalRating / updatedReviews.length).toFixed(1);
+      const { data: insertedReview, error } = await supabase
+        .from('product_reviews')
+        .insert([{
+          product_id: product.id,
+          buyer_auth_user_id: viewerBuyerId,
+          buyer_name: viewerBuyerName,
+          rating: Number(newRating),
+          comment: newReviewText.trim(),
+        }])
+        .select()
+        .single();
 
-    setProduct(prev => ({
-      ...prev,
-      rating: parseFloat(avgRating),
-      reviews_count: updatedReviews.length
-    }));
+      if (error) {
+        alert('Failed to submit review: ' + error.message);
+        return;
+      }
 
-    setNewRatingText('');
-    setBuyerName('');
-    alert('Thank you! Your review and rating have been submitted.');
+      setReviews((prev) => [insertedReview, ...prev]);
+      setNewRatingText('');
+      setNewRating(5);
+      alert('Thank you! Your review and rating have been submitted.');
+    } catch (err) {
+      console.error('Review submit error:', err);
+    } finally {
+      setSubmittingReview(false);
+    }
   };
 
   // 수정한 내용을 Supabase DB에 직접 UPDATE
@@ -231,41 +283,34 @@ export default function ProductDetailPage() {
           <div className="space-y-10">
             <ProductDetailVisual product={product} />
 
-            <ProductDetailSpecs product={product} isOwner={isOwner} />
+            <ProductDetailSpecs product={product} isOwner={isOwner} avgRating={avgRating} reviewCount={reviewCount} />
 
-            {/* 바이어 리뷰 세션 */}
+            {/* 바이어 리뷰 세션 — product_reviews 테이블과 실제로 연동됨 */}
             <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
               <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
                     <Star className="w-5 h-5 text-amber-500 fill-amber-400" />
-                    Verified Buyer Reviews & Ratings ({product?.reviews_count || reviews.length})
+                    Verified Buyer Reviews & Ratings ({reviewCount})
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Average Rating: <strong className="text-slate-900">{product?.rating || '5.0'} / 5.0</strong> based on verified global transactions.</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {reviewCount > 0
+                      ? <>Average Rating: <strong className="text-slate-900">{avgRating.toFixed(1)} / 5.0</strong></>
+                      : 'No reviews yet — be the first buyer to leave one.'}
+                  </p>
                 </div>
               </div>
 
-              <form onSubmit={handleAddReview} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                <span className="text-xs font-extrabold text-slate-800 block">Leave a Review for this Factory Product</span>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Your Name / Company</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. John Smith (US Import LLC)"
-                      value={buyerName}
-                      onChange={(e) => setBuyerName(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                    />
-                  </div>
+              {viewerRole === 'buyer' && !hasAlreadyReviewed && (
+                <form onSubmit={handleAddReview} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <span className="text-xs font-extrabold text-slate-800 block">Leave a Review for this Factory Product (as {viewerBuyerName})</span>
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">Rating (1 to 5 Stars)</label>
                     <select
                       value={newRating}
                       onChange={(e) => setNewRating(Number(e.target.value))}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-amber-600"
+                      className="w-full sm:w-64 px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold text-amber-600"
                     >
                       <option value={5}>★★★★★ (5.0 - Excellent Quality)</option>
                       <option value={4}>★★★★☆ (4.0 - Very Good)</option>
@@ -274,29 +319,42 @@ export default function ProductDetailPage() {
                       <option value={1}>★☆☆☆☆ (1.0 - Poor)</option>
                     </select>
                   </div>
-                </div>
 
-                <div>
-                  <textarea
-                    rows={2}
-                    required
-                    placeholder="Write your review about product quality, shipping speed, or seller response..."
-                    value={newReviewText}
-                    onChange={(e) => setNewRatingText(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                  />
-                </div>
+                  <div>
+                    <textarea
+                      rows={2}
+                      required
+                      placeholder="Write your review about product quality, shipping speed, or seller response..."
+                      value={newReviewText}
+                      onChange={(e) => setNewRatingText(e.target.value)}
+                      className="w-full p-3 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                    />
+                  </div>
 
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Submit Review</span>
-                  </button>
-                </div>
-              </form>
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={submittingReview}
+                      className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>{submittingReview ? 'Submitting...' : 'Submit Review'}</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {viewerRole !== 'buyer' && (
+                <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                  Sign in as a buyer to leave a review for this product.
+                </p>
+              )}
+
+              {viewerRole === 'buyer' && hasAlreadyReviewed && (
+                <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-3.5">
+                  You've already reviewed this product — thank you!
+                </p>
+              )}
 
               <div className="space-y-3 pt-2">
                 {reviews.map((rev) => (
@@ -318,7 +376,9 @@ export default function ProductDetailPage() {
                             />
                           ))}
                         </div>
-                        <span className="text-slate-400 text-[10px] ml-1">{rev.created_at}</span>
+                        <span className="text-slate-400 text-[10px] ml-1">
+                          {rev.created_at ? new Date(rev.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : ''}
+                        </span>
                       </div>
                     </div>
 

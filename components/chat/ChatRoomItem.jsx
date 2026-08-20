@@ -343,7 +343,7 @@ export default function ChatRoomItem({
                         }`}>
                           <div className="flex items-center gap-1 text-[10px] font-extrabold">
                             <Sparkles className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                            <span>[ AI translate : {msg.translated_message} ]</span>
+                            <span>Translated: {msg.translated_message}</span>
                           </div>
                         </div>
                       )}

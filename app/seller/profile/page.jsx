@@ -200,10 +200,10 @@ export default function SellerCompanyProfilePage() {
               <ShieldCheck className="w-3.5 h-3.5" /> Seller Factory Control Center
             </span>
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              공장 프로필 및 전체 수출 상품 관리 센터
+              Factory Profile & Export Product Management Center
             </h1>
             <p className="text-slate-400 text-xs md:text-sm">
-              해외 바이어에게 노출될 공장 홈페이지(미니 쇼룸)를 설정하고 상품 스펙을 관리하세요.
+              Set up the factory homepage (mini showroom) shown to overseas buyers and manage your product specs.
             </p>
           </div>
 
@@ -214,7 +214,7 @@ export default function SellerCompanyProfilePage() {
               className="px-5 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs md:text-sm rounded-xl shadow-lg transition inline-flex items-center gap-2 cursor-pointer"
             >
               <Globe className="w-4 h-4" />
-              <span>내 회사 홈페이지 바로가기 (View Showroom)</span>
+              <span>View My Company Showroom</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </Link>
 
@@ -236,15 +236,15 @@ export default function SellerCompanyProfilePage() {
               <div>
                 <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
                   <Building2 className="w-5 h-5 text-blue-600" />
-                  제조 공장 프로필 & 미디어(사진/영상) 설정
+                  Factory Profile & Media (Photos/Video) Settings
                 </h2>
-                <p className="text-xs text-slate-500 mt-1">해외 바이어에게 신뢰감을 전달할 스펙 정보와 전경 사진, 영상 URL을 입력해 주세요.</p>
+                <p className="text-xs text-slate-500 mt-1">Enter spec details, factory photos, and a video URL that build trust with overseas buyers.</p>
               </div>
             </div>
 
             <form onSubmit={handleSaveProfile} className="space-y-5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">회사명 / 공장명 (Company Name)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Company / Factory Name</label>
                 <input
                   type="text"
                   required
@@ -256,7 +256,7 @@ export default function SellerCompanyProfilePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">한 줄 태그라인 (Tagline)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Tagline</label>
                 <input
                   type="text"
                   value={tagline}
@@ -268,20 +268,20 @@ export default function SellerCompanyProfilePage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">사업 형태 (Business Type)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Business Type</label>
                   <select
                     value={businessType}
                     onChange={(e) => setBusinessType(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
                   >
-                    <option value="Direct Manufacturer">Direct Manufacturer (제조 공장)</option>
-                    <option value="Trading Company">Trading Company (무역상사)</option>
+                    <option value="Direct Manufacturer">Direct Manufacturer</option>
+                    <option value="Trading Company">Trading Company</option>
                     <option value="OEM / ODM Specialist">OEM / ODM Specialist</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">공장 소재지 (Location)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Factory Location</label>
                   <input
                     type="text"
                     value={location}
@@ -294,7 +294,7 @@ export default function SellerCompanyProfilePage() {
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">설립연도 (Est.)</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Established Year</label>
                   <input
                     type="text"
                     value={establishedYear}
@@ -305,7 +305,7 @@ export default function SellerCompanyProfilePage() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">임직원 수</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Employees</label>
                   <input
                     type="text"
                     value={employeesCount}
@@ -316,7 +316,7 @@ export default function SellerCompanyProfilePage() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">공장 규모</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Factory Size</label>
                   <input
                     type="text"
                     value={factorySize}
@@ -328,7 +328,7 @@ export default function SellerCompanyProfilePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">보유 품질 인증서 (Certifications - 쉼표 분리)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Quality Certifications (comma-separated)</label>
                 <input
                   type="text"
                   value={certificationsText}
@@ -341,7 +341,7 @@ export default function SellerCompanyProfilePage() {
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
                   <Video className="w-4 h-4 text-blue-600" />
-                  <span>공장 홍보 동영상 URL (YouTube / Embed Link)</span>
+                  <span>Factory Promo Video URL (YouTube / Embed Link)</span>
                 </label>
                 <input
                   type="url"
@@ -355,7 +355,7 @@ export default function SellerCompanyProfilePage() {
               <div className="space-y-3 pt-2 border-t border-slate-100">
                 <label className="block text-xs font-bold text-slate-700 flex items-center gap-1.5">
                   <ImageIcon className="w-4 h-4 text-emerald-600" />
-                  <span>공장 전경 및 생산 라인 사진 갤러리</span>
+                  <span>Factory & Production Line Photo Gallery</span>
                 </label>
 
                 <div className="flex gap-2">
@@ -371,7 +371,7 @@ export default function SellerCompanyProfilePage() {
                     onClick={handleAddImage}
                     className="px-4 py-2.5 bg-slate-900 hover:bg-blue-600 text-white font-bold text-xs rounded-xl transition cursor-pointer"
                   >
-                    사진 추가
+                    Add Photo
                   </button>
                 </div>
 
@@ -393,7 +393,7 @@ export default function SellerCompanyProfilePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">공장 및 회사 상세 소개글</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Detailed Factory & Company Description</label>
                 <textarea
                   rows={4}
                   value={description}
@@ -405,7 +405,7 @@ export default function SellerCompanyProfilePage() {
 
               {saveSuccess && (
                 <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-xl flex items-center gap-2 font-semibold">
-                  <CheckCircle2 className="w-4 h-4" /> 공장 프로필 및 미디어 정보가 성공적으로 저장되었습니다!
+                  <CheckCircle2 className="w-4 h-4" /> Factory profile and media info saved successfully!
                 </div>
               )}
 
@@ -415,7 +415,7 @@ export default function SellerCompanyProfilePage() {
                 className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
-                <span>{saving ? '프로필 저장 중...' : '공장 프로필 업데이트 저장'}</span>
+                <span>{saving ? 'Saving Profile...' : 'Save Factory Profile'}</span>
               </button>
             </form>
           </div>
@@ -426,9 +426,9 @@ export default function SellerCompanyProfilePage() {
               <div>
                 <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
                   <Package className="w-5 h-5 text-emerald-600" />
-                  등록된 수출 카탈로그 ({products.length})
+                  Registered Export Catalog ({products.length})
                 </h2>
-                <p className="text-xs text-slate-500 mt-1">글로벌 바이어에게 노출되고 있는 등록 상품 목록입니다.</p>
+                <p className="text-xs text-slate-500 mt-1">Products currently visible to global buyers.</p>
               </div>
 
               <button
@@ -444,18 +444,18 @@ export default function SellerCompanyProfilePage() {
             <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
               {loading ? (
                 <div className="text-center py-12">
-                  <p className="text-xs text-slate-400">상품 목록을 불러오는 중입니다...</p>
+                  <p className="text-xs text-slate-400">Loading product list...</p>
                 </div>
               ) : products.length === 0 ? (
                 <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-3">
                   <Package className="w-10 h-10 text-slate-300 mx-auto stroke-1" />
-                  <p className="text-xs text-slate-500 font-semibold">등록된 수출 상품이 없습니다.</p>
+                  <p className="text-xs text-slate-500 font-semibold">No export products registered yet.</p>
                   <button
                     type="button"
                     onClick={() => setIsRegisterModalOpen(true)}
                     className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:underline cursor-pointer"
                   >
-                    <PlusCircle className="w-3.5 h-3.5" /> 첫 수출 상품 등록하기 ➡️
+                    <PlusCircle className="w-3.5 h-3.5" /> Register Your First Export Product ➡️
                   </button>
                 </div>
               ) : (

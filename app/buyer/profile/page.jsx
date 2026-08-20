@@ -468,7 +468,7 @@ function BuyerProfileContent() {
                   <ShoppingBag className="w-5 h-5 text-emerald-600" />
                   My Active RFQs ({myRfqs.length})
                 </h2>
-                <p className="text-xs text-slate-500 mt-1">Purchasing demands you requested to Korean suppliers.</p>
+                <p className="text-xs text-slate-500 mt-1">Sourcing requests you've sent to Korean suppliers.</p>
               </div>
 
               <button

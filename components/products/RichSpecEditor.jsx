@@ -110,7 +110,7 @@ export default function RichSpecEditor({ content, setContent, onGenerateAi, isAi
 
         <textarea
           rows={6}
-          placeholder="자유롭게 제품 사양, 글, 이미지, 동영상 링크를 추가하세요. (AI 자동 생성 버튼을 누르면 영어 전문 카피가 자동 입력됩니다)"
+          placeholder="Freely add product specs, text, images, and video links. (Click AI Auto-Generate above to fill this in with professional English copy.)"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           className="w-full p-4 text-xs font-mono leading-relaxed bg-white focus:outline-none"

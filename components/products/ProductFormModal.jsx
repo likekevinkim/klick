@@ -544,7 +544,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
             <p className="text-[11px] text-slate-500 font-medium">
               {isEditMode
                 ? 'Update pictures, video, factory info, tiered pricing, and specification content for this product.'
-                : 'Upload pictures, video, factory info, tiered pricing, and manage rich specification content directly in Database.'}
+                : 'Upload pictures, video, factory info, tiered pricing, and detailed specification content for this product.'}
             </p>
           </div>
 
@@ -788,8 +788,8 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
             </div>
 
             <div className="grid grid-cols-12 gap-3 text-[11px] font-extrabold text-slate-700 px-1">
-              <div className="col-span-3">Min Qty (최소 수량)</div>
-              <div className="col-span-3">Max Qty (최대 수량)</div>
+              <div className="col-span-3">Min Qty</div>
+              <div className="col-span-3">Max Qty</div>
               <div className="col-span-5">Unit FOB Price ($ USD)</div>
               <div className="col-span-1 text-center">Del</div>
             </div>

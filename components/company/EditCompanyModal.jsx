@@ -94,7 +94,7 @@ export default function EditCompanyModal({
       }
     } catch (err) {
       console.error('Cover upload error:', err);
-      alert('대표 이미지 파일 업로드 실패: ' + (err.message || '스토리지 연결 오류'));
+      alert('Failed to upload cover image: ' + (err.message || 'Storage connection error'));
     } finally {
       setUploadingCover(false);
     }
@@ -126,7 +126,7 @@ export default function EditCompanyModal({
       }
     } catch (err) {
       console.error('Gallery upload error:', err);
-      alert('갤러리 이미지 파일 업로드 실패: ' + (err.message || '스토리지 연결 오류'));
+      alert('Failed to upload gallery image: ' + (err.message || 'Storage connection error'));
     } finally {
       setUploadingGallery(false);
     }
@@ -158,7 +158,7 @@ export default function EditCompanyModal({
       }
     } catch (err) {
       console.error('Video upload error:', err);
-      alert('비디오 파일 업로드 실패: ' + (err.message || '스토리지 연결 오류'));
+      alert('Failed to upload video file: ' + (err.message || 'Storage connection error'));
     } finally {
       setUploadingVideo(false);
     }
@@ -252,7 +252,7 @@ export default function EditCompanyModal({
                 type="text"
                 value={editCompanyNameKo}
                 onChange={(e) => setEditCompanyNameKo(e.target.value)}
-                placeholder="e.g. (주)한국정밀공업"
+                placeholder="e.g. Hankook Precision Co., Ltd."
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
               />
             </div>
@@ -287,7 +287,7 @@ export default function EditCompanyModal({
             <label className="block font-extrabold text-slate-800 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <ImageIcon className="w-4 h-4 text-blue-600" />
-                Main Cover Photo (대표 사진)
+                Main Cover Photo
               </span>
               <span className="text-[10px] text-slate-400 font-semibold">File Upload or URL</span>
             </label>
@@ -329,7 +329,7 @@ export default function EditCompanyModal({
             <label className="block font-extrabold text-slate-800 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <ImageIcon className="w-4 h-4 text-emerald-600" />
-                Gallery Photos (기타 사진 갤러리)
+                Gallery Photos
               </span>
               <span className="text-[10px] text-slate-400 font-semibold">Multiple Photos Supported</span>
             </label>
@@ -393,7 +393,7 @@ export default function EditCompanyModal({
             <label className="block font-extrabold text-slate-800 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Video className="w-4 h-4 text-purple-600" />
-                Company Video Tour File / Stream URL (동영상 파일 직접 업로드 또는 URL)
+                Company Video Tour File / Stream URL
               </span>
               <span className="text-[10px] text-slate-400 font-semibold">MP4 / WEBM / URL</span>
             </label>
@@ -441,7 +441,7 @@ export default function EditCompanyModal({
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
             <label className="block font-extrabold text-slate-800 flex items-center gap-1.5">
               <Award className="w-4 h-4 text-amber-500" />
-              Quality Certifications & Licenses (인증서 목록 관리)
+              Quality Certifications & Licenses
             </label>
 
             <div className="flex gap-2">
@@ -590,7 +590,7 @@ export default function EditCompanyModal({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="block font-bold text-slate-700">
-                Detailed Overview & Manufacturing Strength (에디터)
+                Detailed Overview & Manufacturing Strength
               </label>
 
               <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">

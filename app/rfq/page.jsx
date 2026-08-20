@@ -260,7 +260,7 @@ function PublicRfqBoardContent() {
             <div className="text-xs font-extrabold text-slate-500 flex items-center gap-1.5 self-end md:self-auto">
               <span>Active Buying Requests:</span>
               <span className="text-blue-600 bg-blue-50 px-2.5 py-1 rounded-xl border border-blue-100 font-black">
-                {filteredRfqs.length} Demands
+                {filteredRfqs.length} Requests
               </span>
             </div>
           </div>

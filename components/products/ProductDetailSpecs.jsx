@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Globe, Star, Clock, Package, MessageSquare, ShoppingBag, Layers, FileText, Ruler, Sparkles, Factory, Award } from 'lucide-react';
 
-export default function ProductDetailSpecs({ product, isOwner }) {
+export default function ProductDetailSpecs({ product, isOwner, avgRating = 0, reviewCount = 0 }) {
   const displayTitle = product?.title_en || product?.title_ko || product?.title || 'Export Product';
 
   return (
@@ -16,12 +16,18 @@ export default function ProductDetailSpecs({ product, isOwner }) {
               <Globe className="w-3.5 h-3.5" /> {product?.category}
             </span>
 
-            {/* 실시간으로 계산되는 평점 및 리뷰 수 노출 */}
-            <div className="flex items-center gap-1 text-xs font-extrabold text-amber-500 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
-              <Star className="w-3.5 h-3.5 fill-amber-400" />
-              <span>{product?.rating || 5.0}</span>
-              <span className="text-slate-400 font-medium">({product?.reviews_count || 0} Buyer Reviews)</span>
-            </div>
+            {/* Real rating/review count, computed from actual submitted reviews */}
+            {reviewCount > 0 ? (
+              <div className="flex items-center gap-1 text-xs font-extrabold text-amber-500 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                <Star className="w-3.5 h-3.5 fill-amber-400" />
+                <span>{avgRating.toFixed(1)}</span>
+                <span className="text-slate-400 font-medium">({reviewCount} Buyer Review{reviewCount === 1 ? '' : 's'})</span>
+              </div>
+            ) : (
+              <span className="text-xs font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+                No reviews yet
+              </span>
+            )}
           </div>
 
           <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight leading-snug">

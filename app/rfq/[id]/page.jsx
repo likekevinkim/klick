@@ -221,7 +221,7 @@ function RfqDetailContent() {
                   {rfq?.category || 'General Manufacturing'}
                 </span>
                 <span className="text-xs font-extrabold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Verified Purchasing Demand
+                  <ShieldCheck className="w-3.5 h-3.5" /> Verified Buyer Request
                 </span>
               </div>
 
