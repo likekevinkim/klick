@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-export default function ProductFormModal({ isOpen, onClose, onProductCreated }) {
+export default function ProductFormModal({ isOpen, onClose, onProductCreated, isEditMode = false, initialData = null, onSubmit = null }) {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [companyName, setCompanyName] = useState('');
   const [factoryLocation, setFactoryLocation] = useState('South Korea');
@@ -80,9 +80,102 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
 
   useEffect(() => {
     if (isOpen) {
-      fetchSellerProfile();
+      if (isEditMode && initialData) {
+        populateFromInitialData(initialData);
+      } else {
+        resetForm();
+        fetchSellerProfile();
+      }
     }
-  }, [isOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, isEditMode, initialData]);
+
+  // 수정 모드: 기존 제품 데이터를 폼 필드에 채워넣기
+  const populateFromInitialData = (data) => {
+    setLoadingProfile(false);
+    setTitleKo(data.title_ko || data.title || '');
+    setTitleEn(data.title_en || data.title || '');
+    setTagline(data.tagline || '');
+    setCompanyName(data.company_name || '');
+    setFactoryLocation(data.location || 'South Korea');
+    setCategory(data.category || 'Industrial Machinery');
+    setMoq(data.moq || '');
+    setLeadTime(data.lead_time || '');
+    setDimensions(data.dimensions || '');
+    setCertifications(data.certifications && data.certifications !== 'Standard Production Spec' ? data.certifications : '');
+
+    // OEM/ODM 문자열 파싱 ("Available - note" 또는 "Not Available")
+    if (data.oem_odm) {
+      if (data.oem_odm.toLowerCase().startsWith('not available')) {
+        setOemOdmAvailable('Not Available');
+        setOemOdmNote('');
+      } else {
+        setOemOdmAvailable('Available');
+        const sepIdx = data.oem_odm.indexOf(' - ');
+        setOemOdmNote(sepIdx >= 0 ? data.oem_odm.slice(sepIdx + 3) : '');
+      }
+    } else {
+      setOemOdmAvailable('Available');
+      setOemOdmNote('');
+    }
+
+    setTieredPricing(
+      Array.isArray(data.tiered_pricing) && data.tiered_pricing.length > 0
+        ? data.tiered_pricing.map((t, idx) => ({ id: t.id || Date.now() + idx, minQty: t.minQty || '', maxQty: t.maxQty || '', price: t.price || '' }))
+        : [
+            { id: 1, minQty: '', maxQty: '', price: '' },
+            { id: 2, minQty: '', maxQty: '', price: '' }
+          ]
+    );
+
+    setAttributes(
+      Array.isArray(data.attributes) && data.attributes.length > 0
+        ? data.attributes.map((a, idx) => ({ id: Date.now() + idx, name: a.name || '', value: a.value || '' }))
+        : [
+            { id: 1, name: '', value: '' },
+            { id: 2, name: '', value: '' },
+            { id: 3, name: '', value: '' }
+          ]
+    );
+
+    setCoverImage(data.image_url ? { name: 'Current Cover Image', url: data.image_url } : null);
+    setDemoVideo(data.video_url ? { name: 'Current Demo Video', url: data.video_url } : null);
+
+    const galleryUrls = Array.isArray(data.gallery_images) ? data.gallery_images : [];
+    setGalleryImages(galleryUrls.map((url, idx) => ({ name: `Gallery Image ${idx + 1}`, url })));
+
+    setAiSummary(data.ai_summary || '');
+    setDetailsText(data.description_en || data.description || data.details || '');
+  };
+
+  // 등록 모드: 새로 열 때마다 폼 초기화
+  const resetForm = () => {
+    setTitleKo('');
+    setTitleEn('');
+    setTagline('');
+    setCategory('Industrial Machinery');
+    setMoq('');
+    setLeadTime('');
+    setDimensions('');
+    setCertifications('');
+    setOemOdmAvailable('Available');
+    setOemOdmNote('');
+    setTieredPricing([
+      { id: 1, minQty: '', maxQty: '', price: '' },
+      { id: 2, minQty: '', maxQty: '', price: '' }
+    ]);
+    setAttributes([
+      { id: 1, name: '', value: '' },
+      { id: 2, name: '', value: '' },
+      { id: 3, name: '', value: '' }
+    ]);
+    setCoverImage(null);
+    setDemoVideo(null);
+    setGalleryImages([]);
+    setAiSummary('');
+    setDetailsText('');
+    setErrorMessage('');
+  };
 
   const fetchSellerProfile = async () => {
     try {
@@ -337,15 +430,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
       setIsSubmitting(true);
       setErrorMessage('');
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const currentUser = session?.user;
-
-      if (!currentUser) {
-        alert('Login is required to register a product.');
-        return;
-      }
-
-      const userIdStr = currentUser.id.toString();
       const mainTitle = titleEn || titleKo || 'Export Product';
       const mainFobPrice = pricingTiers[0]?.price ? `$${pricingTiers[0].price} USD` : 'Negotiable';
 
@@ -362,7 +446,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
         : 'Not Available';
 
       const payload = {
-        user_id: userIdStr,
         title: mainTitle,
         title_ko: titleKo,
         title_en: titleEn,
@@ -386,13 +469,29 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
         image_url: coverImage?.url || null,
         gallery_images: galleryImages.map((g) => g.url),
         video_url: demoVideo?.url || null,
-        created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
 
+      // 수정 모드: 실제 DB 업데이트는 부모(onSubmit)에게 위임
+      if (isEditMode && onSubmit) {
+        await onSubmit(payload);
+        return;
+      }
+
+      // 등록 모드: 신규 상품 insert
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUser = session?.user;
+
+      if (!currentUser) {
+        alert('Login is required to register a product.');
+        return;
+      }
+
+      const userIdStr = currentUser.id.toString();
+
       const { data, error } = await supabase
         .from('products')
-        .insert([payload])
+        .insert([{ ...payload, user_id: userIdStr, created_at: new Date().toISOString() }])
         .select()
         .single();
 
@@ -403,7 +502,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
       onClose();
     } catch (err) {
       console.error('Submit product error:', err);
-      setErrorMessage('Failed to register product: ' + (err.message || 'Database error'));
+      setErrorMessage(`Failed to ${isEditMode ? 'update' : 'register'} product: ` + (err.message || 'Database error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -419,10 +518,12 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
           <div className="space-y-1">
             <h2 className="text-base md:text-lg font-black text-slate-900 flex items-center gap-2">
               <Plus className="w-5 h-5 text-blue-600" />
-              Register New Export Product Specification
+              {isEditMode ? 'Edit Export Product Specification' : 'Register New Export Product Specification'}
             </h2>
             <p className="text-[11px] text-slate-500 font-medium">
-              Upload pictures, video, factory info, tiered pricing, and manage rich specification content directly in Database.
+              {isEditMode
+                ? 'Update pictures, video, factory info, tiered pricing, and specification content for this product.'
+                : 'Upload pictures, video, factory info, tiered pricing, and manage rich specification content directly in Database.'}
             </p>
           </div>
 
@@ -953,12 +1054,12 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated }) 
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Publishing Product...</span>
+                  <span>{isEditMode ? 'Saving Changes...' : 'Publishing Product...'}</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>Publish Product to Database</span>
+                  <span>{isEditMode ? 'Save Changes' : 'Publish Product to Database'}</span>
                 </>
               )}
             </button>
