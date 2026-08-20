@@ -104,7 +104,7 @@ export default function EditCompanyModal({
       }
     } catch (err) {
       console.error('Cover upload error:', err);
-      alert('Failed to upload cover image: ' + (err.message || 'Storage connection error'));
+      alert('대표 사진 업로드에 실패했습니다: ' + (err.message || 'Storage connection error'));
     } finally {
       setUploadingCover(false);
     }
@@ -136,7 +136,7 @@ export default function EditCompanyModal({
       }
     } catch (err) {
       console.error('Gallery upload error:', err);
-      alert('Failed to upload gallery image: ' + (err.message || 'Storage connection error'));
+      alert('갤러리 사진 업로드에 실패했습니다: ' + (err.message || 'Storage connection error'));
     } finally {
       setUploadingGallery(false);
     }
@@ -168,7 +168,7 @@ export default function EditCompanyModal({
       }
     } catch (err) {
       console.error('Video upload error:', err);
-      alert('Failed to upload video file: ' + (err.message || 'Storage connection error'));
+      alert('영상 업로드에 실패했습니다: ' + (err.message || 'Storage connection error'));
     } finally {
       setUploadingVideo(false);
     }
@@ -203,7 +203,7 @@ export default function EditCompanyModal({
       }
     } catch (err) {
       console.error('Business registration certificate upload error:', err);
-      alert('Failed to upload business registration certificate: ' + (err.message || 'Storage connection error'));
+      alert('사업자등록증 업로드에 실패했습니다: ' + (err.message || 'Storage connection error'));
     } finally {
       setUploading(false);
     }
@@ -253,7 +253,7 @@ export default function EditCompanyModal({
       prefix = '<ul>\n  <li>';
       suffix = '</li>\n</ul>';
     } else if (tagType === 'image') {
-      const url = prompt('Enter Image URL to embed in Overview:');
+      const url = prompt('소개글에 넣을 이미지 URL을 입력하세요:');
       if (url) {
         prefix = `<img src="${url}" alt="Company Detail Image" class="w-full my-3 rounded-2xl border" />`;
       }
@@ -271,10 +271,10 @@ export default function EditCompanyModal({
           <div>
             <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
               <Edit3 className="w-5 h-5 text-blue-600" />
-              Edit My Company Profile & Specs
+              회사 프로필 및 스펙 수정
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Update your company capacity, cover photo, gallery images, video file, and certifications.
+            <p className="text-sm text-slate-500 mt-0.5">
+              회사 소개, 대표 사진, 갤러리 사진, 홍보 영상, 인증서를 입력하고 수정할 수 있어요.
             </p>
           </div>
 
@@ -287,23 +287,23 @@ export default function EditCompanyModal({
           </button>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-5 text-xs">
+        <form onSubmit={onSubmit} className="space-y-5 text-sm">
           
           {/* 1. 상호명 (한글 / 영문) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Company Name (Korean)</label>
+              <label className="block font-bold text-slate-700 mb-1">회사명 (한글)</label>
               <input
                 type="text"
                 value={editCompanyNameKo}
                 onChange={(e) => setEditCompanyNameKo(e.target.value)}
-                placeholder="e.g. Hankook Precision Co., Ltd."
+                placeholder="예: 한국정밀 주식회사"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Company Name (English) *</label>
+              <label className="block font-bold text-slate-700 mb-1">회사명 (영문) *</label>
               <input
                 type="text"
                 required
@@ -317,12 +317,12 @@ export default function EditCompanyModal({
 
           {/* 한 줄 소개 */}
           <div>
-            <label className="block font-bold text-slate-700 mb-1">Tagline (One-line Summary)</label>
+            <label className="block font-bold text-slate-700 mb-1">한 줄 소개</label>
             <input
               type="text"
               value={editTagline}
               onChange={(e) => setEditTagline(e.target.value)}
-              placeholder="e.g. Leading Manufacturer of High-Precision Hydraulic Valves"
+              placeholder="예: 고정밀 유압 밸브 전문 제조업체"
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
             />
           </div>
@@ -332,9 +332,9 @@ export default function EditCompanyModal({
             <label className="block font-extrabold text-slate-800 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <ImageIcon className="w-4 h-4 text-blue-600" />
-                Main Cover Photo
+                대표 사진
               </span>
-              <span className="text-[10px] text-slate-400 font-semibold">File Upload or URL</span>
+              <span className="text-sm text-slate-400 font-semibold">회사 목록/쇼룸 맨 위에 보여요</span>
             </label>
 
             <div className="flex flex-col sm:flex-row gap-2">
@@ -344,7 +344,7 @@ export default function EditCompanyModal({
                 ) : (
                   <Upload className="w-4 h-4 text-blue-600" />
                 )}
-                <span>{uploadingCover ? 'Uploading File...' : 'Upload Image File'}</span>
+                <span>{uploadingCover ? '업로드 중...' : '클릭해서 사진 올리기'}</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -357,14 +357,14 @@ export default function EditCompanyModal({
                 type="url"
                 value={editCoverImage}
                 onChange={(e) => setEditCoverImage(e.target.value)}
-                placeholder="Or paste Image URL (https://...)"
+                placeholder="또는 이미지 URL 붙여넣기 (https://...)"
                 className="flex-1 px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
               />
             </div>
 
             {editCoverImage && (
               <div className="h-28 rounded-xl overflow-hidden border border-slate-200 bg-slate-200 mt-2">
-                <img src={editCoverImage} alt="Cover Preview" className="w-full h-full object-cover" />
+                <img src={editCoverImage} alt="대표 사진 미리보기" className="w-full h-full object-cover" />
               </div>
             )}
           </div>
@@ -374,9 +374,9 @@ export default function EditCompanyModal({
             <label className="block font-extrabold text-slate-800 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <ImageIcon className="w-4 h-4 text-emerald-600" />
-                Gallery Photos
+                갤러리 사진
               </span>
-              <span className="text-[10px] text-slate-400 font-semibold">Multiple Photos Supported</span>
+              <span className="text-sm text-slate-400 font-semibold">여러 장 올릴 수 있어요</span>
             </label>
 
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
@@ -386,7 +386,7 @@ export default function EditCompanyModal({
                 ) : (
                   <Upload className="w-4 h-4 text-emerald-600" />
                 )}
-                <span>{uploadingGallery ? 'Uploading...' : 'Upload Photo File'}</span>
+                <span>{uploadingGallery ? '업로드 중...' : '사진 파일 올리기'}</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -400,7 +400,7 @@ export default function EditCompanyModal({
                   type="url"
                   value={newGalleryUrl}
                   onChange={(e) => setNewGalleryUrl(e.target.value)}
-                  placeholder="Paste URL (https://...)"
+                  placeholder="또는 URL 붙여넣기 (https://...)"
                   className="flex-1 px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
                 <button
@@ -409,7 +409,7 @@ export default function EditCompanyModal({
                   className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl shadow transition flex items-center gap-1 cursor-pointer flex-shrink-0"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Add URL</span>
+                  <span>URL 추가</span>
                 </button>
               </div>
             </div>
@@ -438,9 +438,9 @@ export default function EditCompanyModal({
             <label className="block font-extrabold text-slate-800 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Video className="w-4 h-4 text-purple-600" />
-                Company Video Tour File / Stream URL
+                회사 소개 영상
               </span>
-              <span className="text-[10px] text-slate-400 font-semibold">MP4 / WEBM / URL</span>
+              <span className="text-sm text-slate-400 font-semibold">MP4 / WEBM / URL</span>
             </label>
 
             <div className="flex flex-col sm:flex-row gap-2">
@@ -450,7 +450,7 @@ export default function EditCompanyModal({
                 ) : (
                   <Upload className="w-4 h-4 text-purple-600" />
                 )}
-                <span>{uploadingVideo ? 'Uploading Video File...' : 'Upload Video File (.mp4)'}</span>
+                <span>{uploadingVideo ? '영상 업로드 중...' : '클릭해서 영상 올리기 (.mp4)'}</span>
                 <input
                   type="file"
                   accept="video/mp4,video/webm,video/ogg"
@@ -463,20 +463,20 @@ export default function EditCompanyModal({
                 type="url"
                 value={editVideoUrl}
                 onChange={(e) => setEditVideoUrl(e.target.value)}
-                placeholder="Or paste Stream URL (https://...)"
+                placeholder="또는 영상 URL 붙여넣기 (https://...)"
                 className="flex-1 px-3.5 py-2.5 bg-white rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
               />
             </div>
 
             {editVideoUrl && (
-              <div className="p-2.5 bg-purple-50 rounded-xl border border-purple-200 text-purple-900 text-xs font-bold flex items-center justify-between">
-                <span className="truncate max-w-[400px]">Attached Video: {editVideoUrl}</span>
+              <div className="p-2.5 bg-purple-50 rounded-xl border border-purple-200 text-purple-900 text-sm font-bold flex items-center justify-between">
+                <span className="truncate max-w-[400px]">첨부된 영상: {editVideoUrl}</span>
                 <button
                   type="button"
                   onClick={() => setEditVideoUrl('')}
-                  className="text-rose-600 hover:underline cursor-pointer text-[10px]"
+                  className="text-rose-600 hover:underline cursor-pointer text-sm"
                 >
-                  Remove
+                  삭제
                 </button>
               </div>
             )}
@@ -486,7 +486,7 @@ export default function EditCompanyModal({
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
             <label className="block font-extrabold text-slate-800 flex items-center gap-1.5">
               <Award className="w-4 h-4 text-amber-500" />
-              Quality Certifications & Licenses
+              보유 인증 및 자격
             </label>
 
             <div className="flex gap-2">
@@ -494,7 +494,7 @@ export default function EditCompanyModal({
                 type="text"
                 value={newCertText}
                 onChange={(e) => setNewCertText(e.target.value)}
-                placeholder="e.g. ISO 9001, CE Certified, KC Mark"
+                placeholder="예: ISO 9001, CE 인증, KC 마크"
                 className="flex-1 px-3.5 py-2 bg-white rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
               />
               <button
@@ -503,7 +503,7 @@ export default function EditCompanyModal({
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl shadow transition flex items-center gap-1 cursor-pointer flex-shrink-0"
               >
                 <Plus className="w-4 h-4" />
-                <span>Add Cert</span>
+                <span>추가</span>
               </button>
             </div>
 
@@ -530,20 +530,20 @@ export default function EditCompanyModal({
           <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-200 space-y-3">
             <label className="block font-extrabold text-slate-800 flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              Business Registration Certificate (사업자등록증)
+              사업자등록증
             </label>
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              Upload both the Korean and English versions to submit your company for review. Once a KLICK admin approves it, the <strong>Verified Korean Company</strong> badge appears to buyers. Image or PDF files accepted.
+            <p className="text-sm text-slate-500 leading-relaxed">
+              한글판과 영문판을 모두 올리면 심사 요청이 접수됩니다. KLICK 관리자가 승인하면 바이어에게 <strong>인증된 한국 기업</strong> 배지가 표시돼요. 이미지 또는 PDF 파일 모두 가능합니다.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* 한글판 */}
               <div className="space-y-2 p-3 bg-white rounded-xl border border-slate-200">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-700">Korean Version (한글)</span>
+                  <span className="font-bold text-slate-700">한글판</span>
                   {editBizCertKo && (
-                    <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-[10px]">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Uploaded
+                    <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-sm">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> 업로드 완료
                     </span>
                   )}
                 </div>
@@ -554,7 +554,7 @@ export default function EditCompanyModal({
                   ) : (
                     <Upload className="w-4 h-4 text-emerald-600" />
                   )}
-                  <span>{uploadingBizCertKo ? 'Uploading...' : 'Upload File'}</span>
+                  <span>{uploadingBizCertKo ? '업로드 중...' : '파일 올리기'}</span>
                   <input
                     type="file"
                     accept="image/*,application/pdf"
@@ -567,26 +567,26 @@ export default function EditCompanyModal({
                   type="url"
                   value={editBizCertKo}
                   onChange={(e) => setEditBizCertKo(e.target.value)}
-                  placeholder="Or paste file URL (https://...)"
+                  placeholder="또는 파일 URL 붙여넣기 (https://...)"
                   className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
 
                 {editBizCertKo && (
-                  <div className="flex items-center justify-between text-[10px]">
+                  <div className="flex items-center justify-between text-sm">
                     <a
                       href={editBizCertKo}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:underline flex items-center gap-1 font-bold"
                     >
-                      <ExternalLink className="w-3 h-3" /> View File
+                      <ExternalLink className="w-3 h-3" /> 파일 보기
                     </a>
                     <button
                       type="button"
                       onClick={() => setEditBizCertKo('')}
                       className="text-rose-600 hover:underline font-bold cursor-pointer"
                     >
-                      Remove
+                      삭제
                     </button>
                   </div>
                 )}
@@ -595,10 +595,10 @@ export default function EditCompanyModal({
               {/* 영문판 */}
               <div className="space-y-2 p-3 bg-white rounded-xl border border-slate-200">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-700">English Version</span>
+                  <span className="font-bold text-slate-700">영문판</span>
                   {editBizCertEn && (
-                    <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-[10px]">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Uploaded
+                    <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-sm">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> 업로드 완료
                     </span>
                   )}
                 </div>
@@ -609,7 +609,7 @@ export default function EditCompanyModal({
                   ) : (
                     <Upload className="w-4 h-4 text-emerald-600" />
                   )}
-                  <span>{uploadingBizCertEn ? 'Uploading...' : 'Upload File'}</span>
+                  <span>{uploadingBizCertEn ? '업로드 중...' : '파일 올리기'}</span>
                   <input
                     type="file"
                     accept="image/*,application/pdf"
@@ -622,26 +622,26 @@ export default function EditCompanyModal({
                   type="url"
                   value={editBizCertEn}
                   onChange={(e) => setEditBizCertEn(e.target.value)}
-                  placeholder="Or paste file URL (https://...)"
+                  placeholder="또는 파일 URL 붙여넣기 (https://...)"
                   className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
 
                 {editBizCertEn && (
-                  <div className="flex items-center justify-between text-[10px]">
+                  <div className="flex items-center justify-between text-sm">
                     <a
                       href={editBizCertEn}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:underline flex items-center gap-1 font-bold"
                     >
-                      <ExternalLink className="w-3 h-3" /> View File
+                      <ExternalLink className="w-3 h-3" /> 파일 보기
                     </a>
                     <button
                       type="button"
                       onClick={() => setEditBizCertEn('')}
                       className="text-rose-600 hover:underline font-bold cursor-pointer"
                     >
-                      Remove
+                      삭제
                     </button>
                   </div>
                 )}
@@ -649,12 +649,12 @@ export default function EditCompanyModal({
             </div>
 
             {editBizCertKo && editBizCertEn ? (
-              <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-[11px] pt-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Both files uploaded — save to submit for admin review.
+              <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-sm pt-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> 두 파일 모두 업로드됐어요 — 저장하면 관리자 심사가 시작됩니다.
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 text-amber-600 font-bold text-[11px] pt-1">
-                <FileText className="w-3.5 h-3.5" /> Upload both versions to submit for the Verified badge.
+              <div className="flex items-center gap-1.5 text-amber-600 font-bold text-sm pt-1">
+                <FileText className="w-3.5 h-3.5" /> 두 버전을 모두 올려야 인증 배지 심사를 요청할 수 있어요.
               </div>
             )}
           </div>
@@ -662,37 +662,37 @@ export default function EditCompanyModal({
           {/* 카테고리 및 비즈니스 타입 선택 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Main Category *</label>
+              <label className="block font-bold text-slate-700 mb-1">주요 카테고리 *</label>
               <select
                 required
                 value={editCategory}
                 onChange={(e) => setEditCategory(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white font-medium"
               >
-                <option value="" disabled>Select Main Category</option>
-                <option value="Industrial Machinery">Industrial Machinery</option>
-                <option value="K-Beauty & Cosmetics">K-Beauty & Cosmetics</option>
-                <option value="K-Food & Beverages">K-Food & Beverages</option>
-                <option value="Electronics & Smart IT">Electronics & Smart IT</option>
-                <option value="General Manufacturing">General Manufacturing</option>
-                <option value="etc">etc</option>
+                <option value="" disabled>카테고리 선택</option>
+                <option value="Industrial Machinery">산업 기계</option>
+                <option value="K-Beauty & Cosmetics">K-뷰티 / 화장품</option>
+                <option value="K-Food & Beverages">K-푸드 / 음료</option>
+                <option value="Electronics & Smart IT">전자 / 스마트 IT</option>
+                <option value="General Manufacturing">일반 제조업</option>
+                <option value="etc">기타</option>
               </select>
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Business Type *</label>
+              <label className="block font-bold text-slate-700 mb-1">사업 형태 *</label>
               <select
                 required
                 value={editBusinessType}
                 onChange={(e) => setEditBusinessType(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white font-medium"
               >
-                <option value="" disabled>Select Business Type</option>
-                <option value="Direct Manufacturer">Direct Manufacturer</option>
-                <option value="OEM / ODM Manufacturer">OEM / ODM Manufacturer</option>
-                <option value="High-Tech Direct Manufacturer">High-Tech Direct Manufacturer</option>
-                <option value="Export Trading House">Export Trading House</option>
-                <option value="etc">etc</option>
+                <option value="" disabled>사업 형태 선택</option>
+                <option value="Direct Manufacturer">직접 제조사</option>
+                <option value="OEM / ODM Manufacturer">OEM / ODM 제조사</option>
+                <option value="High-Tech Direct Manufacturer">첨단기술 직접 제조사</option>
+                <option value="Export Trading House">수출 무역회사</option>
+                <option value="etc">기타</option>
               </select>
             </div>
           </div>
@@ -700,24 +700,24 @@ export default function EditCompanyModal({
           {/* 위치 및 설립연도 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Company Location</label>
+              <label className="block font-bold text-slate-700 mb-1">회사 위치</label>
               <input
                 type="text"
                 value={editLocation}
                 onChange={(e) => setEditLocation(e.target.value)}
-                placeholder="e.g. Incheon, South Korea 🇰🇷"
+                placeholder="예: 인천, 대한민국 🇰🇷"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Established Year</label>
+              <label className="block font-bold text-slate-700 mb-1">설립 연도</label>
               <select
                 value={editEstablishedYear}
                 onChange={(e) => setEditEstablishedYear(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white font-medium"
               >
-                <option value="">Select Established Year</option>
+                <option value="">설립 연도 선택</option>
                 {years.map((year) => (
                   <option key={year} value={year}>
                     {year}
@@ -730,36 +730,36 @@ export default function EditCompanyModal({
           {/* 직원 수 및 공장 면적 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Employees Count</label>
+              <label className="block font-bold text-slate-700 mb-1">직원 수</label>
               <select
                 value={editEmployeesCount}
                 onChange={(e) => setEditEmployeesCount(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white font-medium"
               >
-                <option value="">Select Employee Range</option>
-                <option value="1 - 10 Employees">1 - 10 Employees</option>
-                <option value="11 - 50 Employees">11 - 50 Employees</option>
-                <option value="51 - 200 Employees">51 - 200 Employees</option>
-                <option value="201 - 500 Employees">201 - 500 Employees</option>
-                <option value="500+ Employees">500+ Employees</option>
-                <option value="etc">etc</option>
+                <option value="">직원 수 선택</option>
+                <option value="1 - 10 Employees">1 - 10명</option>
+                <option value="11 - 50 Employees">11 - 50명</option>
+                <option value="51 - 200 Employees">51 - 200명</option>
+                <option value="201 - 500 Employees">201 - 500명</option>
+                <option value="500+ Employees">500명 이상</option>
+                <option value="etc">기타</option>
               </select>
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Factory Area</label>
+              <label className="block font-bold text-slate-700 mb-1">공장 면적</label>
               <select
                 value={editFactorySize}
                 onChange={(e) => setEditFactorySize(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white font-medium"
               >
-                <option value="">Select Factory Size</option>
-                <option value="Under 1,000 sq.m">Under 1,000 sq.m</option>
-                <option value="1,000 - 3,000 sq.m">1,000 - 3,000 sq.m</option>
-                <option value="3,000 - 10,000 sq.m">3,000 - 10,000 sq.m</option>
-                <option value="Over 10,000 sq.m">Over 10,000 sq.m</option>
-                <option value="No Physical Factory (Office)">No Physical Factory (Office)</option>
-                <option value="etc">etc</option>
+                <option value="">공장 면적 선택</option>
+                <option value="Under 1,000 sq.m">1,000㎡ 미만</option>
+                <option value="1,000 - 3,000 sq.m">1,000 - 3,000㎡</option>
+                <option value="3,000 - 10,000 sq.m">3,000 - 10,000㎡</option>
+                <option value="Over 10,000 sq.m">10,000㎡ 초과</option>
+                <option value="No Physical Factory (Office)">공장 없음 (사무실)</option>
+                <option value="etc">기타</option>
               </select>
             </div>
           </div>
@@ -768,7 +768,7 @@ export default function EditCompanyModal({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="block font-bold text-slate-700">
-                Detailed Overview & Manufacturing Strength
+                상세 소개 및 제조 강점
               </label>
 
               <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
@@ -819,8 +819,8 @@ export default function EditCompanyModal({
               rows={6}
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
-              placeholder="Describe your manufacturing facility, production capacity, and HTML/Image content..."
-              className="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none leading-relaxed font-mono text-xs"
+              placeholder="공장 시설, 생산 능력 등을 자유롭게 소개해주세요. HTML/이미지 삽입도 가능합니다..."
+              className="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none leading-relaxed font-mono text-sm"
             />
           </div>
 
@@ -831,7 +831,7 @@ export default function EditCompanyModal({
               onClick={onClose}
               className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer"
             >
-              Cancel
+              취소
             </button>
             <button
               type="submit"
@@ -843,7 +843,7 @@ export default function EditCompanyModal({
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  <span>Save Company Profile</span>
+                  <span>회사 프로필 저장</span>
                 </>
               )}
             </button>
