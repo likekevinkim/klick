@@ -225,14 +225,14 @@ function AuthPageContent() {
         if (activeUserId) {
           try {
             if (userRole === 'seller') {
-              await supabase.from('seller_profiles').upsert([
+              await supabase.from('companies').upsert([
                 {
                   user_id: activeUserId,
                   company_name: companyNameEn || companyNameKo || 'Hankook Precision Co., Ltd.',
                   company_name_en: companyNameEn,
                   company_name_ko: companyNameKo,
-                  contact_person: companyNameEn || 'Seller Contact',
-                  country: 'Republic of Korea',
+                  category: category,
+                  location: 'Republic of Korea',
                   updated_at: new Date().toISOString()
                 },
               ], { onConflict: 'user_id' });
@@ -279,7 +279,7 @@ function AuthPageContent() {
           // 메타데이터에 없을 경우 DB 테이블 조회로 역할 2차 판별
           if (!actualRole) {
             const { data: sellerProf } = await supabase
-              .from('seller_profiles')
+              .from('companies')
               .select('user_id')
               .eq('user_id', userIdStr)
               .maybeSingle();

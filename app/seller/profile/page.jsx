@@ -68,12 +68,6 @@ export default function SellerCompanyProfilePage() {
         setUser(currentUser);
         const userIdStr = currentUser.id.toString();
 
-        const { data: sellerProf } = await supabase
-          .from('seller_profiles')
-          .select('*')
-          .eq('user_id', userIdStr)
-          .maybeSingle();
-
         const { data: companyData } = await supabase
           .from('companies')
           .select('*')
@@ -81,7 +75,7 @@ export default function SellerCompanyProfilePage() {
           .maybeSingle();
 
         const meta = currentUser.user_metadata || {};
-        const activeCompany = companyData || sellerProf || {};
+        const activeCompany = companyData || {};
         
         setCompanyId(activeCompany.id || '1');
         setCompanyName(activeCompany.company_name || meta.company_name_en || meta.company_name || '');
@@ -101,6 +95,7 @@ export default function SellerCompanyProfilePage() {
           setGalleryImages(activeCompany.gallery_images);
         }
 
+        // 셀러가 등록한 전체 제품 리스트 DB 조회
         const { data: productList } = await supabase
           .from('products')
           .select('*')
@@ -163,17 +158,6 @@ export default function SellerCompanyProfilePage() {
         await supabase
           .from('companies')
           .upsert(profilePayload, { onConflict: 'user_id' });
-
-        await supabase
-          .from('seller_profiles')
-          .upsert({
-            user_id: userIdStr,
-            company_name: companyName,
-            company_name_en: companyName,
-            country: location,
-            description: description,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'user_id' });
       }
 
       setSaveSuccess(true);
@@ -436,7 +420,7 @@ export default function SellerCompanyProfilePage() {
             </form>
           </div>
 
-          {/* 2. 셀러 등록 전체 상품 관리 현황 */}
+          {/* 2. 원래 올렸던 셀러 제품 리스트 카탈로그 */}
           <div className="lg:col-span-5 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
             <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
               <div>
@@ -523,7 +507,6 @@ export default function SellerCompanyProfilePage() {
         </div>
       </main>
 
-      {/* 수량 구간 라벨 표기 및 스키마 안전 처리 모달 컴포넌트 연동 */}
       <ProductFormModal
         isOpen={isRegisterModalOpen}
         onClose={() => setIsRegisterModalOpen(false)}

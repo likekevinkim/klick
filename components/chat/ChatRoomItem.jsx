@@ -11,7 +11,8 @@ import {
   Paperclip, 
   Image as ImageIcon, 
   X, 
-  CreditCard, 
+  Handshake,
+  XCircle,
   Truck,
   Sparkles,
   FileCheck,
@@ -39,11 +40,13 @@ export default function ChatRoomItem({
   onOpenPaymentModal,
   onOpenSampleModal,
   onSendMessage,
+  onRespondToQuote,
   messagesEndRef
 }) {
   const [inputText, setInputText] = useState('');
   const [attachedFile, setAttachedFile] = useState(null);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [respondedQuoteIds, setRespondedQuoteIds] = useState({});
 
   // Buyer RFQ Modal State in Chat
   const [isBuyerRfqModalOpen, setIsBuyerRfqModalOpen] = useState(false);
@@ -378,25 +381,50 @@ export default function ChatRoomItem({
 
                           <div className="text-[10px] text-slate-400 font-bold">MOQ: {msg.quote_moq}</div>
 
-                          <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800">
+                          <div className={`grid gap-2 pt-1 border-t border-slate-800 ${userRole === 'buyer' && !respondedQuoteIds[msg.id] ? 'grid-cols-3' : 'grid-cols-2'}`}>
                             <button
                               type="button"
                               onClick={() => onOpenDocModal(msg, room)}
                               className="py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-[10px] rounded-lg transition flex items-center justify-center gap-1 cursor-pointer"
                             >
                               <FileText className="w-3 h-3 text-blue-400" />
-                              <span>Trade Docs (PI/CI/BL)</span>
+                              <span>Trade Docs</span>
                             </button>
 
                             {userRole === 'buyer' ? (
-                              <button
-                                type="button"
-                                onClick={() => onOpenPaymentModal(msg, room)}
-                                className="py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] rounded-lg shadow transition flex items-center justify-center gap-1 cursor-pointer"
-                              >
-                                <CreditCard className="w-3 h-3" />
-                                <span>Pay Escrow</span>
-                              </button>
+                              respondedQuoteIds[msg.id] ? (
+                                <div className={`py-1.5 rounded-lg text-[10px] font-extrabold flex items-center justify-center gap-1 ${
+                                  respondedQuoteIds[msg.id] === 'accepted' ? 'bg-emerald-950 text-emerald-400' : 'bg-slate-800 text-slate-400'
+                                }`}>
+                                  {respondedQuoteIds[msg.id] === 'accepted' ? 'Accepted' : 'Declined'}
+                                </div>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      setRespondedQuoteIds((prev) => ({ ...prev, [msg.id]: 'accepted' }));
+                                      await onRespondToQuote(msg, room, true);
+                                      onOpenPaymentModal(msg, room);
+                                    }}
+                                    className="py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] rounded-lg shadow transition flex items-center justify-center gap-1 cursor-pointer"
+                                  >
+                                    <Handshake className="w-3 h-3" />
+                                    <span>Accept</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setRespondedQuoteIds((prev) => ({ ...prev, [msg.id]: 'declined' }));
+                                      onRespondToQuote(msg, room, false);
+                                    }}
+                                    className="py-1.5 bg-slate-800 hover:bg-rose-900 text-rose-300 font-extrabold text-[10px] rounded-lg transition flex items-center justify-center gap-1 cursor-pointer"
+                                  >
+                                    <XCircle className="w-3 h-3" />
+                                    <span>Decline</span>
+                                  </button>
+                                </>
+                              )
                             ) : (
                               <button
                                 type="button"

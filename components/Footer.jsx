@@ -67,7 +67,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-6 mt-12 pt-6 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 font-medium text-[10px] text-slate-500">
         <div className="space-y-1 text-center md:text-left">
           <p>상호명: TRUE K CO., LTD. | 사업자등록번호: 829-32-00630</p>
-          <p>통신판매업신고: 2026-서울송파-01234 </p>
+          <p>통신판매업신고: 2026-서울송파-01234 | 개인정보보호책임자 : 김보안 </p>
         </div>
         <p>© {new Date().getFullYear()} KLICK Corporation. All rights reserved.</p>
       </div>

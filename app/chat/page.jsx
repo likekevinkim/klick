@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import Header from '@/components/Header';
-import B2bPaymentModal from '@/components/B2bPaymentModal';
+import OfflineDealModal from '@/components/chat/OfflineDealModal';
 import ChatRoomItem from '@/components/chat/ChatRoomItem';
 import TradeDocModal from '@/components/chat/TradeDocModal';
 import SampleTrackingModal from '@/components/chat/SampleTrackingModal';
@@ -17,7 +17,7 @@ import {
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-// Real-time AI Translation API Helper
+// Real-time Translation API Helper (Google Translate unofficial endpoint — no API key required)
 const translateTextWithApi = async (text, targetLanguage) => {
   if (!text || !text.trim()) return text;
   try {
@@ -576,14 +576,18 @@ function ChatContent() {
     try {
       const activeRoomObj = roomsRef.current.find(r => r.id === activeRoomId);
       const targetProdName = quoteProductName || activeRoomObj?.product_title || activeRoomObj?.title || '';
+      const opponentLang = getOpponentLang(activeRoomObj, 'seller');
+
+      const quoteMsgText = `[Official B2B Quotation Sent] ${quoteNote}`;
+      const quoteMsgTrans = await translateTextWithApi(quoteMsgText, opponentLang);
 
       const quoteMsgPayload = {
         room_id: activeRoomId,
         sender_id: user?.id ? user.id.toString() : 'guest_seller',
         sender_role: 'seller',
         product_name: targetProdName,
-        message: `[Official B2B Quotation Sent] ${quoteNote}`,
-        translated_message: `[Official B2B Quotation Sent] ${quoteNote}`,
+        message: quoteMsgText,
+        translated_message: quoteMsgTrans,
         is_quote: true,
         is_read: false,
         quote_price: `${quotePrice} USD / Unit`,
@@ -616,6 +620,13 @@ function ChatContent() {
     } catch (err) {
       console.error('DB Quote Insert error:', err);
     }
+  };
+
+  const handleRespondToQuote = async (quoteMsg, room, accepted) => {
+    const responseText = accepted
+      ? `We accept this quotation (${quoteMsg.quote_price}, MOQ ${quoteMsg.quote_moq}). Let's proceed with the next steps.`
+      : `We would like to decline this quotation. Could we discuss adjusted terms?`;
+    await handleSendMessage(room.id, responseText, null);
   };
 
   const handleOpenDocModal = (msg, room) => {
@@ -709,6 +720,7 @@ function ChatContent() {
                 onOpenPaymentModal={handleOpenPaymentModal}
                 onOpenSampleModal={handleOpenSampleModal}
                 onSendMessage={handleSendMessage}
+                onRespondToQuote={handleRespondToQuote}
                 messagesEndRef={messagesEndRef}
               />
             ))}
@@ -815,7 +827,7 @@ function ChatContent() {
       />
 
       {isPaymentModalOpen && (
-        <B2bPaymentModal
+        <OfflineDealModal
           isOpen={isPaymentModalOpen}
           onClose={() => setIsPaymentModalOpen(false)}
           quoteData={paymentQuoteData}

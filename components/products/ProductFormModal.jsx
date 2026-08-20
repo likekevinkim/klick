@@ -186,12 +186,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
       if (currentUser) {
         const userIdStr = currentUser.id.toString();
 
-        const { data: sellerProf } = await supabase
-          .from('seller_profiles')
-          .select('*')
-          .eq('user_id', userIdStr)
-          .maybeSingle();
-
         const { data: compProf } = await supabase
           .from('companies')
           .select('*')
@@ -200,8 +194,8 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
 
         const meta = currentUser.user_metadata || {};
 
-        const activeName = sellerProf?.company_name_en || sellerProf?.company_name || compProf?.company_name_en || compProf?.company_name || meta.company_name_en || meta.company_name || 'Hankook Precision Co., Ltd.';
-        const activeLoc = sellerProf?.country || compProf?.location || 'South Korea';
+        const activeName = compProf?.company_name_en || compProf?.company_name || meta.company_name_en || meta.company_name || 'Hankook Precision Co., Ltd.';
+        const activeLoc = compProf?.location || 'South Korea';
 
         setCompanyName(activeName);
         setFactoryLocation(activeLoc);
@@ -410,15 +404,43 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
     try {
       setIsAiGenerating(true);
       const mainTitle = titleEn || titleKo;
+      const validAttrs = attributes.filter((a) => a.name.trim() && a.value.trim());
 
-      const generatedSpec = `[Official B2B Export Specification]\nProduct Name: ${mainTitle}\nManufacturer: ${companyName}\nFactory Location: ${factoryLocation}\nCategory: ${category}\n\n[Key Features & Advantages]\n• High-precision manufacturing engineered for international quality standards.\n• ISO Certified production line with rigorous quality assurance.\n• Customized OEM/ODM private labeling and packaging available.\n\n[Technical Specs Summary]\n${detailsText || 'Custom specifications available upon request.'}`;
+      const res = await fetch('/api/ai/generate-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'full',
+          title: mainTitle,
+          titleKo,
+          titleEn,
+          category,
+          companyName,
+          factoryLocation,
+          attributes: validAttrs,
+          certifications,
+          moq,
+          leadTime,
+          detailsText
+        })
+      });
 
-      setDetailsText(generatedSpec);
-      if (!titleEn && titleKo) {
-        setTitleEn(titleKo);
+      const data = await res.json();
+
+      if (data?.generatedText) {
+        setDetailsText(data.generatedText);
+        if (!titleEn && data.titleEn) setTitleEn(data.titleEn);
+        if (!tagline && data.tagline) setTagline(data.tagline);
+      } else {
+        throw new Error(data?.error || 'AI generation returned no content.');
       }
     } catch (err) {
       console.error('AI generation error:', err);
+      const mainTitle = titleEn || titleKo;
+      // 실패 시에도 폼이 비어있지 않도록 기본 템플릿으로 대체
+      const fallbackSpec = `[Official B2B Export Specification]\nProduct Name: ${mainTitle}\nManufacturer: ${companyName}\nFactory Location: ${factoryLocation}\nCategory: ${category}\n\n[Key Features & Advantages]\n• High-precision manufacturing engineered for international quality standards.\n• ISO Certified production line with rigorous quality assurance.\n• Customized OEM/ODM private labeling and packaging available.\n\n[Technical Specs Summary]\n${detailsText || 'Custom specifications available upon request.'}`;
+      setDetailsText(fallbackSpec);
+      if (!titleEn && titleKo) setTitleEn(titleKo);
     } finally {
       setIsAiGenerating(false);
     }

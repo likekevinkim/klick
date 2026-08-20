@@ -62,12 +62,6 @@ export default function ProductsDashboardPage() {
       const userIdStr = currentUser.id.toString();
 
       // 1. 셀러 회사 정보 자동 조회
-      const { data: sellerProf } = await supabase
-        .from('seller_profiles')
-        .select('*')
-        .eq('user_id', userIdStr)
-        .maybeSingle();
-
       const { data: companyData } = await supabase
         .from('companies')
         .select('*')
@@ -75,8 +69,8 @@ export default function ProductsDashboardPage() {
         .maybeSingle();
 
       const meta = currentUser.user_metadata || {};
-      const activeName = sellerProf?.company_name_en || sellerProf?.company_name || companyData?.company_name_en || companyData?.company_name || meta.company_name_en || meta.company_name || 'My Factory';
-      const activeLoc = sellerProf?.country || companyData?.location || 'South Korea';
+      const activeName = companyData?.company_name_en || companyData?.company_name || meta.company_name_en || meta.company_name || 'My Factory';
+      const activeLoc = companyData?.location || 'South Korea';
 
       setCompanyName(activeName);
       setLocation(activeLoc);
