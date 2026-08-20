@@ -317,32 +317,33 @@ function ChatContent() {
         const buyerUserIds = currentRoomsList.map((r) => r.buyer_id).filter(Boolean);
 
         if (buyerUserIds.length > 0) {
-          const { data: buyerProfiles } = await supabase
-            .from('buyer_profiles')
-            .select('user_id, contact_person, company_name')
-            .in('user_id', buyerUserIds);
-
+          // `buyers` is the table actually populated at signup (buyer_name, company_name).
+          // `buyer_profiles` has no personal-name column — only an optional company_name override.
           const { data: rawBuyers } = await supabase
             .from('buyers')
-            .select('user_id, contact_person, company_name')
-            .in('user_id', buyerUserIds);
+            .select('auth_user_id, buyer_name, company_name')
+            .in('auth_user_id', buyerUserIds);
+
+          const { data: buyerProfiles } = await supabase
+            .from('buyer_profiles')
+            .select('auth_user_id, company_name')
+            .in('auth_user_id', buyerUserIds);
 
           const profileMap = {};
           const companyMap = {};
 
-          (buyerProfiles || []).forEach((p) => {
-            if (p.contact_person) profileMap[p.user_id] = p.contact_person;
-            if (p.company_name) companyMap[p.user_id] = p.company_name;
+          (rawBuyers || []).forEach((b) => {
+            if (b.buyer_name) profileMap[b.auth_user_id] = b.buyer_name;
+            if (b.company_name) companyMap[b.auth_user_id] = b.company_name;
           });
 
-          (rawBuyers || []).forEach((b) => {
-            if (!profileMap[b.user_id] && b.contact_person) profileMap[b.user_id] = b.contact_person;
-            if (!companyMap[b.user_id] && b.company_name) companyMap[b.user_id] = b.company_name;
+          (buyerProfiles || []).forEach((p) => {
+            if (p.company_name) companyMap[p.auth_user_id] = p.company_name;
           });
 
           currentRoomsList = currentRoomsList.map((r) => ({
             ...r,
-            buyer_profile_name: profileMap[r.buyer_id] || r.buyer_name || 'Global Buyer',
+            buyer_profile_name: profileMap[r.buyer_id] || companyMap[r.buyer_id] || r.buyer_name || 'Global Buyer',
             buyer_company_name: companyMap[r.buyer_id] || ''
           }));
         }
@@ -433,15 +434,21 @@ function ChatContent() {
           const meta = currentUserObj.user_metadata || {};
           const mySellerName = myCompany?.company_name_en || myCompany?.company_name || meta.company_name_en || meta.company_name || 'Korean Manufacturer';
 
-          // Resolve the target buyer's company name
+          // Resolve the target buyer's name — `buyers` is the reliable source (buyer_name is
+          // required at signup); `buyer_profiles` only has an optional company_name override.
           let buyerDisplayName = paramCompany ? decodeURIComponent(paramCompany) : '';
           if (!buyerDisplayName) {
+            const { data: buyerRow } = await supabase
+              .from('buyers')
+              .select('buyer_name, company_name')
+              .eq('auth_user_id', targetBuyerId)
+              .maybeSingle();
             const { data: buyerProf } = await supabase
               .from('buyer_profiles')
-              .select('contact_person, company_name')
-              .eq('user_id', targetBuyerId)
+              .select('company_name')
+              .eq('auth_user_id', targetBuyerId)
               .maybeSingle();
-            buyerDisplayName = buyerProf?.company_name || buyerProf?.contact_person || 'Global Buyer';
+            buyerDisplayName = buyerProf?.company_name || buyerRow?.company_name || buyerRow?.buyer_name || 'Global Buyer';
           }
 
           const newRoomPayload = {
@@ -509,13 +516,18 @@ function ChatContent() {
 
           // Resolve our own (buyer's) real name instead of falling back straight to the email prefix
           let myBuyerName = currentUserObj?.email ? currentUserObj.email.split('@')[0] : 'Global Buyer';
+          const { data: myBuyerRow } = await supabase
+            .from('buyers')
+            .select('buyer_name, company_name')
+            .eq('auth_user_id', userIdStr)
+            .maybeSingle();
           const { data: myBuyerProfile } = await supabase
             .from('buyer_profiles')
-            .select('contact_person, company_name')
-            .eq('user_id', userIdStr)
+            .select('company_name')
+            .eq('auth_user_id', userIdStr)
             .maybeSingle();
-          if (myBuyerProfile?.contact_person || myBuyerProfile?.company_name) {
-            myBuyerName = myBuyerProfile.contact_person || myBuyerProfile.company_name;
+          if (myBuyerProfile?.company_name || myBuyerRow?.company_name || myBuyerRow?.buyer_name) {
+            myBuyerName = myBuyerProfile?.company_name || myBuyerRow?.company_name || myBuyerRow?.buyer_name;
           }
 
           const newRoomPayload = {

@@ -237,16 +237,15 @@ function AuthPageContent() {
                 },
               ], { onConflict: 'user_id' });
             } else {
-              await supabase.from('buyer_profiles').upsert([
+              await supabase.from('buyers').upsert([
                 {
-                  user_id: activeUserId,
-                  contact_person: buyerName || 'Kevin',
-                  buyer_name: buyerName || 'Kevin',
+                  auth_user_id: activeUserId,
+                  buyer_name: buyerName || 'Global Buyer',
+                  buyer_email: email,
                   company_name: buyerCompanyNameEn || 'Global Sourcing LLC',
                   country: country,
-                  updated_at: new Date().toISOString()
                 },
-              ], { onConflict: 'user_id' });
+              ], { onConflict: 'auth_user_id' });
             }
           } catch (dbErr) {
             console.warn('Metadata DB Insert skipped:', dbErr);
@@ -288,9 +287,9 @@ function AuthPageContent() {
               actualRole = 'seller';
             } else {
               const { data: buyerProf } = await supabase
-                .from('buyer_profiles')
-                .select('user_id')
-                .eq('user_id', userIdStr)
+                .from('buyers')
+                .select('auth_user_id')
+                .eq('auth_user_id', userIdStr)
                 .maybeSingle();
 
               if (buyerProf) {

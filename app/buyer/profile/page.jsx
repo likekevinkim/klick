@@ -112,23 +112,38 @@ function BuyerProfileContent() {
         if (meta.country) setCountry(meta.country);
       }
 
-      // 1. Fetch Buyer Profile from Supabase
+      // 1. Fetch Buyer Profile from Supabase — `buyers` has the identity fields set at
+      // signup (buyer_name, interest_category); `buyer_profiles` has the extended
+      // business-profile fields (business_type, website_url, description).
       const userIdStr = session?.user?.id ? session.user.id.toString() : null;
-      let query = supabase.from('buyer_profiles').select('*');
+
       if (userIdStr) {
-        query = query.eq('user_id', userIdStr);
-      }
+        const { data: buyerRow } = await supabase
+          .from('buyers')
+          .select('*')
+          .eq('auth_user_id', userIdStr)
+          .maybeSingle();
 
-      const { data: profile } = await query.maybeSingle();
+        if (buyerRow) {
+          setContactPerson(buyerRow.buyer_name || contactPerson);
+          setCompanyName(buyerRow.company_name || companyName);
+          setCountry(buyerRow.country || country);
+          setInterestCategory(buyerRow.interest_category || interestCategory);
+        }
 
-      if (profile) {
-        setContactPerson(profile.contact_person || profile.buyer_name || contactPerson);
-        setCompanyName(profile.company_name || companyName);
-        setCountry(profile.country || country);
-        setBusinessType(profile.business_type || businessType);
-        setWebsiteUrl(profile.website_url || websiteUrl);
-        setInterestCategory(profile.interest_category || profile.target_category || interestCategory);
-        setDescription(profile.description || description);
+        const { data: profile } = await supabase
+          .from('buyer_profiles')
+          .select('*')
+          .eq('auth_user_id', userIdStr)
+          .maybeSingle();
+
+        if (profile) {
+          setCompanyName(profile.company_name || companyName);
+          setCountry(profile.country || country);
+          setBusinessType(profile.business_type || businessType);
+          setWebsiteUrl(profile.website_url || websiteUrl);
+          setDescription(profile.description || description);
+        }
       }
 
       // 2. Fetch Buyer's Real Active RFQs from DB
@@ -201,21 +216,28 @@ function BuyerProfileContent() {
     try {
       const userIdStr = user?.id ? user.id.toString() : 'guest_buyer';
 
-      const payload = {
-        user_id: userIdStr,
-        contact_person: contactPerson,
-        buyer_name: contactPerson,
-        company_name: companyName,
-        country: country,
-        business_type: businessType,
-        website_url: websiteUrl,
-        interest_category: interestCategory,
-        target_category: interestCategory,
-        description: description,
-        updated_at: new Date().toISOString()
-      };
+      await supabase.from('buyers').upsert([
+        {
+          auth_user_id: userIdStr,
+          buyer_name: contactPerson,
+          buyer_email: email,
+          company_name: companyName,
+          country: country,
+          interest_category: interestCategory,
+        }
+      ], { onConflict: 'auth_user_id' });
 
-      await supabase.from('buyer_profiles').upsert([payload], { onConflict: 'user_id' });
+      await supabase.from('buyer_profiles').upsert([
+        {
+          auth_user_id: userIdStr,
+          company_name: companyName,
+          country: country,
+          business_type: businessType,
+          website_url: websiteUrl,
+          description: description,
+          updated_at: new Date().toISOString()
+        }
+      ], { onConflict: 'auth_user_id' });
 
       setSaveSuccess(true);
       setTimeout(() => {

@@ -63,15 +63,30 @@ function PublicBuyerShowroomContent() {
 
       const buyerIdStr = buyerId ? buyerId.toString() : '';
 
-      // 1. Supabase buyer_profiles 테이블에서 해당 바이어 프로필 상세 조회
+      // 1. `buyers` has the real name (buyer_name) set at signup; `buyer_profiles` has the
+      // optional extended business-profile fields. Merge both, buyers as the name source.
+      const { data: buyerRow } = await supabase
+        .from('buyers')
+        .select('*')
+        .eq('auth_user_id', buyerIdStr)
+        .maybeSingle();
+
       const { data: profile } = await supabase
         .from('buyer_profiles')
         .select('*')
-        .eq('user_id', buyerIdStr)
+        .eq('auth_user_id', buyerIdStr)
         .maybeSingle();
 
-      if (profile) {
-        setBuyerProfile(profile);
+      if (buyerRow || profile) {
+        setBuyerProfile({
+          contact_person: buyerRow?.buyer_name || 'Global Buyer',
+          company_name: profile?.company_name || buyerRow?.company_name || 'Verified Importer',
+          country: profile?.country || buyerRow?.country || 'United States',
+          business_type: profile?.business_type || 'Wholesaler / Distributor',
+          target_category: buyerRow?.interest_category || 'Industrial Machinery',
+          website_url: profile?.website_url || '',
+          description: profile?.description || 'Verified global wholesale buyer on KLICK platform.'
+        });
       } else {
         setBuyerProfile({
           contact_person: 'Global Buyer',
