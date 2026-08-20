@@ -144,7 +144,6 @@ export default function SellerCompanyProfilePage() {
         description: description,
         business_type: businessType,
         location: location,
-        country: location,
         established_year: establishedYear,
         employees_count: employeesCount,
         factory_size: factorySize,
@@ -155,15 +154,18 @@ export default function SellerCompanyProfilePage() {
       };
 
       if (userIdStr) {
-        await supabase
+        const { error } = await supabase
           .from('companies')
           .upsert(profilePayload, { onConflict: 'user_id' });
+
+        if (error) throw error;
       }
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
     } catch (error) {
       console.error('Failed to save factory profile:', error);
+      alert('Failed to save factory profile: ' + (error.message || 'Database error'));
     } finally {
       setSaving(false);
     }
@@ -292,7 +294,7 @@ export default function SellerCompanyProfilePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">Established Year</label>
                   <input
@@ -375,7 +377,7 @@ export default function SellerCompanyProfilePage() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 pt-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
                   {galleryImages.map((img, idx) => (
                     <div key={idx} className="relative group rounded-xl overflow-hidden border border-slate-200 h-24 bg-slate-100">
                       <img src={img} alt={`Factory ${idx + 1}`} className="w-full h-full object-cover" />

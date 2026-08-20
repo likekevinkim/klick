@@ -200,7 +200,7 @@ export default function CompanyShowroomLandingPage() {
         setEditEmployeesCount(fetchedCompany.employees_count || '');
         setEditFactorySize(fetchedCompany.factory_size || '');
 
-        setEditCoverImage(fetchedCompany.cover_image || '');
+        setEditCoverImage(fetchedCompany.banner_url || '');
         setEditGalleryImages(fetchedCompany.gallery_images || []);
         setEditVideoUrl(fetchedCompany.video_url || '');
         setEditCertifications(fetchedCompany.certifications || []);
@@ -270,7 +270,7 @@ export default function CompanyShowroomLandingPage() {
         established_year: editEstablishedYear,
         employees_count: editEmployeesCount,
         factory_size: editFactorySize,
-        cover_image: editCoverImage,
+        banner_url: editCoverImage,
         gallery_images: editGalleryImages,
         video_url: editVideoUrl,
         certifications: editCertifications,
@@ -283,33 +283,11 @@ export default function CompanyShowroomLandingPage() {
         .eq('user_id', activeUserId)
         .maybeSingle();
 
-      let saveError = null;
+      const { error: saveError } = existingComp
+        ? await supabase.from('companies').update(updatedPayload).eq('user_id', activeUserId)
+        : await supabase.from('companies').insert([updatedPayload]);
 
-      if (existingComp) {
-        const { error: updateErr } = await supabase
-          .from('companies')
-          .update(updatedPayload)
-          .eq('user_id', activeUserId);
-        saveError = updateErr;
-      } else {
-        const { error: insertErr } = await supabase
-          .from('companies')
-          .insert([updatedPayload]);
-        saveError = insertErr;
-      }
-
-      if (saveError) {
-        console.warn('First save attempt warning, running fallback payload:', saveError.message);
-        const fallbackPayload = { ...updatedPayload };
-        delete fallbackPayload.category;
-        delete fallbackPayload.company_name_ko;
-
-        if (existingComp) {
-          await supabase.from('companies').update(fallbackPayload).eq('user_id', activeUserId);
-        } else {
-          await supabase.from('companies').insert([fallbackPayload]);
-        }
-      }
+      if (saveError) throw saveError;
 
       alert('Company profile saved successfully!');
 
@@ -357,9 +335,9 @@ export default function CompanyShowroomLandingPage() {
 
       {/* 1. 회사 히어로 배너 */}
       <section className="bg-slate-900 text-white relative overflow-hidden border-b border-slate-800 pt-12 pb-16 px-6">
-        {company?.cover_image && (
+        {company?.banner_url && (
           <div className="absolute inset-0 opacity-25">
-            <img src={company.cover_image} alt="Company Cover Background" className="w-full h-full object-cover" />
+            <img src={company.banner_url} alt="Company Cover Background" className="w-full h-full object-cover" />
           </div>
         )}
 
@@ -602,8 +580,8 @@ export default function CompanyShowroomLandingPage() {
                     onClick={() => handleOpenVideo(company.video_url)}
                     className="bg-slate-900 text-white rounded-2xl overflow-hidden border border-slate-800 shadow-md hover:shadow-xl transition cursor-pointer group space-y-2 relative h-56 flex items-center justify-center"
                   >
-                    {company.cover_image && (
-                      <img src={company.cover_image} alt="Video Cover" className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition duration-300" />
+                    {company.banner_url && (
+                      <img src={company.banner_url} alt="Video Cover" className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition duration-300" />
                     )}
                     
                     <div className="w-16 h-16 bg-blue-600/90 rounded-full flex items-center justify-center shadow-2xl group-hover:bg-blue-500 group-hover:scale-110 transition absolute">

@@ -133,7 +133,7 @@ function RfqDetailContent() {
 
       const newProposal = {
         rfq_id: rfqId,
-        seller_user_id: user.id.toString(),
+        seller_id: user.id.toString(),
         seller_company_name: sellerCompanyName,
         offered_price: `$${offeredPrice} USD / Unit`,
         offered_moq: offeredMoq,

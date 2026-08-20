@@ -312,7 +312,7 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
           </div>
 
           {/* Parties Info */}
-          <div className="grid grid-cols-2 gap-6 text-xs border-b border-slate-200 pb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs border-b border-slate-200 pb-6">
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Exporter / Seller</span>
               <Field label="Company Name" value={sellerCompany} onChange={setSellerCompany} disabled={isViewingSent} />
@@ -327,7 +327,7 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
           </div>
 
           {/* Shipment Terms */}
-          <div className="grid grid-cols-3 gap-4 text-xs border-b border-slate-200 pb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs border-b border-slate-200 pb-6">
             <Field label="Payment Terms" value={paymentTerms} onChange={setPaymentTerms} disabled={isViewingSent} />
             <Field label="Incoterm" value={incoterm} onChange={setIncoterm} disabled={isViewingSent} />
             <Field label="Country of Origin" value={countryOfOrigin} onChange={setCountryOfOrigin} disabled={isViewingSent} />
@@ -340,7 +340,7 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
 
           {/* BL-specific shipping details */}
           {docType === 'BL' && (
-            <div className="grid grid-cols-3 gap-4 text-xs border-b border-slate-200 pb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs border-b border-slate-200 pb-6">
               <Field label="Vessel / Voyage No." value={vesselVoyage} onChange={setVesselVoyage} disabled={isViewingSent} />
               <Field label="Container / Seal No." value={containerSealNo} onChange={setContainerSealNo} disabled={isViewingSent} />
               <Field label="Marks & Numbers" value={marksNumbers} onChange={setMarksNumbers} disabled={isViewingSent} />
@@ -362,7 +362,8 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
               )}
             </div>
 
-            <table className="w-full text-left text-xs border-collapse">
+            <div className="overflow-x-auto -mx-1 px-1">
+            <table className="w-full min-w-[560px] text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-900 text-white font-extrabold">
                   <th className="p-3 rounded-l-xl">Description of Goods</th>
@@ -425,13 +426,14 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
                 </tr>
               </tfoot>
             </table>
+            </div>
           </div>
 
           {/* Packing List-specific package details */}
           {docType === 'PL' && (
             <div className="space-y-3 border-t border-slate-200 pt-6">
               <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Package Details</h3>
-              <div className="grid grid-cols-4 gap-4 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                 <Field label="No. of Packages" value={packageCount} onChange={setPackageCount} disabled={isViewingSent} />
                 <Field label="Gross Weight" value={grossWeight} onChange={setGrossWeight} disabled={isViewingSent} />
                 <Field label="Net Weight" value={netWeight} onChange={setNetWeight} disabled={isViewingSent} />
