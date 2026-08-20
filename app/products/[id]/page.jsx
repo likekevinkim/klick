@@ -57,8 +57,8 @@ export default function ProductDetailPage() {
         if (data) {
           foundProduct = {
             ...data,
-            title_en: data.title_en || data.product_name || '',
-            title_ko: data.title_ko || data.product_name || '',
+            title_en: data.title_en || data.title || '',
+            title_ko: data.title_ko || data.title || '',
             image_url: data.image_url || (data.gallery_images && data.gallery_images[0]) || ''
           };
         }
@@ -126,14 +126,10 @@ export default function ProductDetailPage() {
 
     try {
       if (product?.id) {
-        const updatePayload = {
-          ...payload,
-          product_name: payload.title_en || payload.title_ko || 'Export Product'
-        };
-
+        // payload는 ProductFormModal에서 넘어온, products 테이블 스키마와 일치하는 필드만 포함합니다.
         const { error } = await supabase
           .from('products')
-          .update(updatePayload)
+          .update(payload)
           .eq('id', product.id);
 
         if (error) {
