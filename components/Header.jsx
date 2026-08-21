@@ -313,10 +313,14 @@ export default function Header() {
           <Link
             href="/"
             title="Home"
-            className="p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center justify-center"
+            className={`p-2 lg:px-3.5 lg:py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+              pathname === '/'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20'
+            }`}
           >
             <Home className="w-4 h-4 text-blue-400" />
-            <span className="sr-only">Home</span>
+            <span className="hidden lg:inline">Home</span>
           </Link>
 
           <Link
