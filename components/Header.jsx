@@ -31,7 +31,9 @@ const COUNTRY_TO_LANG = {
   SV: 'es', NI: 'es', CR: 'es', PA: 'es', UY: 'es', GQ: 'es',
   SA: 'ar', AE: 'ar', EG: 'ar', IQ: 'ar', JO: 'ar', KW: 'ar', LB: 'ar',
   LY: 'ar', MA: 'ar', OM: 'ar', QA: 'ar', SY: 'ar', TN: 'ar', YE: 'ar',
-  BH: 'ar', DZ: 'ar', SD: 'ar'
+  BH: 'ar', DZ: 'ar', SD: 'ar',
+  VN: 'vi',
+  TH: 'th'
 };
 
 // 접속 IP의 국가를 서버에 물어보고, 지원하는 언어면 그 언어로, 아니면 영어로 매핑.
@@ -71,14 +73,16 @@ export default function Header() {
     { code: 'ja', label: 'JA', name: '日本語 (JP)' },
     { code: 'es', label: 'ES', name: 'Español (ES)' },
     { code: 'ar', label: 'AR', name: 'العربية (AR)' },
+    { code: 'vi', label: 'VI', name: 'Tiếng Việt (VN)' },
+    { code: 'th', label: 'TH', name: 'ภาษาไทย (TH)' },
   ];
 
   const setGoogleTranslateCookie = (langCode) => {
     if (!langCode) return;
     const domain = window.location.hostname;
     
-    document.cookie = `googtrans=/en/${langCode}; path=/;`;
-    document.cookie = `googtrans=/en/${langCode}; path=/; domain=${domain};`;
+    document.cookie = `googtrans=/auto/${langCode}; path=/;`;
+    document.cookie = `googtrans=/auto/${langCode}; path=/; domain=${domain};`;
 
     const triggerGoogleCombo = () => {
       const googleCombo = document.querySelector('.goog-te-combo');
@@ -218,8 +222,8 @@ export default function Header() {
         window.googleTranslateElementInit = () => {
           new window.google.translate.TranslateElement(
             {
-              pageLanguage: 'en',
-              includedLanguages: 'en,ko,zh-CN,ja,es,ar',
+              pageLanguage: 'auto',
+              includedLanguages: 'en,ko,zh-CN,ja,es,ar,vi,th',
               autoDisplay: false,
             },
             'google_translate_element'
