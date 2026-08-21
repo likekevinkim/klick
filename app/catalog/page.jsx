@@ -12,7 +12,6 @@ import {
   ShieldCheck,
   Search,
   Loader2,
-  CheckCircle2,
   Globe
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -52,6 +51,14 @@ export default function ProductCatalogPage() {
 
       if (error) throw error;
 
+      // is_verified는 companies 테이블에만 있으므로 실제 인증된 셀러의 user_id만 별도 조회해
+      // "Verified" 표시가 진짜 인증 여부와 무관하게 항상 뜨지 않도록 함
+      const { data: verifiedCompanies } = await supabase
+        .from('companies')
+        .select('user_id')
+        .eq('is_verified', true);
+      const verifiedSellerIds = new Set((verifiedCompanies || []).map((c) => c.user_id));
+
       const formatted = (data || []).map((item) => {
         let mainImg = item.image_url || '';
         if (!mainImg && item.gallery_images) {
@@ -67,7 +74,7 @@ export default function ProductCatalogPage() {
           }
         }
 
-        return { ...item, image_url: mainImg };
+        return { ...item, image_url: mainImg, is_verified: verifiedSellerIds.has(item.user_id) };
       });
 
       setProducts(formatted);
@@ -203,11 +210,11 @@ export default function ProductCatalogPage() {
 
                   <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 truncate">
                     <Building2 className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                    <span className="truncate">{item.company_name || 'Verified Factory'}</span>
+                    <span className="truncate">{item.company_name || 'Korean Manufacturer'}</span>
                   </div>
 
                   <h3 className="text-xs font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition min-h-[32px]">
-                    {item.title_en || item.title_ko || item.product_name || 'Verified B2B Product'}
+                    {item.title_en || item.title_ko || item.product_name || 'B2B Export Product'}
                   </h3>
 
                   <div className="pt-1 border-t border-slate-100 space-y-0.5">
@@ -223,10 +230,12 @@ export default function ProductCatalogPage() {
                 </div>
 
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-blue-600 font-bold">
-                  <span className="flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Verified Spec
-                  </span>
-                  <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition" />
+                  {item.is_verified ? (
+                    <span className="flex items-center gap-1 text-emerald-600">
+                      <ShieldCheck className="w-3 h-3" /> Verified Company
+                    </span>
+                  ) : <span />}
+                  <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition ml-auto" />
                 </div>
               </div>
             ))}

@@ -31,6 +31,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import DOMPurify from 'dompurify';
 
 // Helper: UUID 문자열 판별 함수
 const isUuid = (str) => {
@@ -579,9 +580,16 @@ export default function CompanyShowroomLandingPage() {
                 </h3>
 
                 {hasDescriptionData ? (
-                  <div 
+                  <div
                     className="prose text-slate-700 text-sm leading-relaxed max-w-none p-5 bg-slate-50/70 rounded-2xl border border-slate-100 font-medium"
-                    dangerouslySetInnerHTML={{ __html: company.description }}
+                    dangerouslySetInnerHTML={{
+                      // 셀러가 입력한 소개글은 에디터 툴바가 넣을 수 있는 태그(굵게/기울임/제목/목록/이미지)만
+                      // 허용하고 나머지는 전부 제거 — 저장형 XSS 방지
+                      __html: DOMPurify.sanitize(company.description, {
+                        ALLOWED_TAGS: ['b', 'i', 'h3', 'ul', 'li', 'img', 'br', 'p'],
+                        ALLOWED_ATTR: ['src', 'alt', 'class']
+                      })
+                    }}
                   />
                 ) : (
                   <div className="p-5 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-xs text-slate-500 leading-relaxed font-medium">

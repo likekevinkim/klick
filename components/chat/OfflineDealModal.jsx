@@ -6,7 +6,11 @@ import { X, Handshake, ShieldAlert, MessageSquareText } from 'lucide-react';
 export default function OfflineDealModal({ isOpen, onClose, quoteData }) {
   if (!isOpen) return null;
 
-  const itemAmount = quoteData?.amount || '';
+  // ponytail: only ever show a price we actually parsed from the quote — a guessed
+  // fallback here would look like a real agreed amount and could get wired to.
+  const rawAmount = quoteData?.amount;
+  const parsedAmount = Number(String(rawAmount ?? '').replace(/[^0-9.]/g, ''));
+  const itemAmount = rawAmount && Number.isFinite(parsedAmount) && parsedAmount > 0 ? parsedAmount.toFixed(2) : '';
   const itemTitle = quoteData?.title || 'this order';
   const sellerCompany = quoteData?.sellerCompany || 'the seller';
 

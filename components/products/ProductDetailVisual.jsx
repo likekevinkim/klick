@@ -13,8 +13,7 @@ import {
   MapPin, 
   Award, 
   CheckCircle2, 
-  MessageSquare, 
-  Mail 
+  MessageSquare
 } from 'lucide-react';
 
 export default function ProductDetailVisual({ product }) {
@@ -71,24 +70,6 @@ export default function ProductDetailVisual({ product }) {
     const sellerId = product?.user_id || '';
     
     router.push(`/chat?productId=${pId}&company=${compName}&title=${pTitle}&sellerId=${sellerId}`);
-  };
-
-  const handleSendEmail = () => {
-    const targetEmail = product?.company_email || 'export@hankookprecision.co.kr';
-    const subject = encodeURIComponent(`[KLICK B2B Inquiry] Quote Request for ${product?.title_en || product?.title_ko || 'Product'}`);
-    const body = encodeURIComponent(
-      `Dear Sales Manager at ${product?.company_name || 'Hankook Precision Co., Ltd.'},\n\n` +
-      `I found your product "${product?.title_en || product?.title_ko || product?.product_name}" on the KLICK B2B Trade Platform.\n` +
-      `We are interested in sourcing this item and would like to request official pricing, MOQ terms, and delivery lead time.\n\n` +
-      `Product Item: ${product?.title_en || product?.title_ko || product?.product_name}\n` +
-      `Category: ${product?.category || 'Industrial'}\n` +
-      `Target Order Quantity: ${product?.moq || '100 Units'}\n\n` +
-      `Please provide us with your official Proforma Invoice (PI) or quotation catalog.\n\n` +
-      `Best regards,\n` +
-      `Global B2B Buyer`
-    );
-
-    window.location.href = `mailto:${targetEmail}?subject=${subject}&body=${body}`;
   };
 
   return (
@@ -198,15 +179,6 @@ export default function ProductDetailVisual({ product }) {
           >
             <MessageSquare className="w-4 h-4" />
             <span>Chat with Representative</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSendEmail}
-            className="w-full py-3.5 bg-[#0F172A] hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Mail className="w-4 h-4 text-emerald-400" />
-            <span>Send Email Inquiry</span>
           </button>
 
           <Link

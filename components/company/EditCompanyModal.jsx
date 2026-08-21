@@ -175,6 +175,10 @@ export default function EditCompanyModal({
   };
 
   // 4. 사업자등록증 파일 직접 업로드 (한글판 / 영문판 공용 헬퍼)
+  // 사업자등록증에는 대표자명/주소/사업자번호 같은 개인정보가 들어있어, 커버/갤러리 사진과
+  // 달리 공개 버킷에 올리면 안 됨 — 비공개 버킷(company-private-docs)에 "본인 폴더" 안으로만
+  // 올리고, DB에는 공개 URL이 아니라 파일 경로만 저장한다. 실제 열람은 handleViewBizCert가
+  // 그때그때 서명된(만료되는) URL을 발급받아서 처리.
   const handleBizCertFileUpload = async (e, lang) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -184,28 +188,42 @@ export default function EditCompanyModal({
 
     try {
       setUploading(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) throw new Error('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.');
+
       const fileExt = file.name.split('.').pop();
       const fileName = `bizcert_${lang}_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `biz-docs/${fileName}`;
+      const filePath = `${userId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('company-images')
+        .from('company-private-docs')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      const { data: publicUrlData } = supabase.storage
-        .from('company-images')
-        .getPublicUrl(filePath);
-
-      if (publicUrlData?.publicUrl) {
-        setUrl(publicUrlData.publicUrl);
-      }
+      setUrl(filePath);
     } catch (err) {
       console.error('Business registration certificate upload error:', err);
       alert('사업자등록증 업로드에 실패했습니다: ' + (err.message || 'Storage connection error'));
     } finally {
       setUploading(false);
+    }
+  };
+
+  // 저장된 경로로 그때그때 만료되는 서명 URL을 발급받아 새 탭에서 연다
+  const handleViewBizCert = async (path) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('company-private-docs')
+        .createSignedUrl(path, 300);
+
+      if (error) throw error;
+      if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error('Signed URL fetch error:', err);
+      alert('파일을 여는 데 실패했습니다: ' + (err.message || 'Storage connection error'));
     }
   };
 
@@ -563,24 +581,15 @@ export default function EditCompanyModal({
                   />
                 </label>
 
-                <input
-                  type="url"
-                  value={editBizCertKo}
-                  onChange={(e) => setEditBizCertKo(e.target.value)}
-                  placeholder="또는 파일 URL 붙여넣기 (https://...)"
-                  className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-
                 {editBizCertKo && (
                   <div className="flex items-center justify-between text-sm">
-                    <a
-                      href={editBizCertKo}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline flex items-center gap-1 font-bold"
+                    <button
+                      type="button"
+                      onClick={() => handleViewBizCert(editBizCertKo)}
+                      className="text-blue-600 hover:underline flex items-center gap-1 font-bold cursor-pointer"
                     >
                       <ExternalLink className="w-3 h-3" /> 파일 보기
-                    </a>
+                    </button>
                     <button
                       type="button"
                       onClick={() => setEditBizCertKo('')}
@@ -618,24 +627,15 @@ export default function EditCompanyModal({
                   />
                 </label>
 
-                <input
-                  type="url"
-                  value={editBizCertEn}
-                  onChange={(e) => setEditBizCertEn(e.target.value)}
-                  placeholder="또는 파일 URL 붙여넣기 (https://...)"
-                  className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-
                 {editBizCertEn && (
                   <div className="flex items-center justify-between text-sm">
-                    <a
-                      href={editBizCertEn}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline flex items-center gap-1 font-bold"
+                    <button
+                      type="button"
+                      onClick={() => handleViewBizCert(editBizCertEn)}
+                      className="text-blue-600 hover:underline flex items-center gap-1 font-bold cursor-pointer"
                     >
                       <ExternalLink className="w-3 h-3" /> 파일 보기
-                    </a>
+                    </button>
                     <button
                       type="button"
                       onClick={() => setEditBizCertEn('')}

@@ -94,7 +94,7 @@ function ChatContent() {
   // Modal States & Quotation Form Fields (예시 문장 전면 제거)
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [quoteProductName, setQuoteProductName] = useState(''); // 품명 필드 (기본 빈 값)
-  const [quotePrice, setQuotePrice] = useState('145.00');
+  const [quotePrice, setQuotePrice] = useState('');
   const [quoteMoq, setQuoteMoq] = useState('500 Units');
   const [quoteNote, setQuoteNote] = useState(''); // 예시 문장 제거 (빈 값)
 
@@ -893,7 +893,9 @@ function ChatContent() {
 
   const handleOpenPaymentModal = (msg, room) => {
     setPaymentQuoteData({
-      amount: msg.quote_price ? msg.quote_price.split(' ')[0] : '145.00',
+      // ponytail: no fallback number — a guessed amount here would render as a
+      // real "Agreed price" in OfflineDealModal and could get wired to.
+      amount: msg.quote_price ? msg.quote_price.split(' ')[0] : '',
       title: room.product_title || room.title,
       sellerCompany: room.seller_name || room.company_name,
     });

@@ -52,6 +52,22 @@ export default function VerifySellersAdminPage() {
     }
   };
 
+  // 사업자등록증은 비공개 버킷(company-private-docs)에 저장돼있어, 여기서도 그때그때
+  // 만료되는 서명 URL을 발급받아 열어야 함 (storage RLS가 이 관리자 이메일에 대해서만 허용)
+  const handleViewCert = async (path) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('company-private-docs')
+        .createSignedUrl(path, 300);
+
+      if (error) throw error;
+      if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error('Signed URL fetch error:', err);
+      alert('Failed to open file: ' + (err.message || 'Storage connection error'));
+    }
+  };
+
   const fetchCompanies = async () => {
     try {
       setLoading(true);
@@ -194,12 +210,12 @@ export default function VerifySellersAdminPage() {
                             {c.company_name_en || c.company_name} {c.company_name_ko && <span className="text-slate-400 font-medium">({c.company_name_ko})</span>}
                           </p>
                           <div className="flex items-center gap-3 mt-1">
-                            <a href={c.business_reg_cert_ko} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-600 hover:underline flex items-center gap-1 font-bold">
+                            <button type="button" onClick={() => handleViewCert(c.business_reg_cert_ko)} className="text-[11px] text-blue-600 hover:underline flex items-center gap-1 font-bold cursor-pointer">
                               <ExternalLink className="w-3 h-3" /> Korean Cert
-                            </a>
-                            <a href={c.business_reg_cert_en} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-600 hover:underline flex items-center gap-1 font-bold">
+                            </button>
+                            <button type="button" onClick={() => handleViewCert(c.business_reg_cert_en)} className="text-[11px] text-blue-600 hover:underline flex items-center gap-1 font-bold cursor-pointer">
                               <ExternalLink className="w-3 h-3" /> English Cert
-                            </a>
+                            </button>
                           </div>
                         </div>
                       </div>

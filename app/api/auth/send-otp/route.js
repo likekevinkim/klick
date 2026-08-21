@@ -1,5 +1,6 @@
 // app/api/auth/send-otp/route.js
 import { NextResponse } from 'next/server';
+import { signOtpSession } from '@/lib/otpSession';
 
 export const runtime = 'nodejs';
 
@@ -108,11 +109,12 @@ export async function POST(request) {
       message: 'Verification code has been sent to your email address.'
     });
 
-    const sessionPayload = Buffer.from(JSON.stringify({
-      email: email,
+    const sessionPayload = signOtpSession({
+      email,
       code: generatedOtp,
-      expiresAt: expiresAt
-    })).toString('base64');
+      expiresAt,
+      attempts: 0
+    });
 
     response.cookies.set('klick_otp_session', sessionPayload, {
       httpOnly: true,
