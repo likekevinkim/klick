@@ -300,7 +300,7 @@ export default function Header() {
           </div>
           <div className="flex flex-col">
             <span className="font-extrabold text-lg sm:text-xl tracking-tight text-white flex items-center gap-1">
-              KLICK <span className="text-[10px] sm:text-xs font-semibold bg-blue-600/30 text-blue-400 px-1.5 sm:px-2 py-0.5 rounded-full border border-blue-500/30">B2B</span>
+              KLICK
             </span>
             <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium tracking-wider hidden xs:block">
               Global Trade
