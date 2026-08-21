@@ -30,6 +30,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [currentLang, setCurrentLang] = useState('en');
 
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState('seller');
@@ -46,6 +47,7 @@ export default function HomePage() {
 
   useEffect(() => {
     setMounted(true);
+    setCurrentLang(localStorage.getItem('klick_lang_code') || 'en');
     fetchHomeProducts();
     updateUnreadCount();
     checkOnboardingStatus();
@@ -287,7 +289,11 @@ export default function HomePage() {
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
                 }`}
               >
-                {cat}
+                {currentLang === 'ko' && cat === 'All' ? (
+                  <span className="notranslate" translate="no">전체</span>
+                ) : (
+                  cat
+                )}
               </button>
             ))}
           </div>

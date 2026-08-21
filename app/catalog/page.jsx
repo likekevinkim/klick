@@ -15,9 +15,14 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
+// Google Translate turns "All"/"etc" into stiff literal Korean ("모두"/"등") — show the
+// more natural phrasing directly instead when Korean is selected.
+const CATEGORY_LABEL_KO = { All: '전체', etc: '기타' };
+
 export default function ProductCatalogPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [currentLang, setCurrentLang] = useState('en');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,6 +40,7 @@ export default function ProductCatalogPage() {
 
   useEffect(() => {
     setMounted(true);
+    setCurrentLang(localStorage.getItem('klick_lang_code') || 'en');
     fetchAllProducts();
   }, []);
 
@@ -145,7 +151,11 @@ export default function ProductCatalogPage() {
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
                 }`}
               >
-                {cat}
+                {currentLang === 'ko' && CATEGORY_LABEL_KO[cat] ? (
+                  <span className="notranslate" translate="no">{CATEGORY_LABEL_KO[cat]}</span>
+                ) : (
+                  cat
+                )}
               </button>
             ))}
           </div>
@@ -158,7 +168,7 @@ export default function ProductCatalogPage() {
           <div className="flex items-center gap-2">
             <Package className="w-5 h-5 text-blue-600" />
             <h2 className="text-lg font-extrabold text-slate-900">
-              All Products ({filteredProducts.length})
+              All Products
             </h2>
           </div>
           <span className="text-xs text-slate-500 font-medium hidden sm:inline">Click any product to view full specs and contact the seller.</span>
