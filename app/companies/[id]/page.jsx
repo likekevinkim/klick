@@ -262,6 +262,12 @@ export default function CompanyShowroomLandingPage() {
 
       const activeUserId = activeUser.id;
 
+      // 인증서를 실제로 새로 업로드(재제출)했을 때만 반려 사유를 초기화.
+      // 폼에는 로드 시점 값이 미리 채워져 있으므로, 로드된 company 레코드와 달라졌을 때만 "재제출"로 간주.
+      const bizCertsChanged =
+        editBizCertKo !== (company?.business_reg_cert_ko || '') ||
+        editBizCertEn !== (company?.business_reg_cert_en || '');
+
       const updatedPayload = {
         user_id: activeUserId,
         company_name: editCompanyNameEn || editCompanyNameKo || 'Korean Company',
@@ -281,7 +287,7 @@ export default function CompanyShowroomLandingPage() {
         certifications: editCertifications,
         business_reg_cert_ko: editBizCertKo,
         business_reg_cert_en: editBizCertEn,
-        rejection_reason: editBizCertKo && editBizCertEn ? null : company?.rejection_reason ?? null,
+        rejection_reason: bizCertsChanged && editBizCertKo && editBizCertEn ? null : (company?.rejection_reason ?? null),
         updated_at: new Date().toISOString()
       };
 
@@ -358,14 +364,19 @@ export default function CompanyShowroomLandingPage() {
                 </span>
               ) : isOwner ? (
                 company?.rejection_reason ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditCompanyModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-rose-500/20 text-rose-300 text-xs font-bold border border-rose-500/30 cursor-pointer hover:bg-rose-500/30 transition"
-                    title={company.rejection_reason}
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5" /> Verification Rejected — Click to Re-upload
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditCompanyModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-rose-500/20 text-rose-300 text-xs font-bold border border-rose-500/30 cursor-pointer hover:bg-rose-500/30 transition"
+                      title={company.rejection_reason}
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" /> Verification Rejected — Click to Re-upload
+                    </button>
+                    <p className="w-full basis-full text-xs text-rose-300 font-medium">
+                      Rejection reason: {company.rejection_reason}
+                    </p>
+                  </>
                 ) : company?.business_reg_cert_ko && company?.business_reg_cert_en ? (
                   <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30">
                     <ShieldCheck className="w-3.5 h-3.5" /> Verification Pending Review

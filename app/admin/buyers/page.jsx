@@ -35,7 +35,8 @@ export default function AdminBuyersPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
           body: JSON.stringify({ buyerIds })
-        }).then((r) => r.json()).catch(() => ({ counts: {} })),
+        }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`chat counts fetch failed: ${r.status}`))))
+          .catch((err) => { console.error('buyer-chat-counts fetch failed:', err); return { counts: {}, failed: true }; }),
         supabase.from('public_rfqs').select('user_id').in('user_id', buyerIds.length ? buyerIds : [''])
       ]);
 
@@ -43,6 +44,7 @@ export default function AdminBuyersPage() {
       (profiles || []).forEach((p) => { countryById[p.auth_user_id] = p.country; });
 
       const chatCountById = chatCountsResult?.counts || {};
+      const chatCountsFailed = !!chatCountsResult?.failed;
 
       const rfqCountById = {};
       (rfqs || []).forEach((r) => { rfqCountById[r.user_id] = (rfqCountById[r.user_id] || 0) + 1; });
@@ -50,7 +52,7 @@ export default function AdminBuyersPage() {
       setBuyers((buyerRows || []).map((b) => ({
         ...b,
         country: countryById[b.auth_user_id] || '-',
-        chatCount: chatCountById[b.auth_user_id] || 0,
+        chatCount: chatCountsFailed ? null : (chatCountById[b.auth_user_id] || 0),
         rfqCount: rfqCountById[b.auth_user_id] || 0
       })));
     } catch (err) {
@@ -112,7 +114,7 @@ export default function AdminBuyersPage() {
                 </p>
               </div>
               <div className="flex items-center gap-4 text-[11px] text-slate-500 flex-shrink-0">
-                <span className="flex items-center gap-1"><MessageSquare className="w-3.5 h-3.5 text-blue-500" /> {b.chatCount}</span>
+                <span className="flex items-center gap-1" title={b.chatCount === null ? 'Chat count unavailable' : undefined}><MessageSquare className="w-3.5 h-3.5 text-blue-500" /> {b.chatCount === null ? '-' : b.chatCount}</span>
                 <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5 text-purple-500" /> {b.rfqCount}</span>
               </div>
             </Link>
