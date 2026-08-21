@@ -49,20 +49,27 @@ KLICK is a B2B export platform connecting Korean manufacturers (sellers) with gl
 
 ## Data layer
 
-One Supabase client (`lib/supabase.js`), reading `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` from `.env.local` (gitignored). No server-side/service-role Supabase access exists in this repo — all reads/writes go through the anon client with RLS. There is no Supabase CLI or migration tooling set up; **schema changes (new tables/columns) require handing the user a SQL script to run manually in the Supabase SQL editor** — don't assume you can alter the schema yourself.
+Two Supabase clients: `lib/supabase.js` (anon key, used by all client components — RLS applies) and `lib/supabaseAdmin.js` (service-role key, **server-only**, used only inside Route Handlers for the handful of writes that must bypass RLS — e.g. `app/api/notify/new-inquiry`, `app/api/products/view`, `app/api/rfq/increment-quote-count`). Never import `supabaseAdmin` from a `'use client'` file or return anything it reads (like an email) in an API response — see the no-direct-contact-exposure rule below. There is no Supabase CLI or migration tooling set up; **schema changes (new tables/columns/RLS policies) require handing the user a SQL script to run manually in the Supabase SQL editor** — don't assume you can alter the schema yourself.
+
+**RLS reality check (2026-08-21):** every table has RLS enabled, but many carried 3-5 duplicate/conflicting policies per action from past fix attempts, including loose `USING (true)` ones alongside properly-scoped ones (Postgres OR's permissive policies, so one loose policy defeats the strict ones). A cleanup pass fixed the tables listed below, but don't assume a table's RLS is sane just because it exists — before writing new RLS SQL, ask the user to paste the full Supabase Advisor/Linter JSON rather than guessing from the anon key (which can't read `pg_policies`).
+
+**Never expose a buyer's or seller's real email** anywhere reachable outside the chat UI (no public table column, no API response) — they'd bypass KLICK's chat entirely and deal directly. To email someone server-side, resolve their address via `supabaseAdmin.auth.admin.getUserById()` inside a Route Handler only.
 
 Core tables and what actually reads/writes them:
 
 - `companies` — seller company profile (one per seller `user_id`). This is the **single source of truth for seller profile data** — `app/login/page.jsx`, `app/products/page.jsx`, `app/seller/profile/page.jsx`, and `ProductFormModal.jsx` all read/write only this table. (A parallel `seller_profiles` table was written to by the same pages until 2026-08-20 — that duplication was removed; don't reintroduce a second seller-profile write path.)
-- `products` — seller's export product listings (rich fields: bilingual titles, tiered pricing, attributes jsonb, gallery images, AI-generated summary).
-- `buyers` / `buyer_profiles` — buyer accounts; `buyer_profiles.contact_person`/`company_name` is what chat and RFQ screens display for a buyer.
-- `public_rfqs` / `rfq_proposals` — buyer posts a public sourcing request, sellers respond with proposals. Independent of the chat system.
+- `products` — seller's export product listings (rich fields: bilingual titles, tiered pricing, attributes jsonb, gallery images, AI-generated summary, `view_count` incremented server-side via `/api/products/view` so non-owner RLS restrictions don't block it).
+- `buyers` / `buyer_profiles` — **both actively read/written in parallel**, unresolved duplication (unlike `companies`/`seller_profiles`, which was cleaned up). `buyers.buyer_name` (not `contact_person` — that column doesn't exist on `buyer_profiles`) is what chat/RFQ/review screens display for a buyer; always re-resolve it live rather than trusting a denormalized snapshot, and never fall back to an email-derived name.
+- `public_rfqs` / `rfq_proposals` — buyer posts a public sourcing request, sellers respond with proposals. Independent of the chat system. `quote_count` increments go through `/api/rfq/increment-quote-count` (service-role) since the incrementer is the responding seller, not the RFQ's owning buyer.
 - `chat_rooms` / `chat_messages` — see below, this is the core connective feature.
-- `inquiries` and `buyer_sourcing_products` exist in the schema but **nothing in the codebase reads or writes them** — treat any feature request touching "inquiries" or buyer sourcing as needing new wiring, not existing functionality to find.
+- `buyer_favorites` — buyer's saved products (`/buyer/favorites`).
+- `product_reviews` — buyer reviews with `photos` jsonb (buyer-uploaded photos of the real product received); buyer can edit/delete their own.
+- `companies.is_verified` / `business_reg_cert_ko` / `business_reg_cert_en` — seller uploads both cert files to become *eligible*; an admin must approve at `/admin/verify-sellers` (gated by a hardcoded email allowlist, currently just `sportskevinkim@gmail.com` — client-side check + a matching JWT-email carve-out in the `companies` UPDATE RLS policy) before the "Verified Korean Company" badge shows anywhere.
+- `inquiries` and `buyer_sourcing_products` **do not exist in the schema** (confirmed via PostgREST — not merely unused). Any feature request touching "inquiries" or buyer sourcing needs a new table, not existing functionality to find.
 
 ## Auth & roles
 
-Supabase Auth, with a custom 6-digit email OTP step (`app/api/auth/send-otp`, `app/api/auth/verify-otp`) gating signup before `supabase.auth.signUp` runs. Role (`seller` | `buyer`) is stored in `user_metadata.role`; sign-in re-derives the role from whichever of `companies`/`buyer_profiles` has a row for that `user_id` if metadata is missing, and blocks cross-role login (a seller account can't sign in on the buyer tab). All role-gated UI branches on `userRole` client-side, not RLS policy — there is no server-side authorization layer.
+Supabase Auth, with a custom 6-digit email OTP step (`app/api/auth/send-otp`, `app/api/auth/verify-otp`) gating signup before `supabase.auth.signUp` runs. Role (`seller` | `buyer`) is stored in `user_metadata.role`; sign-in re-derives the role from whichever of `companies`/`buyer_profiles` has a row for that `user_id` if metadata is missing, and blocks cross-role login (a seller account can't sign in on the buyer tab). Most role-gated UI branches on `userRole` client-side, but RLS is real and enforced at the DB (see Data layer above) — don't treat client-side role checks as the only guard when adding a write path.
 
 ## Chat system (`app/chat/page.jsx` + `components/chat/`)
 
