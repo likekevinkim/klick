@@ -27,17 +27,22 @@ export default function AdminBuyersPage() {
 
       const buyerIds = (buyerRows || []).map((b) => b.auth_user_id).filter(Boolean);
 
-      const [{ data: profiles }, { data: chatRooms }, { data: rfqs }] = await Promise.all([
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const [{ data: profiles }, chatCountsResult, { data: rfqs }] = await Promise.all([
         supabase.from('buyer_profiles').select('auth_user_id, country').in('auth_user_id', buyerIds.length ? buyerIds : ['']),
-        supabase.from('chat_rooms').select('buyer_id').in('buyer_id', buyerIds.length ? buyerIds : ['']),
+        fetch('/api/admin/buyer-chat-counts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+          body: JSON.stringify({ buyerIds })
+        }).then((r) => r.json()).catch(() => ({ counts: {} })),
         supabase.from('public_rfqs').select('user_id').in('user_id', buyerIds.length ? buyerIds : [''])
       ]);
 
       const countryById = {};
       (profiles || []).forEach((p) => { countryById[p.auth_user_id] = p.country; });
 
-      const chatCountById = {};
-      (chatRooms || []).forEach((r) => { chatCountById[r.buyer_id] = (chatCountById[r.buyer_id] || 0) + 1; });
+      const chatCountById = chatCountsResult?.counts || {};
 
       const rfqCountById = {};
       (rfqs || []).forEach((r) => { rfqCountById[r.user_id] = (rfqCountById[r.user_id] || 0) + 1; });
