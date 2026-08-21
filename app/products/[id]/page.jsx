@@ -104,19 +104,9 @@ export default function ProductDetailPage() {
         }).catch(() => {});
       }
 
-      // 소유권 판단
+      // 소유권 판단: 로그인한 셀러 본인이 올린 상품일 때만 true
       const userRole = user?.user_metadata?.role || 'seller';
-      if (user && userRole === 'seller' && foundProduct?.user_id) {
-        if (user.id === foundProduct.user_id) {
-          setIsOwner(true);
-        } else {
-          setIsOwner(false);
-        }
-      } else if (userRole === 'seller' && foundProduct) {
-        setIsOwner(true);
-      } else {
-        setIsOwner(false);
-      }
+      setIsOwner(!!(user && userRole === 'seller' && foundProduct?.user_id && user.id === foundProduct.user_id));
 
       setViewerRole(user ? userRole : null);
 

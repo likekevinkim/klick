@@ -320,7 +320,7 @@ export default function Header() {
             }`}
           >
             <Home className="w-4 h-4 text-blue-400" />
-            <span className="hidden lg:inline">Home</span>
+            <span className="notranslate hidden lg:inline" translate="no">{currentLang === 'KO' ? '홈' : 'Home'}</span>
           </Link>
 
           <Link
@@ -332,7 +332,7 @@ export default function Header() {
             }`}
           >
             <Factory className="w-4 h-4 text-blue-400" />
-            <span className="hidden lg:inline">Factories</span>
+            <span className="notranslate hidden lg:inline" translate="no">{currentLang === 'KO' ? '공장' : 'Factories'}</span>
           </Link>
 
           <Link
