@@ -281,6 +281,7 @@ export default function CompanyShowroomLandingPage() {
         certifications: editCertifications,
         business_reg_cert_ko: editBizCertKo,
         business_reg_cert_en: editBizCertEn,
+        rejection_reason: editBizCertKo && editBizCertEn ? null : company?.rejection_reason ?? null,
         updated_at: new Date().toISOString()
       };
 
@@ -356,7 +357,16 @@ export default function CompanyShowroomLandingPage() {
                   <ShieldCheck className="w-3.5 h-3.5" /> Verified Korean Company
                 </span>
               ) : isOwner ? (
-                company?.business_reg_cert_ko && company?.business_reg_cert_en ? (
+                company?.rejection_reason ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditCompanyModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-rose-500/20 text-rose-300 text-xs font-bold border border-rose-500/30 cursor-pointer hover:bg-rose-500/30 transition"
+                    title={company.rejection_reason}
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" /> Verification Rejected — Click to Re-upload
+                  </button>
+                ) : company?.business_reg_cert_ko && company?.business_reg_cert_en ? (
                   <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30">
                     <ShieldCheck className="w-3.5 h-3.5" /> Verification Pending Review
                   </span>
