@@ -22,20 +22,33 @@ export async function POST(request) {
     const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
     const userId = userData?.user?.id;
     if (userError || !userId) {
-      // TEMP DIAGNOSTIC: pinpointing a prod-only 401 — never logs the token itself.
-      console.error('[delete-account] auth.getUser failed:', {
-        message: userError?.message,
-        status: userError?.status,
-        name: userError?.name,
-      });
       return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
     }
 
     // 로그인 계정 자체는 지우지 않는다 — 회사 정보/상품만 지우고, 계정은 살려서
     // 같은 계정으로 다시 회사 정보를 새로 등록할 수 있게 한다. 로그인까지 완전히
     // 지우는 "회원 탈퇴"는 별도 기능으로 계정 설정 쪽에서 다뤄야 함.
-    await supabaseAdmin.from('products').delete().eq('user_id', userId);
-    await supabaseAdmin.from('companies').delete().eq('user_id', userId);
+    //
+    // supabase-js delete()는 실패해도 throw하지 않고 { error }만 돌려주므로,
+    // 반드시 확인해야 한다 (예: 다른 테이블의 외래키가 이 행을 참조 중이면
+    // 삭제가 조용히 실패하는데, 이걸 체크 안 하면 "성공"이라고 응답해버림).
+    const { error: productsError } = await supabaseAdmin
+      .from('products')
+      .delete()
+      .eq('user_id', userId);
+    if (productsError) {
+      console.error('[delete-account] products delete failed:', productsError.message);
+      return NextResponse.json({ error: `Failed to delete products: ${productsError.message}` }, { status: 500 });
+    }
+
+    const { error: companyError } = await supabaseAdmin
+      .from('companies')
+      .delete()
+      .eq('user_id', userId);
+    if (companyError) {
+      console.error('[delete-account] company delete failed:', companyError.message);
+      return NextResponse.json({ error: `Failed to delete company: ${companyError.message}` }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {
