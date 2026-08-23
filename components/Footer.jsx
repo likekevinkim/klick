@@ -13,10 +13,10 @@ export default function Footer() {
         <div className="space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 text-white font-black text-lg">
             <Building2 className="w-6 h-6 text-blue-500" />
-            <span>KLICK</span>
+            <span className="notranslate" translate="no">KLICK</span>
           </div>
           <p className="leading-relaxed font-medium max-w-sm">
-            KLICK is a B2B export platform that directly connects Korean manufacturers with global buyers.
+            <span className="notranslate" translate="no">KLICK</span> is a B2B export platform that directly connects Korean manufacturers with global buyers.
             We support transparent, fast global trade with no language barrier.
           </p>
         </div>
@@ -69,7 +69,7 @@ export default function Footer() {
           <p>Company Name: TRUE K CO., LTD. | Business Registration No.: 829-32-00630</p>
           <p>E-Commerce Registration No.: 2025-WABUJOAN-0341</p>
         </div>
-        <p>© {new Date().getFullYear()} KLICK Corporation. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} <span className="notranslate" translate="no">KLICK</span> Corporation. All rights reserved.</p>
       </div>
     </footer>
   );

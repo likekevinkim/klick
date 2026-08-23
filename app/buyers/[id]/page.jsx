@@ -3,6 +3,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import Header from '@/components/Header';
+import Klick from '@/components/Klick';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { 
@@ -190,7 +191,7 @@ function PublicBuyerShowroomContent() {
                 <Building2 className="w-5 h-5 text-blue-600" />
                 <h2 className="text-lg font-extrabold text-slate-900">Buyer Company Information</h2>
               </div>
-              <p className="text-xs text-slate-400 font-medium mt-1">Official profile information verified by KLICK.</p>
+              <p className="text-xs text-slate-400 font-medium mt-1">Official profile information verified by <Klick />.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">

@@ -3,14 +3,14 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import Header from '@/components/Header';
+import Klick from '@/components/Klick';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
-  Building2, 
-  MapPin, 
-  Award, 
-  Package, 
-  ArrowRight, 
+  Building2,
+  MapPin,
+  Award,
+  ArrowRight,
   Search, 
   ShieldCheck, 
   Loader2, 
@@ -26,7 +26,7 @@ export default function FactoriesPage() {
         <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
           <div className="flex items-center gap-2 text-slate-600 text-xs font-bold">
             <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-            <span>Loading KLICK Company Directory...</span>
+            <span>Loading <Klick /> Company Directory...</span>
           </div>
         </div>
       }
@@ -64,18 +64,10 @@ function FactoriesDirectoryContent() {
 
       if (compError) throw compError;
 
-      // 2. 각 셀러가 등록한 라이브 상품 개수를 구하기 위해 products 테이블 조회
-      const { data: dbProducts } = await supabase.from('products').select('user_id');
-
-      // 3. 순수 DB 데이터 기반 매핑
+      // 2. 순수 DB 데이터 기반 매핑
       const mappedList = (dbCompanies || []).map((fac) => {
         // 셀러의 고유 식별자 (user_id 또는 테이블 PK id)
         const sellerTargetId = fac.user_id || fac.id;
-
-        // 해당 셀러의 등록 상품 수 계산
-        const liveProducts = (dbProducts || []).filter(
-          (p) => p.user_id === sellerTargetId
-        );
 
         // 인증서 문자열 변환
         let certDisplay = '';
@@ -112,7 +104,6 @@ function FactoriesDirectoryContent() {
           tagline: fac.tagline || fac.description || '',
           cover_image: coverImg,
           established_year: fac.established_year || (fac.created_at ? new Date(fac.created_at).getFullYear().toString() : ''),
-          product_count: liveProducts.length,
           is_verified: !!fac.is_verified
         };
       });
@@ -258,9 +249,6 @@ function FactoriesDirectoryContent() {
                       </span>
                     )}
 
-                    <span className="absolute bottom-3 right-3 bg-blue-600 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-md flex items-center gap-1">
-                      <Package className="w-3 h-3" /> {fac.product_count} Live Products
-                    </span>
                   </div>
 
                   {/* 회사 헤더 정보 */}

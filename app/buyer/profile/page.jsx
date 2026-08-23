@@ -3,6 +3,7 @@
 
 import { useState, useEffect, Suspense, useRef } from 'react';
 import Header from '@/components/Header';
+import Klick from '@/components/Klick';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -38,7 +39,7 @@ export default function BuyerProfileHubPage() {
         <div className="min-h-screen bg-slate-50 flex items-center justify-center">
           <div className="flex items-center gap-2 text-slate-600 text-xs font-bold">
             <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-            <span>Loading KLICK Buyer Sourcing Hub...</span>
+            <span>Loading <Klick /> Buyer Sourcing Hub...</span>
           </div>
         </div>
       }

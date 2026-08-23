@@ -613,7 +613,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
                   <option value="K-Beauty & Cosmetics">K-뷰티 / 화장품</option>
                   <option value="K-Food & Beverages">K-푸드 / 음료</option>
                   <option value="Electronics & Smart IT">전자 / 스마트 IT</option>
-                  <option value="General Manufacturing">일반 제조업</option>
+                  <option value="General Manufacturing">일반 제조업 / 기타</option>
                 </select>
               </div>
 

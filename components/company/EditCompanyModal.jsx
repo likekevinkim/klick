@@ -24,6 +24,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import Klick from '@/components/Klick';
 
 export default function EditCompanyModal({
   isOpen,
@@ -79,7 +80,8 @@ export default function EditCompanyModal({
   const [newGalleryUrl, setNewGalleryUrl] = useState('');
   const [newCertText, setNewCertText] = useState('');
 
-  // 회사 정보 전체 삭제 (Danger Zone)
+  // 회사 정보 전체 삭제 (Caution)
+  const [showDangerZone, setShowDangerZone] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -581,7 +583,7 @@ export default function EditCompanyModal({
               사업자등록증
             </label>
             <p className="text-sm text-slate-500 leading-relaxed">
-              한글판과 영문판을 모두 올리면 심사 요청이 접수됩니다. KLICK 관리자가 승인하면 바이어에게 <strong>인증된 한국 기업</strong> 배지가 표시돼요. 이미지 또는 PDF 파일 모두 가능합니다.
+              한글판과 영문판을 모두 올리면 심사 요청이 접수됩니다. <Klick /> 관리자가 승인하면 바이어에게 <strong>인증된 한국 기업</strong> 배지가 표시돼요. 이미지 또는 PDF 파일 모두 가능합니다.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -704,7 +706,7 @@ export default function EditCompanyModal({
                 <option value="K-Beauty & Cosmetics">K-뷰티 / 화장품</option>
                 <option value="K-Food & Beverages">K-푸드 / 음료</option>
                 <option value="Electronics & Smart IT">전자 / 스마트 IT</option>
-                <option value="General Manufacturing">일반 제조업</option>
+                <option value="General Manufacturing">일반 제조업 / 기타</option>
                 <option value="etc">기타</option>
               </select>
             </div>
@@ -873,51 +875,64 @@ export default function EditCompanyModal({
 
           {/* 위험 구역: 회사 정보 전체 삭제 */}
           <div className="p-4 bg-white rounded-2xl border border-red-200 space-y-3">
-            <div>
-              <label className="block font-extrabold text-red-600">Danger Zone</label>
-              <p className="text-sm text-slate-500 mt-0.5">
-                회사 프로필과 등록한 상품을 전부 삭제합니다. 로그인 계정은 그대로 유지되며, 이 작업은 되돌릴 수 없습니다.
-              </p>
-            </div>
-
-            {!showDeleteConfirm ? (
+            {!showDangerZone ? (
               <button
                 type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="px-4 py-2.5 bg-white border border-red-300 hover:bg-red-50 text-red-600 font-extrabold rounded-xl transition inline-flex items-center gap-2 cursor-pointer"
+                onClick={() => setShowDangerZone(true)}
+                className="text-sm font-bold text-red-500 hover:underline inline-flex items-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>회사 정보 삭제</span>
               </button>
             ) : (
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  autoFocus
-                  value={deleteConfirmText}
-                  onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  placeholder={`확인을 위해 "${editCompanyNameEn}" 입력`}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-200 focus:outline-none"
-                />
-                <div className="flex items-center justify-between gap-2">
+              <>
+                <div>
+                  <label className="block font-extrabold text-red-600">Caution</label>
+                  <p className="text-sm text-slate-500 mt-0.5">
+                    회사 프로필과 등록한 상품을 전부 삭제합니다. 로그인 계정은 그대로 유지되며, 이 작업은 되돌릴 수 없습니다.
+                  </p>
+                </div>
+
+                {!showDeleteConfirm ? (
                   <button
                     type="button"
-                    onClick={handleDeleteCompany}
-                    disabled={deleting || !editCompanyNameEn || deleteConfirmText.trim() !== editCompanyNameEn.trim()}
-                    className="px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-extrabold rounded-xl transition inline-flex items-center gap-2 cursor-pointer"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="px-4 py-2.5 bg-white border border-red-300 hover:bg-red-50 text-red-600 font-extrabold rounded-xl transition inline-flex items-center gap-2 cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
-                    <span>{deleting ? '삭제 중...' : '회사 정보 완전 삭제'}</span>
+                    <span>회사 정보 삭제</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}
-                    className="text-sm font-bold text-slate-500 hover:underline cursor-pointer"
-                  >
-                    취소
-                  </button>
-                </div>
-              </div>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      autoFocus
+                      value={deleteConfirmText}
+                      onChange={(e) => setDeleteConfirmText(e.target.value)}
+                      placeholder={`확인을 위해 "${editCompanyNameEn}" 입력`}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-200 focus:outline-none"
+                    />
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={handleDeleteCompany}
+                        disabled={deleting || !editCompanyNameEn || deleteConfirmText.trim() !== editCompanyNameEn.trim()}
+                        className="px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-extrabold rounded-xl transition inline-flex items-center gap-2 cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>{deleting ? '삭제 중...' : '회사 정보 완전 삭제'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}
+                        className="text-sm font-bold text-slate-500 hover:underline cursor-pointer"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

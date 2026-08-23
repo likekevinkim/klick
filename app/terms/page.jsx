@@ -1,5 +1,6 @@
 // app/terms/page.jsx
 import Header from '@/components/Header';
+import { protectKlick } from '@/components/Klick';
 import { FileText } from 'lucide-react';
 
 const SECTIONS = [
@@ -63,7 +64,7 @@ export default function TermsPage() {
           {SECTIONS.map((section) => (
             <div key={section.title} className="p-6 md:p-8 space-y-2">
               <h2 className="text-sm font-extrabold text-slate-900">{section.title}</h2>
-              <p className="text-xs text-slate-600 leading-relaxed">{section.body}</p>
+              <p className="text-xs text-slate-600 leading-relaxed">{protectKlick(section.body)}</p>
             </div>
           ))}
         </div>

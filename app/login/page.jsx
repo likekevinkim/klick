@@ -3,7 +3,8 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import Header from '@/components/Header';
-import { 
+import Klick from '@/components/Klick';
+import {
   Building2, 
   Globe, 
   ArrowRight, 
@@ -348,7 +349,7 @@ function AuthPageContent() {
         {/* Left Information Section */}
         <div className="lg:col-span-6 space-y-6">
           <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
-            <Globe className="w-4 h-4" /> KLICK Global B2B Network
+            <Globe className="w-4 h-4" /> <Klick /> Global B2B Network
           </span>
 
           <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-snug">

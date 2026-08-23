@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
+import Klick from '@/components/Klick';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -16,9 +17,9 @@ import {
 import { supabase } from '@/lib/supabase';
 import { FILTER_CATEGORIES } from '@/lib/categories';
 
-// Google Translate turns "All"/"etc" into stiff literal Korean ("모두"/"등") — show the
+// Google Translate turns "All" into stiff literal Korean ("모두") — show the
 // more natural phrasing directly instead when Korean is selected.
-const CATEGORY_LABEL_KO = { All: '전체', etc: '기타' };
+const CATEGORY_LABEL_KO = { All: '전체' };
 
 export default function ProductCatalogPage() {
   const router = useRouter();
@@ -113,7 +114,7 @@ export default function ProductCatalogPage() {
               Browse Every Product Listed by <span className="text-blue-400">Korean Manufacturers</span>
             </h1>
             <p className="text-slate-300 text-xs md:text-sm leading-relaxed font-medium">
-              One place to see all products uploaded across every seller on KLICK — search, filter by category, and open any listing.
+              One place to see all products uploaded across every seller on <Klick /> — search, filter by category, and open any listing.
             </p>
           </div>
 

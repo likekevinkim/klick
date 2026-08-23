@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import Header from '@/components/Header';
+import Klick from '@/components/Klick';
 import OfflineDealModal from '@/components/chat/OfflineDealModal';
 import ChatRoomItem from '@/components/chat/ChatRoomItem';
 import TradeDocModal from '@/components/chat/TradeDocModal';
@@ -638,6 +639,33 @@ function ChatContent() {
     }
   };
 
+  const handleDeleteRoom = async (roomId) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+
+      const res = await fetch('/api/chat/delete-room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ roomId })
+      });
+      if (!res.ok) throw new Error('Failed to delete chat room');
+
+      setRooms((prev) => prev.filter((r) => r.id !== roomId));
+      setRoomMessagesMap((prev) => {
+        const next = { ...prev };
+        delete next[roomId];
+        return next;
+      });
+      if (activeRoomId === roomId) setActiveRoomId(null);
+      window.dispatchEvent(new Event('klick_unread_chat_updated'));
+    } catch (e) {
+      console.error('Failed to delete chat room:', e);
+      alert('Failed to delete this chat. Please try again.');
+    }
+  };
+
   const handleSendMessage = async (targetRoomId, text, attachedFile) => {
     let finalFilePayload = null;
     if (attachedFile) {
@@ -915,7 +943,7 @@ function ChatContent() {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
-                <Sparkles className="w-3.5 h-3.5" /> KLICK Direct Chat
+                <Sparkles className="w-3.5 h-3.5" /> <Klick /> Direct Chat
               </span>
               <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-bold flex items-center gap-1">
                 <Globe className="w-3 h-3" /> Realtime AI Dual-Text Translation
@@ -961,6 +989,7 @@ function ChatContent() {
                 onOpenSampleModal={handleOpenSampleModal}
                 onSendMessage={handleSendMessage}
                 onRespondToQuote={handleRespondToQuote}
+                onDeleteRoom={handleDeleteRoom}
               />
             ))}
           </div>
@@ -1089,7 +1118,7 @@ export default function RealtimeChatPage() {
         <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
           <div className="flex items-center gap-2 text-slate-600 text-xs font-bold">
             <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-            <span>Loading KLICK Real-time AI Chat Hub...</span>
+            <span>Loading <Klick /> Real-time AI Chat Hub...</span>
           </div>
         </div>
       }

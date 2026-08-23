@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
+import Klick from '@/components/Klick';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -226,7 +227,7 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 text-blue-400 text-xs font-extrabold border border-blue-500/20">
               <Globe className="w-4 h-4" />
-              <span>KLICK - Direct B2B Gateway to South Korean Manufacturers</span>
+              <span><Klick /> - Direct B2B Gateway to South Korean Manufacturers</span>
             </div>
 
             {unreadCount > 0 && (
@@ -442,7 +443,7 @@ export default function HomePage() {
           <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 animate-fadeIn">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <span className="text-xs font-extrabold text-blue-600 flex items-center gap-1.5 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-                <Sparkles className="w-3.5 h-3.5" /> Welcome to KLICK B2B Network!
+                <Sparkles className="w-3.5 h-3.5" /> Welcome to <Klick /> B2B Network!
               </span>
 
               <button

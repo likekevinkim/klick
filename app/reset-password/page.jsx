@@ -3,6 +3,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import Header from '@/components/Header';
+import Klick from '@/components/Klick';
 import { useRouter } from 'next/navigation';
 import { Lock, CheckCircle2, AlertCircle, Loader2, ArrowRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -72,7 +73,7 @@ function ResetPasswordContent() {
             </div>
             <h1 className="text-xl font-extrabold text-slate-900">Reset Your Password</h1>
             <p className="text-xs text-slate-500">
-              Please enter your new password to secure your KLICK B2B Account.
+              Please enter your new password to secure your <Klick /> B2B Account.
             </p>
           </div>
 

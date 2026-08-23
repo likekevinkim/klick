@@ -16,7 +16,8 @@ import {
   Truck,
   Sparkles,
   FileCheck,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -40,7 +41,8 @@ export default function ChatRoomItem({
   onOpenPaymentModal,
   onOpenSampleModal,
   onSendMessage,
-  onRespondToQuote
+  onRespondToQuote,
+  onDeleteRoom
 }) {
   const [inputText, setInputText] = useState('');
   const [attachedFile, setAttachedFile] = useState(null);
@@ -250,6 +252,19 @@ export default function ChatRoomItem({
           <span className="text-[11px] text-slate-400 font-bold hidden sm:inline">
             {room.updated_at ? new Date(room.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just Now'}
           </span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm('Delete this chat? This ends the conversation for both sides and cannot be undone.')) {
+                onDeleteRoom?.(room.id);
+              }
+            }}
+            title="Delete chat"
+            className="p-2 bg-slate-100 hover:bg-red-50 hover:text-red-600 rounded-xl text-slate-400 transition cursor-pointer"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
           <button type="button" className="p-2 bg-slate-100 rounded-xl text-slate-600">
             {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>

@@ -2,6 +2,7 @@
 'use client';
 
 import { X, Handshake, ShieldAlert, MessageSquareText } from 'lucide-react';
+import Klick from '@/components/Klick';
 
 export default function OfflineDealModal({ isOpen, onClose, quoteData }) {
   if (!isOpen) return null;
@@ -43,8 +44,8 @@ export default function OfflineDealModal({ isOpen, onClose, quoteData }) {
           <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex gap-3">
             <ShieldAlert className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-amber-800 leading-relaxed">
-              KLICK does not process payments on the platform yet. Please finalize payment (e.g. bank wire transfer)
-              and the formal contract directly with your counterparty, outside of KLICK.
+              <Klick /> does not process payments on the platform yet. Please finalize payment (e.g. bank wire transfer)
+              and the formal contract directly with your counterparty, outside of <Klick />.
             </p>
           </div>
 

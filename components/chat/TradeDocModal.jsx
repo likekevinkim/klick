@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { FileText, X, Printer, ShieldCheck, Upload, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import Klick from '@/components/Klick';
 
 // Small inline-editable field that still reads cleanly on the printed sheet
 function Field({ label, value, onChange, className = '', placeholder = '', disabled = false }) {
@@ -305,7 +306,7 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
           <div className="flex items-start justify-between border-b-2 border-slate-900 pb-6">
             <div>
               <span className="inline-flex items-center gap-1 text-[10px] font-black text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded border border-blue-100 mb-2">
-                <ShieldCheck className="w-3 h-3 text-emerald-500" /> KLICK Export Certified
+                <ShieldCheck className="w-3 h-3 text-emerald-500" /> <Klick /> Export Certified
               </span>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
                 {docTitles[docType]}
