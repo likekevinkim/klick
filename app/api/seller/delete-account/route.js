@@ -25,9 +25,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
     }
 
+    // 로그인 계정 자체는 지우지 않는다 — 회사 정보/상품만 지우고, 계정은 살려서
+    // 같은 계정으로 다시 회사 정보를 새로 등록할 수 있게 한다. 로그인까지 완전히
+    // 지우는 "회원 탈퇴"는 별도 기능으로 계정 설정 쪽에서 다뤄야 함.
     await supabaseAdmin.from('products').delete().eq('user_id', userId);
     await supabaseAdmin.from('companies').delete().eq('user_id', userId);
-    await supabaseAdmin.auth.admin.deleteUser(userId);
 
     return NextResponse.json({ success: true });
   } catch (err) {

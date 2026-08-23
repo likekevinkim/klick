@@ -195,7 +195,7 @@ export default function SellerCompanyProfilePage() {
 
   const handleDeleteAccount = async () => {
     if (deleteConfirmText.trim() !== companyName.trim()) return;
-    if (!confirm('This will permanently delete your company profile, all your product listings, and your login. This cannot be undone. Continue?')) return;
+    if (!confirm('This will permanently delete your company profile and all your product listings. Your login will stay active. This cannot be undone. Continue?')) return;
 
     setDeleting(true);
     try {
@@ -209,11 +209,10 @@ export default function SellerCompanyProfilePage() {
       const result = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(result?.error || 'Failed to delete account.');
 
-      await supabase.auth.signOut();
       router.push('/');
     } catch (error) {
-      console.error('Failed to delete account:', error);
-      alert('Failed to delete account: ' + (error.message || 'Unknown error'));
+      console.error('Failed to delete company info:', error);
+      alert('Failed to delete company info: ' + (error.message || 'Unknown error'));
       setDeleting(false);
     }
   };
@@ -543,7 +542,7 @@ export default function SellerCompanyProfilePage() {
           <div>
             <h3 className="text-sm font-extrabold text-red-600">Danger Zone</h3>
             <p className="text-xs text-slate-500 mt-1">
-              Permanently delete your company profile, every product you&apos;ve listed, and your login. This cannot be undone.
+              Permanently delete your company profile and every product you&apos;ve listed. Your login stays active. This cannot be undone.
             </p>
           </div>
 
@@ -557,31 +556,33 @@ export default function SellerCompanyProfilePage() {
               <span>회사 정보 삭제</span>
             </button>
           ) : (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="space-y-3">
               <input
                 type="text"
                 autoFocus
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
                 placeholder={`Type "${companyName}" to confirm`}
-                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-red-200"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-red-200"
               />
-              <button
-                type="button"
-                onClick={handleDeleteAccount}
-                disabled={deleting || !companyName || deleteConfirmText.trim() !== companyName.trim()}
-                className="px-5 py-3 bg-red-600 hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-extrabold text-xs rounded-xl transition inline-flex items-center justify-center gap-2 whitespace-nowrap"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>{deleting ? 'Deleting...' : 'Delete Everything'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}
-                className="text-xs font-bold text-slate-500 hover:underline whitespace-nowrap"
-              >
-                취소
-              </button>
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={deleting || !companyName || deleteConfirmText.trim() !== companyName.trim()}
+                  className="px-5 py-3 bg-red-600 hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-extrabold text-xs rounded-xl transition inline-flex items-center justify-center gap-2 whitespace-nowrap"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>{deleting ? 'Deleting...' : 'Delete Company Info'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}
+                  className="text-xs font-bold text-slate-500 hover:underline whitespace-nowrap"
+                >
+                  취소
+                </button>
+              </div>
             </div>
           )}
         </div>
