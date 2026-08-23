@@ -16,12 +16,29 @@ export async function POST(request) {
     const authHeader = request.headers.get('authorization') || '';
     const token = authHeader.replace(/^Bearer\s+/i, '');
     if (!token) {
+      // TEMP DIAGNOSTIC: no Authorization header reached the server at all.
+      console.error('[delete-account] no bearer token in request');
       return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
     }
 
     const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
     const userId = userData?.user?.id;
     if (userError || !userId) {
+      // TEMP DIAGNOSTIC: decode the JWT payload (no signature check, no
+      // secrets involved) to see if it's expired vs simply invalid/wrong-project.
+      let decoded = null;
+      try {
+        const payload = token.split('.')[1];
+        decoded = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
+      } catch {}
+      console.error('[delete-account] auth.getUser failed:', {
+        message: userError?.message,
+        status: userError?.status,
+        exp: decoded?.exp,
+        now: Math.floor(Date.now() / 1000),
+        expired: decoded?.exp ? decoded.exp < Math.floor(Date.now() / 1000) : null,
+        iss: decoded?.iss,
+      });
       return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
     }
 
