@@ -771,7 +771,23 @@ export default function EditCompanyModal({
                 상세 소개 및 제조 강점
               </label>
 
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!editDescription) return;
+                    if (confirm('상세 소개 및 제조 강점 내용을 전체 삭제할까요? 저장 전까지는 되돌릴 수 있어요.')) {
+                      setEditDescription('');
+                    }
+                  }}
+                  className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer flex items-center gap-1 text-sm font-bold"
+                  title="전체 삭제"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>전체 삭제</span>
+                </button>
+
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
                 <button
                   type="button"
                   onClick={() => handleInsertEditorTag('bold')}
@@ -812,6 +828,7 @@ export default function EditCompanyModal({
                 >
                   <LinkIcon className="w-3.5 h-3.5" />
                 </button>
+                </div>
               </div>
             </div>
 

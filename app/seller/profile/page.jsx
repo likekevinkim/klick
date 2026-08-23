@@ -55,6 +55,7 @@ export default function SellerCompanyProfilePage() {
   const [loading, setLoading] = useState(true);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
@@ -545,24 +546,44 @@ export default function SellerCompanyProfilePage() {
               Permanently delete your company profile, every product you&apos;ve listed, and your login. This cannot be undone.
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <input
-              type="text"
-              value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
-              placeholder={`Type "${companyName}" to confirm`}
-              className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-red-200"
-            />
+
+          {!showDeleteConfirm ? (
             <button
               type="button"
-              onClick={handleDeleteAccount}
-              disabled={deleting || !companyName || deleteConfirmText.trim() !== companyName.trim()}
-              className="px-5 py-3 bg-red-600 hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-extrabold text-xs rounded-xl transition inline-flex items-center justify-center gap-2 whitespace-nowrap"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="px-5 py-3 bg-white border border-red-300 hover:bg-red-50 text-red-600 font-extrabold text-xs rounded-xl transition inline-flex items-center gap-2"
             >
               <Trash2 className="w-4 h-4" />
-              <span>{deleting ? 'Deleting...' : 'Delete Everything'}</span>
+              <span>회사 정보 삭제</span>
             </button>
-          </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <input
+                type="text"
+                autoFocus
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder={`Type "${companyName}" to confirm`}
+                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-red-200"
+              />
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={deleting || !companyName || deleteConfirmText.trim() !== companyName.trim()}
+                className="px-5 py-3 bg-red-600 hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-extrabold text-xs rounded-xl transition inline-flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{deleting ? 'Deleting...' : 'Delete Everything'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}
+                className="text-xs font-bold text-slate-500 hover:underline whitespace-nowrap"
+              >
+                취소
+              </button>
+            </div>
+          )}
         </div>
       </main>
 
