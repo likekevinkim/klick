@@ -22,6 +22,12 @@ export async function POST(request) {
     const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
     const userId = userData?.user?.id;
     if (userError || !userId) {
+      // TEMP DIAGNOSTIC: pinpointing a prod-only 401 — never logs the token itself.
+      console.error('[delete-account] auth.getUser failed:', {
+        message: userError?.message,
+        status: userError?.status,
+        name: userError?.name,
+      });
       return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
     }
 
