@@ -29,6 +29,7 @@ export default function EditCompanyModal({
   isOpen,
   onClose,
   onSubmit,
+  onDeleted,
   isSaving,
   editCompanyNameKo,
   setEditCompanyNameKo,
@@ -77,6 +78,35 @@ export default function EditCompanyModal({
 
   const [newGalleryUrl, setNewGalleryUrl] = useState('');
   const [newCertText, setNewCertText] = useState('');
+
+  // 회사 정보 전체 삭제 (Danger Zone)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteCompany = async () => {
+    if (deleteConfirmText.trim() !== editCompanyNameEn.trim()) return;
+    if (!confirm('This will permanently delete your company profile and all your product listings. Your login will stay active. This cannot be undone. Continue?')) return;
+
+    setDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.');
+
+      const res = await fetch('/api/seller/delete-account', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result?.error || '삭제에 실패했습니다.');
+
+      onDeleted?.();
+    } catch (err) {
+      console.error('Failed to delete company:', err);
+      alert('삭제에 실패했습니다: ' + (err.message || 'Unknown error'));
+      setDeleting(false);
+    }
+  };
 
   // 1. 대표 사진 컴퓨터 파일 직접 업로드 (Supabase Storage)
   const handleCoverFileUpload = async (e) => {
@@ -839,6 +869,56 @@ export default function EditCompanyModal({
               placeholder="공장 시설, 생산 능력 등을 자유롭게 소개해주세요. HTML/이미지 삽입도 가능합니다..."
               className="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none leading-relaxed font-mono text-sm"
             />
+          </div>
+
+          {/* 위험 구역: 회사 정보 전체 삭제 */}
+          <div className="p-4 bg-white rounded-2xl border border-red-200 space-y-3">
+            <div>
+              <label className="block font-extrabold text-red-600">Danger Zone</label>
+              <p className="text-sm text-slate-500 mt-0.5">
+                회사 프로필과 등록한 상품을 전부 삭제합니다. 로그인 계정은 그대로 유지되며, 이 작업은 되돌릴 수 없습니다.
+              </p>
+            </div>
+
+            {!showDeleteConfirm ? (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="px-4 py-2.5 bg-white border border-red-300 hover:bg-red-50 text-red-600 font-extrabold rounded-xl transition inline-flex items-center gap-2 cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>회사 정보 삭제</span>
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  autoFocus
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder={`확인을 위해 "${editCompanyNameEn}" 입력`}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-200 focus:outline-none"
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDeleteCompany}
+                    disabled={deleting || !editCompanyNameEn || deleteConfirmText.trim() !== editCompanyNameEn.trim()}
+                    className="px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-extrabold rounded-xl transition inline-flex items-center gap-2 cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>{deleting ? '삭제 중...' : '회사 정보 완전 삭제'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}
+                    className="text-sm font-bold text-slate-500 hover:underline cursor-pointer"
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 제출 버튼 */}

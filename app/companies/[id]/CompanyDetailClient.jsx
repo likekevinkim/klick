@@ -833,6 +833,7 @@ export default function CompanyDetailClient() {
       <EditCompanyModal
         isOpen={isEditCompanyModalOpen}
         onClose={() => setIsEditCompanyModalOpen(false)}
+        onDeleted={() => router.push('/')}
         onSubmit={handleSaveCompanyProfile}
         isSaving={isSavingCompany}
         editCompanyNameKo={editCompanyNameKo}
