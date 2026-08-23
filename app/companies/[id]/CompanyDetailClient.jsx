@@ -182,11 +182,14 @@ export default function CompanyDetailClient() {
       }
 
       // 5. 소유자(편집 권한) 여부 정밀 확인
-      if (currentUser && fetchedCompany) {
-        setIsOwner(fetchedCompany.user_id === currentUser.id);
-      } else {
-        setIsOwner(false);
-      }
+      // 회사 정보를 아직 등록하지 않은 셀러도 "내 프로필"을 보고 있는 것이므로
+      // fetchedCompany가 없어도 routeParamId === currentUser.id면 owner로 취급해야
+      // "Register Company Specs" 버튼과 안내 문구가 뜬다.
+      const ownerMatch = !!(
+        currentUser &&
+        (fetchedCompany ? fetchedCompany.user_id === currentUser.id : routeParamId === currentUser.id)
+      );
+      setIsOwner(ownerMatch);
 
       // 6. DB에서 스캔한 클릭 회사의 실제 데이터만 화면 및 Form에 매핑
       if (fetchedCompany) {
@@ -213,7 +216,9 @@ export default function CompanyDetailClient() {
         setCompany(null);
       }
 
-      if (autoEditParam === 'true' && isOwner) {
+      // isOwner는 위 setIsOwner()로 예약된 상태 업데이트라 이 시점엔 아직 반영 전이므로
+      // 방금 계산한 ownerMatch를 직접 써야 함(state를 읽으면 항상 이전 렌더 값)
+      if (autoEditParam === 'true' && ownerMatch) {
         setIsEditCompanyModalOpen(true);
       }
 
@@ -417,7 +422,7 @@ export default function CompanyDetailClient() {
 
           <div className="space-y-3 max-w-4xl">
             <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-snug">
-              {company?.company_name_en || company?.company_name_ko || company?.company_name || 'Unregistered Company Showroom'}
+              {company?.company_name_en || company?.company_name_ko || company?.company_name || (isOwner ? 'Welcome! Register Your Company' : 'Unregistered Company Showroom')}
             </h1>
             {company?.company_name_ko && (
               <p className="text-slate-400 text-sm font-bold">Company Name (Korean): {company.company_name_ko}</p>
@@ -514,9 +519,26 @@ export default function CompanyDetailClient() {
       {/* 3. 탭별 컨텐츠 */}
       <main className="max-w-6xl mx-auto px-6 mt-10">
         {activeTab === 'about' ? (
+          isOwner && !company ? (
+            <div className="max-w-2xl mx-auto bg-white p-10 rounded-3xl border border-dashed border-blue-300 shadow-sm text-center space-y-4">
+              <Building2 className="w-12 h-12 text-blue-500 mx-auto" />
+              <h2 className="text-xl font-extrabold text-slate-900">Set Up Your Company Showroom</h2>
+              <p className="text-sm text-slate-500 leading-relaxed max-w-md mx-auto">
+                Register your company info to unlock your public showroom — buyers will be able to see your company profile, certifications, and product catalog.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsEditCompanyModalOpen(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-sm rounded-xl shadow-lg transition cursor-pointer"
+              >
+                <Edit3 className="w-4 h-4" />
+                <span>Register Company Info</span>
+              </button>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className={`space-y-8 ${isOwner ? 'lg:col-span-12' : 'lg:col-span-8'} bg-white p-8 rounded-3xl border border-slate-200 shadow-sm`}>
-              
+
               {/* 타이틀 및 Edit 버튼 */}
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <div>
@@ -724,6 +746,7 @@ export default function CompanyDetailClient() {
               </div>
             )}
           </div>
+          )
         ) : (
           /* [Showroom 탭] */
           <div className="space-y-6">
