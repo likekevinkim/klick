@@ -20,6 +20,10 @@ export default function AdminLayout({ children }) {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [session, setSession] = useState(null);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -38,24 +42,69 @@ export default function AdminLayout({ children }) {
     }
   };
 
+  const handleAdminLogin = async (e) => {
+    e.preventDefault();
+    setLoginError('');
+    setLoggingIn(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: loginEmail.trim(),
+        password: loginPassword
+      });
+      if (error) throw error;
+      await checkAdmin();
+    } catch (error) {
+      setLoginError(error.message || 'Login failed.');
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+
   if (!mounted || checkingAuth) return null;
 
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-[#F9FAFB] text-slate-900 antialiased">
         <Header />
-        <div className="max-w-md mx-auto mt-24 text-center bg-white rounded-3xl border border-slate-200 shadow-sm p-8 space-y-3">
+        <div className="max-w-sm mx-auto mt-24 text-center bg-white rounded-3xl border border-slate-200 shadow-sm p-8 space-y-4">
           <Lock className="w-10 h-10 text-slate-300 mx-auto" />
-          <h1 className="text-sm font-extrabold text-slate-800">Admin Access Only</h1>
-          <p className="text-xs text-slate-500">
-            {session ? 'This account is not the site administrator.' : 'Please log in with the administrator account first.'}
-          </p>
-          <div className="flex items-center justify-center gap-4 pt-2">
-            {!session && (
-              <Link href="/login" className="text-xs font-bold text-blue-600 hover:underline">Log In</Link>
-            )}
-            <Link href="/" className="text-xs font-bold text-slate-500 hover:underline">Back to Home</Link>
+          <div>
+            <h1 className="text-sm font-extrabold text-slate-800">Admin Access Only</h1>
+            <p className="text-xs text-slate-500 mt-1">
+              {session ? 'This account is not the site administrator.' : 'Please log in with the administrator account.'}
+            </p>
           </div>
+
+          {!session && (
+            <form onSubmit={handleAdminLogin} className="space-y-3 text-left">
+              <input
+                type="email"
+                required
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                placeholder="Admin email"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+              <input
+                type="password"
+                required
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                placeholder="Password"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+              {loginError && <p className="text-xs text-red-600">{loginError}</p>}
+              <button
+                type="submit"
+                disabled={loggingIn}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-extrabold text-xs rounded-xl transition"
+              >
+                {loggingIn ? 'Logging in...' : 'Log In'}
+              </button>
+            </form>
+          )}
+
+          <Link href="/" className="inline-block text-xs font-bold text-slate-500 hover:underline">Back to Home</Link>
         </div>
       </div>
     );

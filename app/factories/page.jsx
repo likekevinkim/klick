@@ -207,7 +207,7 @@ function FactoriesDirectoryContent() {
           <div className="flex items-center gap-2">
             <Building2 className="w-5 h-5 text-blue-600" />
             <h2 className="text-lg font-extrabold text-slate-900">
-              Active Company Showrooms ({filteredFactories.length})
+              Active Company Showrooms
             </h2>
           </div>
           <span className="text-xs text-slate-500 font-medium">Click any card to inspect the exact company showroom.</span>

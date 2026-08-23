@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Link from 'next/link';
 import { 
@@ -26,6 +27,7 @@ import { supabase } from '@/lib/supabase';
 import ProductFormModal from '@/components/products/ProductFormModal';
 
 export default function SellerCompanyProfilePage() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
   const [companyId, setCompanyId] = useState('1');
@@ -52,6 +54,8 @@ export default function SellerCompanyProfilePage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -185,6 +189,31 @@ export default function SellerCompanyProfilePage() {
   const handleProductCreated = (newProduct) => {
     if (newProduct) {
       setProducts((prev) => [newProduct, ...prev]);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText.trim() !== companyName.trim()) return;
+    if (!confirm('This will permanently delete your company profile, all your product listings, and your login. This cannot be undone. Continue?')) return;
+
+    setDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Not authenticated.');
+
+      const res = await fetch('/api/seller/delete-account', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result?.error || 'Failed to delete account.');
+
+      await supabase.auth.signOut();
+      router.push('/');
+    } catch (error) {
+      console.error('Failed to delete account:', error);
+      alert('Failed to delete account: ' + (error.message || 'Unknown error'));
+      setDeleting(false);
     }
   };
 
@@ -505,6 +534,34 @@ export default function SellerCompanyProfilePage() {
                 ))
               )}
             </div>
+          </div>
+        </div>
+
+        {/* 위험 구역: 회사 정보 전체 삭제 */}
+        <div className="bg-white rounded-3xl border border-red-200 shadow-sm p-6 md:p-8 space-y-4">
+          <div>
+            <h3 className="text-sm font-extrabold text-red-600">Danger Zone</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Permanently delete your company profile, every product you&apos;ve listed, and your login. This cannot be undone.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder={`Type "${companyName}" to confirm`}
+              className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-red-200"
+            />
+            <button
+              type="button"
+              onClick={handleDeleteAccount}
+              disabled={deleting || !companyName || deleteConfirmText.trim() !== companyName.trim()}
+              className="px-5 py-3 bg-red-600 hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-extrabold text-xs rounded-xl transition inline-flex items-center justify-center gap-2 whitespace-nowrap"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>{deleting ? 'Deleting...' : 'Delete Everything'}</span>
+            </button>
           </div>
         </div>
       </main>

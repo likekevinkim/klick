@@ -314,7 +314,7 @@ export default function HomePage() {
             href="/catalog"
             className="text-xs font-extrabold text-blue-600 hover:underline flex items-center gap-1 self-start md:self-auto"
           >
-            <span>View All Products ({products.length})</span>
+            <span>View All Products</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
