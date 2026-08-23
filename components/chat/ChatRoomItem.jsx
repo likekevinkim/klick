@@ -40,13 +40,16 @@ export default function ChatRoomItem({
   onOpenPaymentModal,
   onOpenSampleModal,
   onSendMessage,
-  onRespondToQuote,
-  messagesEndRef
+  onRespondToQuote
 }) {
   const [inputText, setInputText] = useState('');
   const [attachedFile, setAttachedFile] = useState(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [respondedQuoteIds, setRespondedQuoteIds] = useState({});
+
+  const cardRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const wasOpenRef = useRef(false);
 
   // Buyer RFQ Modal State in Chat
   const [isBuyerRfqModalOpen, setIsBuyerRfqModalOpen] = useState(false);
@@ -62,12 +65,22 @@ export default function ChatRoomItem({
   const imageInputRef = useRef(null);
   const rfqFileInputRef = useRef(null);
 
-  // Auto scroll to bottom when messages update
+  // Auto scroll to bottom when messages update — scoped to the inner message
+  // box only, so it never drags the whole page (and the input bar) along with it.
   useEffect(() => {
-    if (isOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (isOpen && messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   }, [messages, isOpen, attachedFile]);
+
+  // When the accordion is first opened, bring the card's sticky header into view
+  // once so both the header/controls and the message box start on-screen together.
+  useEffect(() => {
+    if (isOpen && !wasOpenRef.current) {
+      cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    wasOpenRef.current = isOpen;
+  }, [isOpen]);
 
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
@@ -207,7 +220,8 @@ export default function ChatRoomItem({
   );
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm transition hover:border-blue-400">
+    <div ref={cardRef} className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm transition hover:border-blue-400">
+      <div className={isOpen ? 'sticky top-16 sm:top-[72px] z-30 bg-white rounded-t-3xl' : ''}>
       {/* 1. Accordion Header */}
       <div
         onClick={onToggle}
@@ -242,11 +256,9 @@ export default function ChatRoomItem({
         </div>
       </div>
 
-      {/* 2. Accordion Expanded Content */}
+      {/* Top Control Bar — sticks together with the header above so who-you're-chatting-with and the quote/doc buttons stay visible while messages scroll */}
       {isOpen && (
-        <div className="border-t border-slate-100 bg-slate-50/50 p-5 space-y-4 animate-fadeIn">
-          
-          {/* Top Control Bar */}
+        <div className="border-t border-slate-100 bg-slate-50/50 px-5 pt-3 pb-2">
           <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200/60">
             <div className="flex items-center gap-2">
               {userRole === 'seller' ? (
@@ -297,9 +309,15 @@ export default function ChatRoomItem({
               AI Real-time Multilingual Dual Translation Active
             </span>
           </div>
+        </div>
+      )}
+      </div>
 
+      {/* 2. Accordion Expanded Content — scrolls independently below the sticky header/controls */}
+      {isOpen && (
+        <div className="border-t border-slate-100 bg-slate-50/50 p-5 space-y-4 animate-fadeIn">
           {/* Message Thread */}
-          <div className="max-h-[380px] overflow-y-auto space-y-3.5 pr-2 notranslate">
+          <div ref={messagesContainerRef} className="max-h-[380px] overflow-y-auto space-y-3.5 pr-2 notranslate">
             {messages.length === 0 ? (
               <div className="text-center py-8 text-xs text-slate-400 font-medium">
                 No messages yet. Send a message to start trading!
@@ -510,7 +528,6 @@ export default function ChatRoomItem({
                 );
               })
             )}
-            <div ref={messagesEndRef} />
           </div>
 
           {/* Bottom Input Bar */}

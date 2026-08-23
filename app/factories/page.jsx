@@ -17,6 +17,7 @@ import {
   Factory 
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { FILTER_CATEGORIES } from '@/lib/categories';
 
 export default function FactoriesPage() {
   return (
@@ -43,15 +44,7 @@ function FactoriesDirectoryContent() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const categories = [
-    'All',
-    'Industrial Machinery',
-    'K-Beauty & Cosmetics',
-    'K-Food & Beverages',
-    'Electronics & Smart IT',
-    'General Manufacturing',
-    'etc'
-  ];
+  const categories = FILTER_CATEGORIES;
 
   useEffect(() => {
     setMounted(true);

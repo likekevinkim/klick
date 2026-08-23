@@ -1,11 +1,27 @@
 // app/api/auth/send-otp/route.js
 import { NextResponse } from 'next/server';
-import { signOtpSession } from '@/lib/otpSession';
+import { signOtpSession, verifyOtpSession } from '@/lib/otpSession';
 
 export const runtime = 'nodejs';
 
+const RESEND_COOLDOWN_MS = 60 * 1000;
+
 export async function POST(request) {
   try {
+    // 0. 재전송 쿨다운: 이전 OTP 세션이 60초 이내에 발급됐으면 재발송 거부
+    const existingSession = verifyOtpSession(request.cookies.get('klick_otp_session')?.value);
+    if (existingSession) {
+      const issuedAt = existingSession.expiresAt - 10 * 60 * 1000;
+      const msSinceIssued = Date.now() - issuedAt;
+      if (msSinceIssued < RESEND_COOLDOWN_MS) {
+        const waitSec = Math.ceil((RESEND_COOLDOWN_MS - msSinceIssued) / 1000);
+        return NextResponse.json(
+          { error: `Please wait ${waitSec} seconds before requesting another code.` },
+          { status: 429 }
+        );
+      }
+    }
+
     // 1. Vercel 환경 변수 추출 및 공백/따옴표 안전 정제
     const rawApiKey = process.env.RESEND_API_KEY || '';
     const apiKey = rawApiKey.replace(/["'\r\n]/g, '').trim();

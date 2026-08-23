@@ -24,6 +24,7 @@ import {
   Eye
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { FILTER_CATEGORIES } from '@/lib/categories';
 
 export default function PublicRfqBoardPage() {
   return (
@@ -65,14 +66,7 @@ function PublicRfqBoardContent() {
   const [newDescription, setNewDescription] = useState('');
   const [posting, setPosting] = useState(false);
 
-  const categories = [
-    'All',
-    'Industrial Machinery',
-    'K-Beauty & Cosmetics',
-    'K-Food & Beverages',
-    'Electronics & Smart IT',
-    'General Manufacturing'
-  ];
+  const categories = FILTER_CATEGORIES;
 
   useEffect(() => {
     setMounted(true);

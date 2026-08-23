@@ -19,6 +19,7 @@ export default function AdminLayout({ children }) {
   const [mounted, setMounted] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [session, setSession] = useState(null);
 
   useEffect(() => {
     setMounted(true);
@@ -29,6 +30,7 @@ export default function AdminLayout({ children }) {
     try {
       setCheckingAuth(true);
       const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
       const email = session?.user?.email || '';
       setIsAdmin(ADMIN_EMAILS.includes(email));
     } finally {
@@ -45,8 +47,15 @@ export default function AdminLayout({ children }) {
         <div className="max-w-md mx-auto mt-24 text-center bg-white rounded-3xl border border-slate-200 shadow-sm p-8 space-y-3">
           <Lock className="w-10 h-10 text-slate-300 mx-auto" />
           <h1 className="text-sm font-extrabold text-slate-800">Admin Access Only</h1>
-          <p className="text-xs text-slate-500">This page is restricted to the KLICK site administrator.</p>
-          <Link href="/" className="inline-block text-xs font-bold text-blue-600 hover:underline pt-2">Back to Home</Link>
+          <p className="text-xs text-slate-500">
+            {session ? 'This account is not the site administrator.' : 'Please log in with the administrator account first.'}
+          </p>
+          <div className="flex items-center justify-center gap-4 pt-2">
+            {!session && (
+              <Link href="/login" className="text-xs font-bold text-blue-600 hover:underline">Log In</Link>
+            )}
+            <Link href="/" className="text-xs font-bold text-slate-500 hover:underline">Back to Home</Link>
+          </div>
         </div>
       </div>
     );

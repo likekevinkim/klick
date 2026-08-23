@@ -31,6 +31,8 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
   const [uploadingSeal, setUploadingSeal] = useState(false);
 
   const [items, setItems] = useState([{ id: 1, productName: '', hsCode: '', quantity: '', unitPrice: '' }]);
+  // 채팅에서 합의된 원 견적 단가 — 문서 작성 중 이보다 다른 금액을 입력하면 경고를 띄우기 위함
+  const [quotedUnitPrice, setQuotedUnitPrice] = useState('');
 
   const [sellerCompany, setSellerCompany] = useState('');
   const [sellerAddress, setSellerAddress] = useState('');
@@ -97,13 +99,15 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
       return match ? match[0] : '';
     };
 
+    const seededUnitPrice = parseLeadingNumber(msg?.quote_price);
     setItems([{
       id: Date.now(),
       productName: msg?.product_name || room?.product_title || room?.title || '',
       hsCode: '',
       quantity: parseLeadingNumber(msg?.quote_moq),
-      unitPrice: parseLeadingNumber(msg?.quote_price),
+      unitPrice: seededUnitPrice,
     }]);
+    setQuotedUnitPrice(seededUnitPrice);
 
     setSellerCompany(room?.seller_profile_name || room?.seller_name || room?.company_name || 'Korean Manufacturer Co., Ltd.');
     setSellerAddress('');
@@ -189,6 +193,9 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
   };
 
   const grandTotal = items.reduce((sum, item) => sum + getItemTotal(item), 0);
+
+  const priceMismatch = !isViewingSent && quotedUnitPrice && items[0]?.unitPrice
+    && parseFloat(items[0].unitPrice) !== parseFloat(quotedUnitPrice);
 
   const docTitles = {
     PI: 'PROFORMA INVOICE',
@@ -349,6 +356,12 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
 
           {/* Item Specs Table */}
           <div className="space-y-3">
+            {priceMismatch && (
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] font-bold text-amber-800 print:hidden">
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>Unit price (${items[0].unitPrice}) is different from the quote agreed in chat (${quotedUnitPrice}). Please double-check before sending.</span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Item Specifications</h3>
               {!isViewingSent && (

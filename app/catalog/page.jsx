@@ -14,6 +14,7 @@ import {
   Globe
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { FILTER_CATEGORIES } from '@/lib/categories';
 
 // Google Translate turns "All"/"etc" into stiff literal Korean ("모두"/"등") — show the
 // more natural phrasing directly instead when Korean is selected.
@@ -28,15 +29,7 @@ export default function ProductCatalogPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const categories = [
-    'All',
-    'Industrial Machinery',
-    'K-Beauty & Cosmetics',
-    'K-Food & Beverages',
-    'Electronics & Smart IT',
-    'General Manufacturing',
-    'etc'
-  ];
+  const categories = FILTER_CATEGORIES;
 
   useEffect(() => {
     setMounted(true);

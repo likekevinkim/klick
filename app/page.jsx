@@ -21,6 +21,7 @@ import {
   Edit3
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { FILTER_CATEGORIES } from '@/lib/categories';
 
 export default function HomePage() {
   const router = useRouter();
@@ -36,14 +37,7 @@ export default function HomePage() {
   const [userRole, setUserRole] = useState('seller');
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
 
-  const categories = [
-    'All',
-    'Industrial Machinery',
-    'K-Beauty & Cosmetics',
-    'K-Food & Beverages',
-    'Electronics & Smart IT',
-    'General Manufacturing'
-  ];
+  const categories = FILTER_CATEGORIES;
 
   useEffect(() => {
     setMounted(true);

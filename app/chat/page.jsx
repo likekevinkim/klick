@@ -109,8 +109,6 @@ function ChatContent() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentQuoteData, setPaymentQuoteData] = useState(null);
 
-  const messagesEndRef = useRef(null);
-
   const getOpponentLang = (room, role) => {
     if (role === 'seller') return room?.buyer_lang || 'en';
     return room?.seller_lang || 'ko';
@@ -540,7 +538,7 @@ function ChatContent() {
             company_name: companySeller,
             title: companyTitle,
             seller_lang: 'ko',
-            buyer_lang: 'en',
+            buyer_lang: getSiteTranslateLang('en'),
             last_message: `Inquiry initialized.`,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -715,6 +713,10 @@ function ChatContent() {
   // 품명(Product Name) 포함 견적서 전송
   const handleSendQuote = async () => {
     if (!activeRoomId) return;
+    if (!quotePrice || Number.isNaN(Number(quotePrice)) || Number(quotePrice) <= 0) {
+      alert('Please enter a valid unit price.');
+      return;
+    }
 
     try {
       const activeRoomObj = roomsRef.current.find(r => r.id === activeRoomId);
@@ -959,7 +961,6 @@ function ChatContent() {
                 onOpenSampleModal={handleOpenSampleModal}
                 onSendMessage={handleSendMessage}
                 onRespondToQuote={handleRespondToQuote}
-                messagesEndRef={messagesEndRef}
               />
             ))}
           </div>
@@ -995,10 +996,13 @@ function ChatContent() {
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Unit Price ($ USD)</label>
                   <input
-                    type="text"
+                    type="number"
+                    min="0"
+                    step="0.01"
                     value={quotePrice}
                     onChange={(e) => setQuotePrice(e.target.value)}
                     placeholder=""
+                    required
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold"
                   />
                 </div>

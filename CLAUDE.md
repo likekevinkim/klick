@@ -41,6 +41,8 @@ npm run start    # run the production build
 npm run lint     # eslint
 ```
 
+**참고:** 이 환경에서는 `npm run lint`가 현재 실패합니다 (`eslint-config-next` 내부에서 `Cannot find module 'typescript'`) — 코드 문제 아님. 문법/타입 오류 확인은 `npm run build`로 대신하세요.
+
 There is no test suite in this repo (no test runner configured, no `*.test.*` files).
 
 ## What this app is
@@ -58,6 +60,7 @@ Two Supabase clients: `lib/supabase.js` (anon key, used by all client components
 Core tables and what actually reads/writes them:
 
 - `companies` — seller company profile (one per seller `user_id`). This is the **single source of truth for seller profile data** — `app/login/page.jsx`, `app/products/page.jsx`, `app/seller/profile/page.jsx`, and `ProductFormModal.jsx` all read/write only this table. (A parallel `seller_profiles` table was written to by the same pages until 2026-08-20 — that duplication was removed; don't reintroduce a second seller-profile write path.)
+- Product categories live in `lib/categories.js` (`PRODUCT_CATEGORIES` / `FILTER_CATEGORIES`) — the single source of truth, matching the `<select>` options in `ProductFormModal.jsx`. `app/page.jsx`, `app/catalog/page.jsx`, `app/rfq/page.jsx`, and `app/factories/page.jsx` all import from there; don't reintroduce a per-page hardcoded copy.
 - `products` — seller's export product listings (rich fields: bilingual titles, tiered pricing, attributes jsonb, gallery images, AI-generated summary, `view_count` incremented server-side via `/api/products/view` so non-owner RLS restrictions don't block it).
 - `buyers` / `buyer_profiles` — **both actively read/written in parallel**, unresolved duplication (unlike `companies`/`seller_profiles`, which was cleaned up). `buyers.buyer_name` (not `contact_person` — that column doesn't exist on `buyer_profiles`) is what chat/RFQ/review screens display for a buyer; always re-resolve it live rather than trusting a denormalized snapshot, and never fall back to an email-derived name.
 - `public_rfqs` / `rfq_proposals` — buyer posts a public sourcing request, sellers respond with proposals. Independent of the chat system. `quote_count` increments go through `/api/rfq/increment-quote-count` (service-role) since the incrementer is the responding seller, not the RFQ's owning buyer.
@@ -66,6 +69,10 @@ Core tables and what actually reads/writes them:
 - `product_reviews` — buyer reviews with `photos` jsonb (buyer-uploaded photos of the real product received); buyer can edit/delete their own.
 - `companies.is_verified` / `business_reg_cert_ko` / `business_reg_cert_en` — seller uploads both cert files to become *eligible*; an admin must approve at `/admin/verify-sellers` (gated by a hardcoded email allowlist, currently just `sportskevinkim@gmail.com` — client-side check + a matching JWT-email carve-out in the `companies` UPDATE RLS policy) before the "Verified Korean Company" badge shows anywhere.
 - `inquiries` and `buyer_sourcing_products` **do not exist in the schema** (confirmed via PostgREST — not merely unused). Any feature request touching "inquiries" or buyer sourcing needs a new table, not existing functionality to find.
+
+## Next.js 16 gotcha
+
+동적 라우트의 `params`(페이지 컴포넌트든 Route Handler든)는 여기서는 Promise입니다 — `.id` 등을 읽기 전에 항상 `await params` 해야 합니다 (`app/api/products/[id]/route.js` 참고). 빠뜨려도 에러 없이 조용히 `undefined`가 됩니다.
 
 ## Auth & roles
 
@@ -79,12 +86,19 @@ This is the most complex and most actively-developed part of the app — buyer a
 - **Quote**: `is_quote = true`, plus `quote_price`/`quote_moq`. Rendered as a card in `ChatRoomItem.jsx` with buyer-only Accept/Decline actions.
 - **Quote acceptance**: not a DB column — detected by scanning messages for a buyer message whose text starts with the literal string `"We accept this quotation"` (see `hasAcceptedOrder` in `ChatRoomItem.jsx` and `handleRespondToQuote` in `app/chat/page.jsx`). This gates whether the seller's shipping-update button appears at all.
 - **Shipping/tracking update**: encoded in the `file` jsonb column as `{type: 'tracking', courier, trackingNo}` (the same column normal file attachments use with `{name, size, type, url}` — always check `file.type` before assuming shape). Rendered as a clickable card that opens `SampleTrackingModal` in read-only mode.
+- **Schema mismatch (found 2026-08-21):** a live `chat_rooms` row has no `title` or `company_name` column, yet the RFQ-initiated and company-page-initiated room-creation payloads in `app/chat/page.jsx` include both keys — confirm those specific `.insert()` calls aren't silently failing (`PGRST204`) before assuming new-room creation works end-to-end.
 
 If you add another message "type," follow this same pattern (a marker in `file` or a recognizable `message` prefix) rather than asking for a new column, unless the user wants to invest in a real migration.
 
 **Translation**: `translateTextWithApi()` in `app/chat/page.jsx` currently calls the unofficial `translate.googleapis.com/translate_a/single` endpoint (no API key, but undocumented and can break/rate-limit without notice). A tested alternative, `app/api/ai/translate/route.js` (Claude Haiku 4.5 via `@ai-sdk/anthropic`), exists but is **not wired in** — the user reverted to Google Translate on 2026-08-20 because `ANTHROPIC_API_KEY` in `.env.local` is still an empty placeholder. Don't delete that route as dead code; it's parked, not abandoned.
 
-Language preference is tracked per-room (`chat_rooms.seller_lang` / `buyer_lang`), and also mirrors the site-wide Google Translate widget cookie (`components/GoogleTranslateScript.jsx`, `components/Header.jsx`) via `getSiteTranslateLang()` — two separate translation mechanisms coexist (the page-wide widget vs. per-message API translation), which is worth knowing before touching either.
+Language preference is tracked per-room (`chat_rooms.seller_lang` / `buyer_lang`), and also mirrors the site-wide Google Translate widget cookie (injected by `components/Header.jsx` — a separate `GoogleTranslateScript.jsx` component existed but was unused dead code and has been removed) via `getSiteTranslateLang()` — two separate translation mechanisms coexist (the page-wide widget vs. per-message API translation), which is worth knowing before touching either.
+
+**Mistranslated UI labels**: the Google Translate widget sometimes literal-translates short English UI words into stiff/wrong Korean (`Home`→`집`, `All`→`모두`, `etc`→`등`). Fix pattern (see `components/Header.jsx`, `app/page.jsx`, `app/catalog/page.jsx`): read `localStorage.getItem('klick_lang_code')` client-side and conditionally render the correct Korean string wrapped in `notranslate` / `translate="no"`, leaving every other label to the widget.
+
+## SEO
+
+`app/products/[id]`와 `app/companies/[id]`는 서버 `page.jsx`(가벼운 Supabase 조회로 `generateMetadata` 처리)가 `'use client'`인 `ProductDetailClient.jsx` / `CompanyDetailClient.jsx`(기존 로직 그대로)를 감싸는 구조로 분리되어 있습니다. SEO가 필요한 다른 `'use client'` 상세페이지도 이 패턴을 따르세요. `app/sitemap.js` / `app/robots.js`도 새로 생겼고, `.env.local`에 `NEXT_PUBLIC_SITE_URL`이 없으면 `https://true-k.net`으로 대체됩니다(현재 미설정 상태).
 
 ## AI integration
 
@@ -95,3 +109,5 @@ Language preference is tracked per-room (`chat_rooms.seller_lang` / `buyer_lang`
 ## General repo hygiene notes
 
 This codebase has accumulated duplicate/orphaned files from iterative rebuilds (e.g. an old `app/products/new/page.jsx` prototype and a stray `app/api/products/new/page.jsx`, plus a `ChatMessageBubble.jsx` that was never imported anywhere — all since removed). **Before editing a component, grep for where it's actually imported/rendered** — a file existing under a plausible path doesn't mean it's the live one.
+
+**No local seed/test data**: the dev Supabase project has ~1 seller, 0 buyers, and little/no chat history. Seeding via a service-role script that creates/modifies auth users (buyers, password resets, magic links) gets blocked by the auto-mode permission classifier even for local test data — ask the user to run the script themselves with a `!`-prefixed command instead of retrying.
