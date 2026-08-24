@@ -3,6 +3,12 @@ import Header from '@/components/Header';
 import Klick from '@/components/Klick';
 import { Building2, Target, Globe2, MessageSquare, Mail, Phone, MapPin } from 'lucide-react';
 
+export const metadata = {
+  title: 'About Us',
+  description: 'Learn about KLICK — the B2B export platform connecting verified South Korean manufacturers with global buyers.',
+  alternates: { canonical: '/about' }
+};
+
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-[#F9FAFB] text-slate-900 pb-24 antialiased">

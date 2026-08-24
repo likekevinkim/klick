@@ -1,5 +1,5 @@
 // app/robots.js
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://true-k.net';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://klick.biz';
 
 export default function robots() {
   return {

@@ -1,12 +1,10 @@
 // app/sitemap.js
 import { supabase } from '@/lib/supabase';
 
-// ponytail: set NEXT_PUBLIC_SITE_URL in .env.local once the production domain
-// is finalized — falls back to the domain KLICK already sends email from.
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://true-k.net';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://klick.biz';
 
 export default async function sitemap() {
-  const staticRoutes = ['', '/catalog', '/factories', '/rfq'].map((path) => ({
+  const staticRoutes = ['', '/catalog', '/factories', '/rfq', '/about'].map((path) => ({
     url: `${SITE_URL}${path}`,
     lastModified: new Date()
   }));
