@@ -25,8 +25,11 @@ export const metadata = {
     title: 'KLICK | Global B2B Export Platform for Korean Manufacturers',
     description: 'Connect directly with verified South Korean manufacturers.'
   },
-  // 네이버 서치어드바이저 사이트 소유 확인
-  other: { 'naver-site-verification': '04b7ad9e958379cf678581c0eb7eb96a943ca5c5' }
+  // 네이버 서치어드바이저 / 구글 서치콘솔 사이트 소유 확인
+  other: {
+    'naver-site-verification': '04b7ad9e958379cf678581c0eb7eb96a943ca5c5',
+    'google-site-verification': 'HvfT6_HpTNSolWF7cAPtCEWMuRxHhmARjz0AQWy7h1k'
+  }
 };
 
 // Organization 구조화 데이터 — 검색엔진이 KLICK을 하나의 브랜드/기업 개체로 인식하게 도와줌
