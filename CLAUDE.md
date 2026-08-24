@@ -103,7 +103,11 @@ Language preference is tracked per-room (`chat_rooms.seller_lang` / `buyer_lang`
 
 ## SEO
 
-`app/products/[id]`와 `app/companies/[id]`는 서버 `page.jsx`(가벼운 Supabase 조회로 `generateMetadata` 처리)가 `'use client'`인 `ProductDetailClient.jsx` / `CompanyDetailClient.jsx`(기존 로직 그대로)를 감싸는 구조로 분리되어 있습니다. SEO가 필요한 다른 `'use client'` 상세페이지도 이 패턴을 따르세요. `app/sitemap.js` / `app/robots.js`도 새로 생겼고, `.env.local`에 `NEXT_PUBLIC_SITE_URL`이 없으면 `https://true-k.net`으로 대체됩니다(현재 미설정 상태).
+`app/products/[id]`와 `app/companies/[id]`는 서버 `page.jsx`(가벼운 Supabase 조회로 `generateMetadata` 처리)가 `'use client'`인 `ProductDetailClient.jsx` / `CompanyDetailClient.jsx`(기존 로직 그대로)를 감싸는 구조로 분리되어 있습니다. 같은 패턴이 2026-08-24에 홈/카탈로그/팩토리/RFQ 게시판에도 적용됐습니다 — 실제 UI/로직은 `app/HomeClient.jsx`, `app/catalog/CatalogClient.jsx`, `app/factories/FactoriesClient.jsx`, `app/rfq/RfqBoardClient.jsx`에 있고, 각 디렉토리의 `page.jsx`는 `export const metadata`만 갖는 얇은 서버 래퍼입니다 — **이 네 페이지를 고칠 땐 `page.jsx`가 아니라 `*Client.jsx`를 편집하세요.** SEO가 필요한 다른 `'use client'` 페이지도 이 패턴을 따르세요.
+
+실제 프로덕션 도메인은 **`klick.biz`**입니다 (`true-k.net`이 아님 — Vercel 프로젝트의 실제 domains 목록으로 2026-08-24에 확인). `NEXT_PUBLIC_SITE_URL=https://klick.biz`가 `.env.local`과 Vercel 프로덕션 환경변수 양쪽에 설정되어 있어야 `app/sitemap.js`/`app/robots.js`가 올바른 도메인으로 나갑니다.
+
+**Google Analytics(GA4, 측정 ID `G-ED6Q83590J`)는 `app/layout.jsx`에 `next/script`로 이미 추가되어 있습니다** — 모든 페이지에 한 번만 적용되면 되므로, 다시 추가해 달라는 요청이 와도 개별 페이지에 중복으로 넣지 마세요.
 
 ## AI integration
 
