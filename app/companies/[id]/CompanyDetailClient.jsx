@@ -28,7 +28,8 @@ import {
   Play,
   Plus,
   Globe2,
-  Briefcase
+  Briefcase,
+  Heart
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import DOMPurify from 'dompurify';
@@ -60,6 +61,8 @@ export default function CompanyDetailClient() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
 
   const [activeTab, setActiveTab] = useState('about');
 
@@ -216,6 +219,18 @@ export default function CompanyDetailClient() {
         setCompany(null);
       }
 
+      // 바이어로 로그인한 경우, 이 회사를 이미 찜했는지 조회
+      if (currentUser && fetchedCompany?.id && fetchedCompany.user_id !== currentUser.id) {
+        const { data: favRow } = await supabase
+          .from('buyer_favorites')
+          .select('id')
+          .eq('buyer_id', currentUser.id.toString())
+          .eq('company_id', fetchedCompany.id)
+          .maybeSingle();
+
+        setIsFavorited(!!favRow);
+      }
+
       // isOwner는 위 setIsOwner()로 예약된 상태 업데이트라 이 시점엔 아직 반영 전이므로
       // 방금 계산한 ownerMatch를 직접 써야 함(state를 읽으면 항상 이전 렌더 값)
       if (autoEditParam === 'true' && ownerMatch) {
@@ -336,6 +351,43 @@ export default function CompanyDetailClient() {
   };
 
   // ★ [핵심 교정] 셀러의 진짜 user_id를 sellerId 파라미터로 명확히 넘기는 채팅 이동 함수
+  // 바이어 찜하기 토글 (buyer_favorites 테이블에 company_id로 insert/delete)
+  const handleToggleFavorite = async () => {
+    if (!user) {
+      alert('Please sign in as a buyer to save companies.');
+      return;
+    }
+    if (favoriteBusy || !company?.id) return;
+
+    try {
+      setFavoriteBusy(true);
+      const buyerId = user.id.toString();
+
+      if (isFavorited) {
+        const { error } = await supabase
+          .from('buyer_favorites')
+          .delete()
+          .eq('buyer_id', buyerId)
+          .eq('company_id', company.id);
+
+        if (error) throw error;
+        setIsFavorited(false);
+      } else {
+        const { error } = await supabase
+          .from('buyer_favorites')
+          .insert([{ buyer_id: buyerId, company_id: company.id }]);
+
+        if (error) throw error;
+        setIsFavorited(true);
+      }
+    } catch (err) {
+      console.error('Toggle company favorite error:', err);
+      alert('Failed to update saved companies: ' + (err.message || 'Database error'));
+    } finally {
+      setFavoriteBusy(false);
+    }
+  };
+
   const handleStartCompanyChat = () => {
     const compName = encodeURIComponent(company?.company_name_en || company?.company_name || 'Korean Manufacturer');
     const title = encodeURIComponent('Company Partnership & Wholesale Inquiry');
@@ -503,14 +555,29 @@ export default function CompanyDetailClient() {
 
           <div className="flex items-center gap-3">
             {!isOwner && (
-              <button
-                type="button"
-                onClick={handleStartCompanyChat}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>Send Direct RFQ</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={handleToggleFavorite}
+                  disabled={favoriteBusy}
+                  title={isFavorited ? 'Remove from Saved Companies' : 'Save this company'}
+                  className={`p-2.5 rounded-xl border transition cursor-pointer ${
+                    isFavorited
+                      ? 'bg-rose-50 border-rose-200 text-rose-500'
+                      : 'bg-white border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-200'
+                  }`}
+                >
+                  <Heart className={`w-4 h-4 ${isFavorited ? 'fill-rose-500' : ''}`} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStartCompanyChat}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Send Direct RFQ</span>
+                </button>
+              </>
             )}
           </div>
         </div>

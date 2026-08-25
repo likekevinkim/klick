@@ -27,8 +27,9 @@ import {
   Plus, 
   Briefcase, 
   Layers, 
-  Image as ImageIcon, 
-  Paperclip 
+  Image as ImageIcon,
+  Paperclip,
+  Trash2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -72,15 +73,19 @@ function BuyerProfileContent() {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [deletingRfqId, setDeletingRfqId] = useState(null);
 
-  // New RFQ Modal State
+  // New/Edit RFQ Modal State
   const [isRfqModalOpen, setIsRfqModalOpen] = useState(false);
   const [isSubmittingRfq, setIsSubmittingRfq] = useState(false);
+  const [editingRfqId, setEditingRfqId] = useState(null);
   const [rfqProductName, setRfqProductName] = useState('');
   const [rfqTitle, setRfqTitle] = useState('');
   const [rfqCategory, setRfqCategory] = useState('Industrial Machinery');
   const [rfqTargetPrice, setRfqTargetPrice] = useState('');
   const [rfqOrderQuantity, setRfqOrderQuantity] = useState('');
+  const [rfqDestinationCountry, setRfqDestinationCountry] = useState('');
+  const [rfqIncoterm, setRfqIncoterm] = useState('FOB');
   const [rfqDetails, setRfqDetails] = useState('');
 
   // Drawing File Attachment State
@@ -253,8 +258,67 @@ function BuyerProfileContent() {
     }
   };
 
-  // Create New Public RFQ
-  const handleCreateRfq = async (e) => {
+  // Delete a Public RFQ the buyer posted
+  const handleDeleteRfq = async (rfqId) => {
+    if (!window.confirm('Delete this RFQ? Any factory quotes tied to it will be removed too. This cannot be undone.')) return;
+
+    try {
+      setDeletingRfqId(rfqId);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+
+      const res = await fetch('/api/rfq/delete-rfq', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ rfqId })
+      });
+      if (!res.ok) throw new Error('Failed to delete RFQ');
+
+      setMyRfqs((prev) => prev.filter((r) => r.id !== rfqId));
+    } catch (err) {
+      console.error('Delete RFQ error:', err);
+      alert('Failed to delete this RFQ. Please try again.');
+    } finally {
+      setDeletingRfqId(null);
+    }
+  };
+
+  const resetRfqForm = () => {
+    setEditingRfqId(null);
+    setRfqProductName('');
+    setRfqTitle('');
+    setRfqCategory('Industrial Machinery');
+    setRfqTargetPrice('');
+    setRfqOrderQuantity('');
+    setRfqDestinationCountry('');
+    setRfqIncoterm('FOB');
+    setRfqDetails('');
+    setRfqAttachment(null);
+  };
+
+  const openRfqModalForCreate = () => {
+    resetRfqForm();
+    setIsRfqModalOpen(true);
+  };
+
+  // 기존 RFQ 값을 폼에 채워서 수정 모드로 모달을 연다
+  const openRfqModalForEdit = (rfq) => {
+    setEditingRfqId(rfq.id);
+    setRfqProductName(rfq.product_name || '');
+    setRfqTitle(rfq.title || '');
+    setRfqCategory(rfq.category || 'Industrial Machinery');
+    setRfqTargetPrice(rfq.target_price || '');
+    setRfqOrderQuantity(rfq.order_quantity || rfq.moq || '');
+    setRfqDestinationCountry(rfq.destination_country || '');
+    setRfqIncoterm(rfq.incoterms || 'FOB');
+    setRfqDetails(rfq.details || '');
+    setRfqAttachment(rfq.drawing_url ? { url: rfq.drawing_url, name: rfq.drawing_name || 'Attached File', type: 'file' } : null);
+    setIsRfqModalOpen(true);
+  };
+
+  // Create or Update a Public RFQ
+  const handleSubmitRfq = async (e) => {
     e.preventDefault();
     if (!user) {
       alert('Login is required to post an RFQ.');
@@ -267,8 +331,7 @@ function BuyerProfileContent() {
       const userIdStr = user.id.toString();
       const validCompanyName = companyName || 'Global Sourcing LLC';
 
-      const newRfqPayload = {
-        user_id: userIdStr,
+      const rfqPayload = {
         buyer_name: contactPerson || 'Global Buyer',
         company_name: validCompanyName,
         buyer_company_name: validCompanyName,
@@ -278,36 +341,47 @@ function BuyerProfileContent() {
         target_price: rfqTargetPrice,
         moq: rfqOrderQuantity,
         order_quantity: rfqOrderQuantity,
+        destination_country: rfqDestinationCountry || null,
+        incoterms: rfqIncoterm || null,
         details: rfqDetails,
         drawing_url: rfqAttachment?.url || null,
-        drawing_name: rfqAttachment?.name || null,
-        quote_count: 0,
-        created_at: new Date().toISOString()
+        drawing_name: rfqAttachment?.name || null
       };
 
-      const { data, error } = await supabase
-        .from('public_rfqs')
-        .insert([newRfqPayload])
-        .select()
-        .single();
+      if (editingRfqId) {
+        const { data, error } = await supabase
+          .from('public_rfqs')
+          .update(rfqPayload)
+          .eq('id', editingRfqId)
+          .select()
+          .single();
 
-      if (error) throw error;
+        if (error) throw error;
 
-      if (data) {
-        setMyRfqs((prev) => [data, ...prev]);
+        if (data) {
+          setMyRfqs((prev) => prev.map((r) => (r.id === editingRfqId ? data : r)));
+        }
+        alert('RFQ updated successfully.');
+      } else {
+        const { data, error } = await supabase
+          .from('public_rfqs')
+          .insert([{ ...rfqPayload, user_id: userIdStr, quote_count: 0, created_at: new Date().toISOString() }])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setMyRfqs((prev) => [data, ...prev]);
+        }
+        alert('New public RFQ published successfully to Korean Suppliers!');
       }
 
       setIsRfqModalOpen(false);
-      setRfqProductName('');
-      setRfqTitle('');
-      setRfqTargetPrice('');
-      setRfqOrderQuantity('');
-      setRfqDetails('');
-      setRfqAttachment(null);
-      alert('New public RFQ published successfully to Korean Suppliers!');
+      resetRfqForm();
     } catch (err) {
-      console.error('Create RFQ error:', err);
-      alert('Failed to publish RFQ: ' + (err.message || 'Database error'));
+      console.error('Save RFQ error:', err);
+      alert('Failed to save RFQ: ' + (err.message || 'Database error'));
     } finally {
       setIsSubmittingRfq(false);
     }
@@ -474,7 +548,7 @@ function BuyerProfileContent() {
 
               <button
                 type="button"
-                onClick={() => setIsRfqModalOpen(true)}
+                onClick={openRfqModalForCreate}
                 className="w-9 h-9 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-full flex items-center justify-center transition cursor-pointer shadow-sm"
                 title="Post New RFQ Request"
               >
@@ -494,7 +568,7 @@ function BuyerProfileContent() {
                   <p className="text-xs text-slate-500 font-semibold">No active RFQs posted yet.</p>
                   <button
                     type="button"
-                    onClick={() => setIsRfqModalOpen(true)}
+                    onClick={openRfqModalForCreate}
                     className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white font-extrabold text-xs rounded-xl shadow hover:bg-emerald-500 transition cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
@@ -511,9 +585,32 @@ function BuyerProfileContent() {
                       <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
                         {rfq.category || 'Manufacturing'}
                       </span>
-                      <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> {new Date(rfq.created_at || Date.now()).toLocaleDateString()}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> {new Date(rfq.created_at || Date.now()).toLocaleDateString()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => openRfqModalForEdit(rfq)}
+                          title="Edit this RFQ"
+                          className="p-1.5 bg-white hover:bg-blue-50 hover:text-blue-600 text-slate-400 rounded-lg border border-slate-200 transition cursor-pointer"
+                        >
+                          <Settings className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteRfq(rfq.id)}
+                          disabled={deletingRfqId === rfq.id}
+                          title="Delete this RFQ"
+                          className="p-1.5 bg-white hover:bg-red-50 hover:text-red-600 text-slate-400 rounded-lg border border-slate-200 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {deletingRfqId === rfq.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
                     </div>
 
                     <div>
@@ -543,6 +640,18 @@ function BuyerProfileContent() {
                       Target Price: <span className="font-bold text-emerald-600">{rfq.target_price || 'Negotiable'}</span> | Order Qty: <span className="font-bold text-slate-800">{rfq.order_quantity || rfq.moq || '1 Unit'}</span>
                     </p>
 
+                    {(rfq.destination_country || rfq.incoterms) && (
+                      <p className="text-[11px] text-slate-500">
+                        {rfq.destination_country && (
+                          <>Ship to: <span className="font-bold text-slate-800">{rfq.destination_country}</span></>
+                        )}
+                        {rfq.destination_country && rfq.incoterms && ' | '}
+                        {rfq.incoterms && (
+                          <>Incoterms: <span className="font-bold text-slate-800">{rfq.incoterms}</span></>
+                        )}
+                      </p>
+                    )}
+
                     {rfq.details && (
                       <p className="text-[10px] text-slate-600 line-clamp-2 bg-white p-2 rounded-lg border border-slate-100 font-medium">
                         {rfq.details}
@@ -569,7 +678,7 @@ function BuyerProfileContent() {
 
             <button
               type="button"
-              onClick={() => setIsRfqModalOpen(true)}
+              onClick={openRfqModalForCreate}
               className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-2xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
@@ -725,25 +834,25 @@ function BuyerProfileContent() {
         </div>
       )}
 
-      {/* Modal 2: Post New Public RFQ Modal */}
+      {/* Modal 2: Post/Edit Public RFQ Modal */}
       {isRfqModalOpen && (
         <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 animate-fadeIn">
+          <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 animate-fadeIn max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-600" />
-                Post New Public RFQ Request
+                {editingRfqId ? 'Edit Public RFQ Request' : 'Post New Public RFQ Request'}
               </h3>
               <button
                 type="button"
-                onClick={() => setIsRfqModalOpen(false)}
+                onClick={() => { setIsRfqModalOpen(false); resetRfqForm(); }}
                 className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateRfq} className="space-y-4 text-xs">
+            <form onSubmit={handleSubmitRfq} className="space-y-4 text-xs">
               <div>
                 <label className="block text-slate-700 font-extrabold mb-1">Product Name</label>
                 <input
@@ -807,6 +916,34 @@ function BuyerProfileContent() {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-extrabold mb-1">Destination Country</label>
+                  <input
+                    type="text"
+                    value={rfqDestinationCountry}
+                    onChange={(e) => setRfqDestinationCountry(e.target.value)}
+                    placeholder="e.g. Germany"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-extrabold mb-1">Incoterms</label>
+                  <select
+                    value={rfqIncoterm}
+                    onChange={(e) => setRfqIncoterm(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium bg-white"
+                  >
+                    <option value="FOB">FOB</option>
+                    <option value="CIF">CIF</option>
+                    <option value="EXW">EXW</option>
+                    <option value="FCA">FCA</option>
+                    <option value="DDP">DDP</option>
+                  </select>
+                </div>
+              </div>
+
               {/* 제품 사진 및 CAD/블루프린트 도면 첨부 파일 업로더 */}
               <div>
                 <label className="block text-slate-700 font-extrabold mb-1">Attach Product Drawing or Specification Photo</label>
@@ -854,10 +991,10 @@ function BuyerProfileContent() {
               <div>
                 <label className="block text-slate-700 font-extrabold mb-1">Detailed Technical Specifications</label>
                 <textarea
-                  rows={3}
+                  rows={4}
                   value={rfqDetails}
                   onChange={(e) => setRfqDetails(e.target.value)}
-                  placeholder=""
+                  placeholder="Materials, dimensions, certifications required, target lead time, sample request, payment terms, etc."
                   className="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
                 />
               </div>
@@ -865,7 +1002,7 @@ function BuyerProfileContent() {
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setIsRfqModalOpen(false)}
+                  onClick={() => { setIsRfqModalOpen(false); resetRfqForm(); }}
                   className="px-5 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition cursor-pointer"
                 >
                   Cancel
@@ -875,7 +1012,7 @@ function BuyerProfileContent() {
                   disabled={isSubmittingRfq || uploadingFile}
                   className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl shadow-md transition cursor-pointer disabled:opacity-50"
                 >
-                  {isSubmittingRfq ? 'Publishing...' : 'Publish Public RFQ'}
+                  {isSubmittingRfq ? 'Saving...' : editingRfqId ? 'Save Changes' : 'Publish Public RFQ'}
                 </button>
               </div>
             </form>
