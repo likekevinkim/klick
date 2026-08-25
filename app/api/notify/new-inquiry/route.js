@@ -45,7 +45,7 @@ export async function POST(request) {
         Authorization: `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        from: 'KLICK B2B <noreply@klick.biz>',
+        from: 'KLICK B2B <noreply@true-k.net>',
         to: [sellerEmail],
         subject: `[KLICK B2B] New Buyer Inquiry: ${safeProductTitle}`,
         html: `
