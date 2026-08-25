@@ -74,7 +74,7 @@ export default function AboutPage() {
             <p className="flex items-center gap-2"><Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" /> TRUE K CO., LTD. (operator of <Klick />)</p>
             <p className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" /> 16, Sure-ro 116beon-gil, Wabu-eup, Namyangju-si, Gyeonggi-do, South Korea</p>
             <p className="flex items-center gap-2"><Phone className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" /> +82-507-1345-2432</p>
-            <p className="flex items-center gap-2"><Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" /> truek.work@gmail.com</p>
+            <p className="flex items-center gap-2"><Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" /> info@klick.biz</p>
             <p className="pt-1 text-[11px] text-slate-400">Business Registration No. 829-32-00630 · E-Commerce Registration No. 2025-WABUJOAN-0341</p>
           </div>
         </div>

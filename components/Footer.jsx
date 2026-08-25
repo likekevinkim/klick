@@ -44,7 +44,7 @@ export default function Footer() {
             </p>
             <p className="flex items-center gap-2 hover:text-white transition">
               <Mail className="w-4 h-4 text-blue-500 flex-shrink-0" /> 
-              <span>truek.work@gmail.com</span>
+              <span>info@klick.biz</span>
             </p>
             <p className="flex items-start gap-2 hover:text-white transition">
               <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" /> 

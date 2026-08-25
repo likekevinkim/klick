@@ -70,7 +70,7 @@ export default function TermsPage() {
         </div>
 
         <p className="text-[11px] text-slate-400 text-center">
-          Questions about these Terms? Contact us at truek.work@gmail.com.
+          Questions about these Terms? Contact us at info@klick.biz.
         </p>
       </main>
     </div>
