@@ -453,7 +453,6 @@ function AuthPageContent() {
                     disabled={isEmailVerified}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@company.com"
                     className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm disabled:bg-slate-100 disabled:text-slate-500"
                   />
                 </div>
@@ -548,7 +547,6 @@ function AuthPageContent() {
                           required
                           value={companyNameEn}
                           onChange={(e) => setCompanyNameEn(e.target.value)}
-                          placeholder="e.g. Hankook Precision Co., Ltd."
                           className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
                         />
                       </div>
@@ -559,7 +557,6 @@ function AuthPageContent() {
                           type="text"
                           value={companyNameKo}
                           onChange={(e) => setCompanyNameKo(e.target.value)}
-                          placeholder="e.g. (주)한국정밀공업"
                           className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
                         />
                       </div>
@@ -587,7 +584,6 @@ function AuthPageContent() {
                           type="text"
                           value={sellerPhone}
                           onChange={(e) => setSellerPhone(e.target.value)}
-                          placeholder="+82-10-1234-5678"
                           className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
                         />
                       </div>
@@ -603,7 +599,6 @@ function AuthPageContent() {
                           required
                           value={buyerName}
                           onChange={(e) => setBuyerName(e.target.value)}
-                          placeholder="e.g. John Smith"
                           className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
                         />
                       </div>
@@ -615,7 +610,6 @@ function AuthPageContent() {
                           required
                           value={buyerCompanyNameEn}
                           onChange={(e) => setBuyerCompanyNameEn(e.target.value)}
-                          placeholder="e.g. Apex Global Trading LLC"
                           className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
                         />
                       </div>

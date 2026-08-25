@@ -168,7 +168,6 @@ function SignupProfileContent() {
                       required
                       value={companyNameKo}
                       onChange={(e) => setCompanyNameKo(e.target.value)}
-                      placeholder="예: (주)한국정밀공업"
                       className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
                     />
                   </div>
@@ -180,7 +179,6 @@ function SignupProfileContent() {
                       required
                       value={companyNameEn}
                       onChange={(e) => setCompanyNameEn(e.target.value)}
-                      placeholder="e.g. Hankook Precision Co., Ltd."
                       className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
                     />
                   </div>
@@ -208,7 +206,6 @@ function SignupProfileContent() {
                       type="text"
                       value={sellerPhone}
                       onChange={(e) => setSellerPhone(e.target.value)}
-                      placeholder="+82-10-1234-5678"
                       className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
                     />
                   </div>
@@ -225,7 +222,6 @@ function SignupProfileContent() {
                       required
                       value={buyerName}
                       onChange={(e) => setBuyerName(e.target.value)}
-                      placeholder="e.g. John Smith"
                       className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
                     />
                   </div>
@@ -237,7 +233,6 @@ function SignupProfileContent() {
                       required
                       value={buyerCompanyNameEn}
                       onChange={(e) => setBuyerCompanyNameEn(e.target.value)}
-                      placeholder="e.g. Apex Global Trading LLC"
                       className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm"
                     />
                   </div>
