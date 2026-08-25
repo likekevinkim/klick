@@ -305,8 +305,8 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
           {/* Sheet Header */}
           <div className="flex items-start justify-between border-b-2 border-slate-900 pb-6">
             <div>
-              <span className="inline-flex items-center gap-1 text-[10px] font-black text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded border border-blue-100 mb-2">
-                <ShieldCheck className="w-3 h-3 text-emerald-500" /> <Klick /> Export Certified
+              <span className="inline-flex items-center gap-1 text-[10px] font-black text-slate-500 bg-slate-50 px-2.5 py-0.5 rounded border border-slate-200 mb-2">
+                <ShieldCheck className="w-3 h-3 text-slate-400" /> <Klick /> Generated Document — Content Provided by Seller, Not Verified by KLICK
               </span>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
                 {docTitles[docType]}

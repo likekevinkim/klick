@@ -37,6 +37,7 @@ export default function HomeClient() {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState('seller');
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [brokenImageIds, setBrokenImageIds] = useState(new Set());
 
   const categories = FILTER_CATEGORIES;
 
@@ -207,12 +208,22 @@ export default function HomeClient() {
 
   const filteredProducts = products.filter((item) => {
     const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
-    const matchesSearch = 
+    const matchesSearch =
       (item.title_en || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.title_ko || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.company_name || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    document.getElementById('product-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setSelectedCategory('All');
+  };
 
   if (!mounted) return null;
 
@@ -244,15 +255,15 @@ export default function HomeClient() {
           <div className="space-y-3 max-w-3xl">
             <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight leading-snug">
               Source High-Quality Products Directly From <br className="hidden md:block" />
-              <span className="text-blue-400">Verified Korean Factories</span>
+              <span className="text-blue-400">Business-Verified Korean Manufacturers</span>
             </h1>
 
             <p className="text-slate-300 text-xs md:text-sm leading-relaxed font-medium">
-              Zero middleman markup. Connect with verified South Korean manufacturers with AI-translated English specifications, instant RFQs, and official B2B trade documents.
+              Zero middleman markup. Connect with South Korean manufacturers with AI-translated English specifications, instant RFQs, and standard-format B2B trade documents.
             </p>
           </div>
 
-          <div className="max-w-2xl bg-white/10 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 flex items-center gap-2 shadow-2xl">
+          <form onSubmit={handleSearchSubmit} className="max-w-2xl bg-white/10 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 flex items-center gap-2 shadow-2xl">
             <div className="flex-1 flex items-center gap-2 px-3">
               <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
               <input
@@ -265,12 +276,12 @@ export default function HomeClient() {
             </div>
 
             <button
-              type="button"
+              type="submit"
               className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs md:text-sm rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer flex-shrink-0"
             >
               <span>Search</span>
             </button>
-          </div>
+          </form>
 
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5 pt-1">
             {categories.map((cat) => (
@@ -278,7 +289,7 @@ export default function HomeClient() {
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                className={`px-3.5 py-2.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   selectedCategory === cat
                     ? 'bg-blue-600 text-white border border-blue-500'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
@@ -296,7 +307,7 @@ export default function HomeClient() {
       </section>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-8 space-y-6">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-2 border-b border-slate-200 pb-3">
+        <div id="product-grid" className="flex flex-col md:flex-row md:items-end justify-between gap-2 border-b border-slate-200 pb-3 scroll-mt-24">
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
               <span className="p-1.5 bg-blue-50 text-blue-600 rounded-md">
@@ -307,7 +318,7 @@ export default function HomeClient() {
               </h2>
             </div>
             <p className="text-xs text-slate-500">
-              Verified South Korean manufacturers ready for wholesale export.
+              South Korean manufacturers ready for wholesale export.
             </p>
           </div>
 
@@ -323,27 +334,46 @@ export default function HomeClient() {
         {loadingProducts ? (
           <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 shadow-sm">
             <Loader2 className="w-6 h-6 text-blue-600 animate-spin mx-auto mb-2" />
-            <p className="text-xs text-slate-400">Loading catalog items from database...</p>
+            <p className="text-xs text-slate-400">Loading products...</p>
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 space-y-3 p-6 shadow-sm">
-            <Package className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
-            <h3 className="text-sm font-bold text-slate-800">No Products Registered Yet</h3>
-            <p className="text-xs text-slate-500">
-              There are no live products matching your criteria in the database. Please register a product from the Seller Dashboard!
-            </p>
-            <div className="pt-2">
-              <Link
-                href="/products"
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Register First Product</span>
-              </Link>
+          products.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 space-y-3 p-6 shadow-sm">
+              <Package className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
+              <h3 className="text-sm font-bold text-slate-800">No Products Registered Yet</h3>
+              <p className="text-xs text-slate-500">
+                There are no live products in the database yet. Please register a product from the Seller Dashboard!
+              </p>
+              <div className="pt-2">
+                <Link
+                  href="/products"
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Register First Product</span>
+                </Link>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 space-y-3 p-6 shadow-sm">
+              <Search className="w-12 h-12 text-slate-300 mx-auto stroke-1" />
+              <h3 className="text-sm font-bold text-slate-800">No Matching Products</h3>
+              <p className="text-xs text-slate-500">
+                No products match your search or category filter. Try different keywords or clear the filters.
+              </p>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer"
+                >
+                  <span>Clear Filters</span>
+                </button>
+              </div>
+            </div>
+          )
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {filteredProducts.map((item) => (
               <div
                 key={item.id}
@@ -352,25 +382,25 @@ export default function HomeClient() {
               >
                 <div className="space-y-2.5">
                   <div className="w-full aspect-square bg-slate-100 rounded-xl overflow-hidden border border-slate-100 relative flex items-center justify-center">
-                    {item.image_url ? (
+                    {item.image_url && !brokenImageIds.has(item.id) ? (
                       <img
                         src={item.image_url}
                         alt={item.title_en || item.title_ko || item.product_name}
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
+                        onError={() => {
+                          setBrokenImageIds((prev) => new Set(prev).add(item.id));
                         }}
                       />
                     ) : (
                       <Package className="w-8 h-8 text-slate-300" />
                     )}
 
-                    <span className="absolute top-2 left-2 bg-[#0F172A]/80 backdrop-blur-sm text-white text-[9px] font-extrabold px-2 py-0.5 rounded-md">
+                    <span className="absolute top-2 left-2 bg-[#0F172A]/80 backdrop-blur-sm text-white text-xs font-extrabold px-2 py-0.5 rounded-md">
                       {item.category || 'Manufacturing'}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 truncate">
+                  <div className="flex items-center gap-1 text-xs font-bold text-slate-500 truncate">
                     <Building2 className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
                     <span className="truncate">{item.company_name || 'Korean Manufacturer'}</span>
                     {item.is_verified && (
@@ -383,13 +413,17 @@ export default function HomeClient() {
                   </h3>
 
                   <div className="pt-1 border-t border-slate-100 space-y-0.5">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-sm font-extrabold text-emerald-600">{item.price || '$0.00'}</span>
-                      <span className="text-[10px] text-slate-400 font-semibold">/ Unit</span>
-                    </div>
+                    {item.price ? (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-sm font-extrabold text-emerald-600">{item.price}</span>
+                        <span className="text-xs text-slate-400 font-semibold">/ Unit</span>
+                      </div>
+                    ) : (
+                      <div className="text-sm font-extrabold text-slate-500">Price on Request</div>
+                    )}
 
-                    <div className="text-[10px] text-slate-500 font-medium">
-                      MOQ: <span className="font-extrabold text-slate-800">{item.moq || '1 Unit'}</span>
+                    <div className="text-xs text-slate-500 font-medium">
+                      MOQ: <span className="font-extrabold text-slate-800">{item.moq || 'Contact Seller'}</span>
                     </div>
                   </div>
                 </div>
@@ -404,7 +438,7 @@ export default function HomeClient() {
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-slate-900">Verified Factory Direct</h3>
+              <h3 className="font-extrabold text-slate-900">Business-Verified Factory Direct</h3>
               <p className="text-slate-500 text-[11px] leading-relaxed mt-0.5">
                 Direct export deals with Korean manufacturers without middleman markup.
               </p>
@@ -430,10 +464,14 @@ export default function HomeClient() {
             <div>
               <h3 className="font-extrabold text-slate-900">Instant Trade Invoices</h3>
               <p className="text-slate-500 text-[11px] leading-relaxed mt-0.5">
-                Generate official Proforma Invoices (PI) and trade documents in chat.
+                Generate standard-format Proforma Invoices (PI) and trade documents in chat.
               </p>
             </div>
           </div>
+
+          <p className="md:col-span-3 text-[11px] text-slate-400 text-center border-t border-slate-100 pt-4">
+            <Klick /> connects you with the seller — payment and settlement happen directly between you and your counterparty, outside the platform.
+          </p>
         </section>
       </main>
 
@@ -449,9 +487,10 @@ export default function HomeClient() {
               <button
                 type="button"
                 onClick={handleCloseOnboarding}
-                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl transition cursor-pointer"
+                aria-label="Close"
+                className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl transition cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -464,7 +503,7 @@ export default function HomeClient() {
               <p className="text-xs text-slate-500 leading-relaxed">
                 {userRole === 'seller'
                   ? 'Add your factory location, key production equipment, and quality certifications (ISO/CE) in detail to receive up to 3x more quote inquiries from global buyers.'
-                  : 'Complete your buyer sourcing profile to receive direct wholesale factory quotes and verified manufacturer discounts.'}
+                  : 'Complete your buyer sourcing profile to receive direct wholesale factory quotes.'}
               </p>
             </div>
 
@@ -474,7 +513,7 @@ export default function HomeClient() {
                 onClick={handleCloseOnboarding}
                 className="py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
               >
-                {userRole === 'seller' ? 'Skip for Now (Explore First)' : 'Skip for Now (Explore First)'}
+                Skip for Now (Explore First)
               </button>
 
               <button
@@ -483,7 +522,7 @@ export default function HomeClient() {
                 className="py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Edit3 className="w-4 h-4" />
-                <span>{userRole === 'seller' ? 'Complete Profile Now' : 'Complete Profile Now'}</span>
+                <span>Complete Profile Now</span>
               </button>
             </div>
           </div>

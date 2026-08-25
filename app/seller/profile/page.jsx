@@ -181,10 +181,12 @@ export default function SellerCompanyProfilePage() {
     if (!confirm('Are you sure you want to delete this product from your factory catalog?')) return;
 
     try {
-      await supabase.from('products').delete().eq('id', id);
+      const { error } = await supabase.from('products').delete().eq('id', id);
+      if (error) throw error;
       setProducts(products.filter((item) => item.id !== id));
     } catch (error) {
       console.error('Failed to delete product:', error);
+      alert('Failed to delete product: ' + (error.message || 'Database error'));
     }
   };
 

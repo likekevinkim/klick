@@ -23,10 +23,11 @@ export async function POST(request) {
 
     if (!rfq) return NextResponse.json({ skipped: true });
 
-    await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from('public_rfqs')
       .update({ quote_count: (rfq.quote_count || 0) + 1 })
       .eq('id', rfqId);
+    if (error) return NextResponse.json({ skipped: true });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

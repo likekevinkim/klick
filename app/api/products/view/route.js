@@ -23,10 +23,11 @@ export async function POST(request) {
 
     if (!product) return NextResponse.json({ skipped: true });
 
-    await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from('products')
       .update({ view_count: (product.view_count || 0) + 1 })
       .eq('id', productId);
+    if (error) return NextResponse.json({ skipped: true });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

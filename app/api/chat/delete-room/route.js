@@ -43,8 +43,15 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Not a participant in this chat room.' }, { status: 403 });
     }
 
-    await supabaseAdmin.from('chat_messages').delete().eq('room_id', roomId);
-    await supabaseAdmin.from('chat_rooms').delete().eq('id', roomId);
+    const { error: messagesError } = await supabaseAdmin.from('chat_messages').delete().eq('room_id', roomId);
+    if (messagesError) {
+      return NextResponse.json({ error: 'Failed to delete chat messages.' }, { status: 500 });
+    }
+
+    const { error: roomDeleteError } = await supabaseAdmin.from('chat_rooms').delete().eq('id', roomId);
+    if (roomDeleteError) {
+      return NextResponse.json({ error: 'Failed to delete chat room.' }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {
