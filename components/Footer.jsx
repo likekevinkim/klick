@@ -1,10 +1,17 @@
 // components/Footer.jsx
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Building2, Mail, Phone, MapPin } from 'lucide-react';
 
 export default function Footer() {
+  const [isKo, setIsKo] = useState(false);
+
+  useEffect(() => {
+    setIsKo(localStorage.getItem('klick_lang_code') === 'ko');
+  }, []);
+
   return (
     <footer className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800 text-xs">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -15,10 +22,16 @@ export default function Footer() {
             <Building2 className="w-6 h-6 text-blue-500" />
             <span className="notranslate" translate="no">KLICK</span>
           </div>
-          <p className="leading-relaxed font-medium max-w-sm">
-            <span className="notranslate" translate="no">KLICK</span> is a B2B export platform that directly connects Korean manufacturers with global buyers.
-            We support transparent, fast global trade with no language barrier.
-          </p>
+          {isKo ? (
+            <p className="leading-relaxed font-medium max-w-sm notranslate" translate="no">
+              <span className="notranslate" translate="no">KLICK</span>은 한국 제조업체와 전 세계 바이어를 직접 연결하는 B2B 수출 플랫폼입니다. 언어 장벽 없이 투명하고 신속한 글로벌 무역을 지원합니다.
+            </p>
+          ) : (
+            <p className="leading-relaxed font-medium max-w-sm">
+              <span className="notranslate" translate="no">KLICK</span> is a B2B export platform that directly connects Korean manufacturers with global buyers.
+              We support transparent, fast global trade with no language barrier.
+            </p>
+          )}
         </div>
 
         {/* 2. Customer Center */}
