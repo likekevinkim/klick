@@ -67,7 +67,7 @@ export default function PrivacyPage() {
 
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm text-xs text-slate-600 space-y-1">
           <p className="font-extrabold text-slate-900 text-sm">Privacy Officer</p>
-          <p>Bo-an Kim · TRUE K CO., LTD.</p>
+          <p>Bo-an Kim</p>
           <p>info@klick.biz · +82-2-1234-5678</p>
         </div>
       </main>

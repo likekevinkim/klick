@@ -6,7 +6,7 @@ import { FileText } from 'lucide-react';
 const SECTIONS = [
   {
     title: 'Article 1 (Purpose)',
-    body: `These Terms of Service ("Terms") govern the rights, obligations, and responsibilities between TRUE K CO., LTD. ("Company," "we") and users of the KLICK platform ("KLICK," the "Service") in connection with the use of the Service.`,
+    body: `These Terms of Service ("Terms") govern the rights, obligations, and responsibilities between the operator of the KLICK platform ("Company," "we") and users of the KLICK platform ("KLICK," the "Service") in connection with the use of the Service.`,
   },
   {
     title: 'Article 2 (Definitions)',

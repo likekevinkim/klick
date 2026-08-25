@@ -48,7 +48,7 @@ export default function Footer() {
             </p>
             <p className="flex items-start gap-2 hover:text-white transition">
               <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" /> 
-              <span>16, Sure-ro 116beon-gil, Wabu-eup, Namyangju-si, Gyeonggi-do, South Korea — TRUE K CO., LTD.</span>
+              <span>16, Sure-ro 116beon-gil, Wabu-eup, Namyangju-si, Gyeonggi-do, South Korea</span>
             </p>
           </div>
         </div>
@@ -79,7 +79,7 @@ export default function Footer() {
       {/* Bottom business info & copyright */}
       <div className="max-w-7xl mx-auto px-6 mt-12 pt-6 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 font-medium text-[10px] text-slate-500">
         <div className="space-y-1 text-center md:text-left">
-          <p>Company Name: TRUE K CO., LTD. | Business Registration No.: 829-32-00630</p>
+          <p>Business Registration No.: 829-32-00630</p>
           <p>E-Commerce Registration No.: 2025-WABUJOAN-0341</p>
         </div>
         <p>© {new Date().getFullYear()} <span className="notranslate" translate="no">KLICK</span> Corporation. All rights reserved.</p>
