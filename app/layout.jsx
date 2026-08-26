@@ -2,6 +2,7 @@
 import './globals.css';
 import Script from 'next/script';
 import Footer from '@/components/Footer';
+import WelcomeModal from '@/components/WelcomeModal';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://klick.biz';
 
@@ -62,6 +63,9 @@ export default function RootLayout({ children }) {
         </Script>
       </head>
       <body className="antialiased min-h-screen flex flex-col bg-[#F9FAFB]">
+        {/* 첫 방문자에게 한 번만 뜨는 이용 안내 모달 (localStorage에 저장하면 다시 안 뜸) */}
+        <WelcomeModal />
+
         {/* 모든 페이지의 본문 내용이 렌더링되는 영역 */}
         <div className="flex-1">
           {children}
