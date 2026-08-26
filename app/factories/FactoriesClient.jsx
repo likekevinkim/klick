@@ -43,12 +43,14 @@ function FactoriesDirectoryContent() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentLang, setCurrentLang] = useState('en');
 
   const categories = FILTER_CATEGORIES;
 
   useEffect(() => {
     setMounted(true);
     fetchRealCompaniesFromDb();
+    setCurrentLang(localStorage.getItem('klick_lang_code') || 'en');
   }, []);
 
   // Supabase DB에서 실제 저장된 셀러 회사 레코드만 스캔
@@ -168,7 +170,7 @@ function FactoriesDirectoryContent() {
               type="button"
               className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs md:text-sm rounded-xl shadow-lg transition flex-shrink-0"
             >
-              Search
+              <span className="notranslate" translate="no">{currentLang === 'ko' ? '찾기' : 'Search'}</span>
             </button>
           </div>
 

@@ -279,7 +279,7 @@ export default function HomeClient() {
               type="submit"
               className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs md:text-sm rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer flex-shrink-0"
             >
-              <span>Search</span>
+              <span className="notranslate" translate="no">{currentLang === 'ko' ? '찾기' : 'Search'}</span>
             </button>
           </form>
 
