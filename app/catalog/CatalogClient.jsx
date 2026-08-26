@@ -130,6 +130,12 @@ export default function CatalogClient() {
                 className="w-full bg-transparent text-white placeholder-slate-400 text-xs md:text-sm focus:outline-none"
               />
             </div>
+            <button
+              type="button"
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs md:text-sm rounded-xl shadow-lg transition flex-shrink-0"
+            >
+              <span className="notranslate" translate="no">{currentLang === 'ko' ? '찾기' : 'Search'}</span>
+            </button>
           </div>
 
           {/* 카테고리 필터 버튼 */}
