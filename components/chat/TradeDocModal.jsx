@@ -124,6 +124,34 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
     setMeasurement('');
     setVesselVoyage('');
     setContainerSealNo('');
+
+    // 연결된 상품의 HS코드, 셀러 본인이 낸 RFQ 견적의 인코텀즈가 있으면 자동으로 채워준다
+    (async () => {
+      if (room?.product_id) {
+        const { data: productData } = await supabase
+          .from('products')
+          .select('hs_code')
+          .eq('id', room.product_id)
+          .maybeSingle();
+        if (productData?.hs_code) {
+          setItems((prev) => prev.map((item, idx) => (idx === 0 ? { ...item, hsCode: productData.hs_code } : item)));
+        }
+      }
+
+      if (room?.rfq_id) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const uid = session?.user?.id?.toString();
+        if (uid) {
+          const { data: proposalData } = await supabase
+            .from('rfq_proposals')
+            .select('incoterms')
+            .eq('rfq_id', room.rfq_id)
+            .eq('seller_id', uid)
+            .maybeSingle();
+          if (proposalData?.incoterms) setIncoterm(proposalData.incoterms);
+        }
+      }
+    })();
   }, [isOpen, msg, room, isViewingSent]);
 
   // Load the seller's saved official seal, if any, so it's reused automatically next time

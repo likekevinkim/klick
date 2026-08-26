@@ -57,6 +57,7 @@ function RfqDetailContent() {
   const [offeredPrice, setOfferedPrice] = useState('');
   const [offeredMoq, setOfferedMoq] = useState('');
   const [leadTime, setLeadTime] = useState('');
+  const [proposalIncoterms, setProposalIncoterms] = useState('FOB');
   const [proposalMessage, setProposalMessage] = useState('');
   
   const [submitting, setSubmitting] = useState(false);
@@ -138,6 +139,7 @@ function RfqDetailContent() {
         offered_price: `$${offeredPrice} USD / Unit`,
         offered_moq: offeredMoq,
         lead_time: leadTime,
+        incoterms: proposalIncoterms,
         proposal_message: proposalMessage,
         status: 'Pending',
         created_at: new Date().toISOString()
@@ -168,6 +170,7 @@ function RfqDetailContent() {
       setOfferedPrice('');
       setOfferedMoq('');
       setLeadTime('');
+      setProposalIncoterms('FOB');
       setProposalMessage('');
       setTimeout(() => setSubmitSuccess(false), 3000);
     } catch (error) {
@@ -331,7 +334,7 @@ function RfqDetailContent() {
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 text-[11px]">
+                          <div className="grid grid-cols-3 gap-2 text-[11px]">
                             <div className="p-2 bg-white rounded-lg border border-slate-100">
                               <span className="text-slate-400 font-bold block">MOQ</span>
                               <span className="font-extrabold text-slate-800">{prop.offered_moq || 'N/A'}</span>
@@ -339,6 +342,10 @@ function RfqDetailContent() {
                             <div className="p-2 bg-white rounded-lg border border-slate-100">
                               <span className="text-slate-400 font-bold block">Lead Time</span>
                               <span className="font-extrabold text-slate-800">{prop.lead_time || 'N/A'}</span>
+                            </div>
+                            <div className="p-2 bg-white rounded-lg border border-slate-100">
+                              <span className="text-slate-400 font-bold block">Incoterms</span>
+                              <span className="font-extrabold text-slate-800">{prop.incoterms || 'N/A'}</span>
                             </div>
                           </div>
 
@@ -406,6 +413,21 @@ function RfqDetailContent() {
                         className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Incoterms</label>
+                    <select
+                      value={proposalIncoterms}
+                      onChange={(e) => setProposalIncoterms(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold bg-white"
+                    >
+                      <option value="FOB">FOB</option>
+                      <option value="CIF">CIF</option>
+                      <option value="EXW">EXW</option>
+                      <option value="FCA">FCA</option>
+                      <option value="DDP">DDP</option>
+                    </select>
                   </div>
 
                   <div>

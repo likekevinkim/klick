@@ -36,6 +36,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
   const [moq, setMoq] = useState('');
   const [leadTime, setLeadTime] = useState('');
   const [dimensions, setDimensions] = useState('');
+  const [hsCode, setHsCode] = useState('');
 
   const [certifications, setCertifications] = useState('');
 
@@ -102,6 +103,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
     setMoq(data.moq || '');
     setLeadTime(data.lead_time || '');
     setDimensions(data.dimensions || '');
+    setHsCode(data.hs_code || '');
     setCertifications(data.certifications && data.certifications !== 'Standard Production Spec' ? data.certifications : '');
 
     // OEM/ODM 문자열 파싱 ("Available - note" 또는 "Not Available")
@@ -157,6 +159,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
     setMoq('');
     setLeadTime('');
     setDimensions('');
+    setHsCode('');
     setCertifications('');
     setOemOdmAvailable('Available');
     setOemOdmNote('');
@@ -478,6 +481,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
         moq: moq,
         lead_time: leadTime,
         dimensions: dimensions,
+        hs_code: hsCode,
         certifications: certifications || 'Standard Production Spec',
         oem_odm: oemOdmValue,
         fob_price: mainFobPrice,
@@ -642,15 +646,28 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
               </div>
             </div>
 
-            <div>
-              <label className="block text-slate-700 font-extrabold mb-1">크기 및 무게 정보 (선택)</label>
-              <input
-                type="text"
-                value={dimensions}
-                onChange={(e) => setDimensions(e.target.value)}
-                placeholder="예: 30 x 20 x 15 cm, 2.5kg"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium bg-white"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-700 font-extrabold mb-1">크기 및 무게 정보 (선택)</label>
+                <input
+                  type="text"
+                  value={dimensions}
+                  onChange={(e) => setDimensions(e.target.value)}
+                  placeholder="예: 30 x 20 x 15 cm, 2.5kg"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-extrabold mb-1">HS 코드 (선택)</label>
+                <input
+                  type="text"
+                  value={hsCode}
+                  onChange={(e) => setHsCode(e.target.value)}
+                  placeholder="예: 8481.80"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium bg-white"
+                />
+              </div>
             </div>
           </div>
 
