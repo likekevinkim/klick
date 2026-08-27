@@ -70,48 +70,56 @@ export default function SellerCompanyProfilePage() {
       const { data: { session } } = await supabase.auth.getSession();
       const currentUser = session?.user || null;
 
-      if (currentUser) {
-        setUser(currentUser);
-        const userIdStr = currentUser.id.toString();
-
-        const { data: companyData } = await supabase
-          .from('companies')
-          .select('*')
-          .eq('user_id', userIdStr)
-          .maybeSingle();
-
-        const meta = currentUser.user_metadata || {};
-        const activeCompany = companyData || {};
-        
-        setCompanyId(activeCompany.id || '1');
-        setCompanyName(activeCompany.company_name || meta.company_name_en || meta.company_name || '');
-        setTagline(activeCompany.tagline || '');
-        setDescription(activeCompany.description || '');
-        setBusinessType(activeCompany.business_type || 'Direct Manufacturer');
-        setLocation(activeCompany.location || activeCompany.country || 'South Korea');
-        setEstablishedYear(activeCompany.established_year || '');
-        setEmployeesCount(activeCompany.employees_count || '');
-        setFactorySize(activeCompany.factory_size || '');
-        setVideoUrl(activeCompany.video_url || '');
-
-        if (Array.isArray(activeCompany.certifications)) {
-          setCertificationsText(activeCompany.certifications.join(', '));
-        }
-        if (Array.isArray(activeCompany.gallery_images)) {
-          setGalleryImages(activeCompany.gallery_images);
-        }
-
-        // 셀러가 등록한 전체 제품 리스트 DB 조회
-        const { data: productList } = await supabase
-          .from('products')
-          .select('*')
-          .eq('user_id', userIdStr)
-          .order('created_at', { ascending: false });
-
-        setProducts(productList || []);
-      } else {
-        setProducts([]);
+      // 셀러 전용 공장 프로필 페이지 — 비로그인이거나 바이어 계정이면 들어올 수 없다
+      if (!currentUser) {
+        router.push('/login');
+        return;
       }
+      const role = currentUser.user_metadata?.role || 'seller';
+      if (role !== 'seller') {
+        alert('셀러 계정으로 로그인해야 접근할 수 있는 페이지입니다.');
+        router.push('/');
+        return;
+      }
+
+      setUser(currentUser);
+      const userIdStr = currentUser.id.toString();
+
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('user_id', userIdStr)
+        .maybeSingle();
+
+      const meta = currentUser.user_metadata || {};
+      const activeCompany = companyData || {};
+
+      setCompanyId(activeCompany.id || '1');
+      setCompanyName(activeCompany.company_name || meta.company_name_en || meta.company_name || '');
+      setTagline(activeCompany.tagline || '');
+      setDescription(activeCompany.description || '');
+      setBusinessType(activeCompany.business_type || 'Direct Manufacturer');
+      setLocation(activeCompany.location || activeCompany.country || 'South Korea');
+      setEstablishedYear(activeCompany.established_year || '');
+      setEmployeesCount(activeCompany.employees_count || '');
+      setFactorySize(activeCompany.factory_size || '');
+      setVideoUrl(activeCompany.video_url || '');
+
+      if (Array.isArray(activeCompany.certifications)) {
+        setCertificationsText(activeCompany.certifications.join(', '));
+      }
+      if (Array.isArray(activeCompany.gallery_images)) {
+        setGalleryImages(activeCompany.gallery_images);
+      }
+
+      // 셀러가 등록한 전체 제품 리스트 DB 조회
+      const { data: productList } = await supabase
+        .from('products')
+        .select('*')
+        .eq('user_id', userIdStr)
+        .order('created_at', { ascending: false });
+
+      setProducts(productList || []);
     } catch (error) {
       console.error('Failed to load seller factory data:', error);
     } finally {

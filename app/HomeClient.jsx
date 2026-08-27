@@ -134,6 +134,17 @@ export default function HomeClient() {
     }
   };
 
+  // 홈 화면의 "첫 상품 등록" 버튼 — 비로그인 상태면 상품 등록 페이지로 보내지 않고 바로 안내
+  const handleRegisterProductClick = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      alert('셀러로 등록해야 제품을 올릴 수 있습니다.');
+      router.push('/login');
+      return;
+    }
+    router.push('/products');
+  };
+
   const updateUnreadCount = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     const currentUserObj = session?.user || null;
@@ -345,13 +356,14 @@ export default function HomeClient() {
                 There are no live products in the database yet. Please register a product from the Seller Dashboard!
               </p>
               <div className="pt-2">
-                <Link
-                  href="/products"
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition"
+                <button
+                  type="button"
+                  onClick={handleRegisterProductClick}
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Register First Product</span>
-                </Link>
+                </button>
               </div>
             </div>
           ) : (

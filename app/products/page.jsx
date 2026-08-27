@@ -47,15 +47,15 @@ export default function ProductsDashboardPage() {
       const currentUser = session?.user || null;
       setUser(currentUser);
 
+      // 셀러 전용 상품 관리 대시보드 — 비로그인이거나 바이어 계정이면 들어올 수 없다
       if (!currentUser) {
-        // 비로그인 사용자 접속 시 전체 공개 카탈로그 조회
-        const { data: publicProducts } = await supabase
-          .from('products')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        setProducts(publicProducts || []);
-        setLoading(false);
+        router.push('/login');
+        return;
+      }
+      const role = currentUser.user_metadata?.role || 'seller';
+      if (role !== 'seller') {
+        alert('셀러 계정으로 로그인해야 접근할 수 있는 페이지입니다.');
+        router.push('/');
         return;
       }
 

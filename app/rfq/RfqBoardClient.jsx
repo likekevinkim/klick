@@ -112,14 +112,31 @@ function PublicRfqBoardContent() {
     }
   };
 
+  // 로그인한 바이어만 RFQ를 등록할 수 있다 — 두 "Post New RFQ" 버튼 모두 이 핸들러로 진입시킨다
+  const handleOpenPostModal = () => {
+    if (!user) {
+      alert('바이어로 로그인해야 RFQ를 등록할 수 있습니다.');
+      router.push('/login');
+      return;
+    }
+    setIsPostModalOpen(true);
+  };
+
   const handlePostRfq = async (e) => {
     e.preventDefault();
+
+    if (!user) {
+      alert('바이어로 로그인해야 RFQ를 등록할 수 있습니다.');
+      router.push('/login');
+      return;
+    }
+
     setPosting(true);
 
     try {
-      const buyerMeta = user?.user_metadata || {};
+      const buyerMeta = user.user_metadata || {};
       const newRfqPayload = {
-        user_id: user?.id ? user.id.toString() : 'guest_buyer',
+        user_id: user.id.toString(),
         title: newTitle,
         product_name: newProductName || newTitle,
         category: newCategory,
@@ -210,7 +227,7 @@ function PublicRfqBoardContent() {
             {userRole === 'buyer' ? (
               <button
                 type="button"
-                onClick={() => setIsPostModalOpen(true)}
+                onClick={handleOpenPostModal}
                 className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-2xl shadow-lg transition flex items-center gap-2 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
@@ -314,7 +331,7 @@ function PublicRfqBoardContent() {
               {userRole === 'buyer' && (
                 <button
                   type="button"
-                  onClick={() => setIsPostModalOpen(true)}
+                  onClick={handleOpenPostModal}
                   className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold rounded-xl shadow transition inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />

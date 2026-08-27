@@ -286,7 +286,8 @@ export default function Header() {
   };
 
   const userRole = user?.user_metadata?.role || 'seller';
-  const myCompanyShowroomUrl = user?.id ? `/companies/${user.id}` : '/companies/1';
+  // user가 없으면 이 링크 자체가 렌더링되지 않으므로(아래 {user ? (...) 블록) 폴백은 불필요
+  const myCompanyShowroomUrl = `/companies/${user?.id}`;
 
   return (
     <header className="sticky top-0 z-[99999] bg-slate-900 text-white border-b border-slate-800 shadow-md">
