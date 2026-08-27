@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   X,
   Plus,
@@ -25,6 +26,7 @@ import {
 import { supabase } from '@/lib/supabase';
 
 export default function ProductFormModal({ isOpen, onClose, onProductCreated, isEditMode = false, initialData = null, onSubmit = null }) {
+  const router = useRouter();
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [companyName, setCompanyName] = useState('');
   const [factoryLocation, setFactoryLocation] = useState('South Korea');
@@ -203,8 +205,11 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
         setCompanyName(activeName);
         setFactoryLocation(activeLoc);
       } else {
-        setCompanyName('Verified Korean Manufacturer');
-        setFactoryLocation('South Korea');
+        // 로그인하지 않은 방문자는 등록 폼을 채울 수 없도록 즉시 닫고 로그인 페이지로 보낸다
+        alert('상품을 등록하려면 셀러로 로그인해야 합니다.');
+        onClose();
+        router.push('/login');
+        return;
       }
     } catch (err) {
       console.error('Error fetching seller profile:', err);
