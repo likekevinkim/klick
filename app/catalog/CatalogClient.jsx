@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { FILTER_CATEGORIES } from '@/lib/categories';
+import { formatProductTitle } from '@/lib/productTitle';
 
 // Google Translate turns "All" into stiff literal Korean ("모두") — show the
 // more natural phrasing directly instead when Korean is selected.
@@ -225,8 +226,8 @@ export default function CatalogClient() {
                     )}
                   </div>
 
-                  <h3 className="text-xs font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition min-h-[32px]">
-                    {item.title_en || item.title_ko || item.product_name || 'B2B Export Product'}
+                  <h3 className="notranslate text-xs font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition min-h-[32px]" translate="no">
+                    {formatProductTitle(item)}
                   </h3>
 
                   <div className="pt-1 border-t border-slate-100 space-y-0.5">

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { FILTER_CATEGORIES } from '@/lib/categories';
+import { formatCompanyName } from '@/lib/companyName';
 
 export default function FactoriesClient() {
   return (
@@ -264,16 +265,10 @@ function FactoriesDirectoryContent() {
                       )}
                     </div>
 
-                    <h3 className="text-base font-extrabold text-slate-900 group-hover:text-blue-600 transition flex items-center gap-2 line-clamp-1">
+                    <h3 className="notranslate text-base font-extrabold text-slate-900 group-hover:text-blue-600 transition flex items-center gap-2 line-clamp-1" translate="no">
                       <Building2 className="w-4.5 h-4.5 text-blue-600 flex-shrink-0" />
-                      {fac.company_name_en}
+                      {formatCompanyName(fac)}
                     </h3>
-
-                    {fac.company_name_ko && (
-                      <p className="text-[11px] text-slate-400 font-bold pl-6">
-                        {fac.company_name_ko}
-                      </p>
-                    )}
 
                     {fac.tagline && (
                       <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed font-medium pt-0.5">

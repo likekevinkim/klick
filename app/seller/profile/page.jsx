@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import ProductFormModal from '@/components/products/ProductFormModal';
+import { formatProductTitle } from '@/lib/productTitle';
 
 export default function SellerCompanyProfilePage() {
   const router = useRouter();
@@ -519,7 +520,7 @@ export default function SellerCompanyProfilePage() {
                         <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
                           {item.category}
                         </span>
-                        <h4 className="text-xs font-extrabold text-slate-900 truncate">{item.title_en || item.title}</h4>
+                        <h4 className="notranslate text-xs font-extrabold text-slate-900 truncate" translate="no">{formatProductTitle(item)}</h4>
                         <p className="text-[11px] font-bold text-emerald-600">{item.price || item.fob_price || '$0.00 USD'}</p>
                       </div>
                     </div>

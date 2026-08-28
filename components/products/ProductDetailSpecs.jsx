@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import DOMPurify from 'dompurify';
 import { Globe, Star, Clock, Package, MessageSquare, ShoppingBag, Layers, FileText, Ruler, Sparkles, Factory, Award, Heart, Eye } from 'lucide-react';
+import { formatProductTitle } from '@/lib/productTitle';
 
 export default function ProductDetailSpecs({
   product,
@@ -13,7 +15,7 @@ export default function ProductDetailSpecs({
   onToggleFavorite = null,
   favoriteBusy = false
 }) {
-  const displayTitle = product?.title_en || product?.title_ko || product?.title || 'Export Product';
+  const displayTitle = formatProductTitle(product);
 
   return (
     <div className="space-y-8">
@@ -48,7 +50,7 @@ export default function ProductDetailSpecs({
           </div>
 
           <div className="flex items-start justify-between gap-3">
-            <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight leading-snug">
+            <h1 className="notranslate text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight leading-snug" translate="no">
               {displayTitle}
             </h1>
 
@@ -225,9 +227,23 @@ export default function ProductDetailSpecs({
             </h2>
           </div>
 
-          <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-xs md:text-sm text-slate-800 whitespace-pre-line leading-relaxed font-mono">
-            {product?.description || product?.details || 'No additional description provided.'}
-          </div>
+          {product?.description || product?.details ? (
+            <div
+              className="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-xs md:text-sm text-slate-800 leading-relaxed prose prose-sm max-w-none"
+              // 셀러가 상세 설명 에디터 툴바로 넣을 수 있는 태그(굵게/기울임/제목/목록/이미지)만
+              // 허용하고 나머지는 제거 — CompanyDetailClient.jsx의 회사 소개글과 동일한 XSS 방지 패턴
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(product.description || product.details, {
+                  ALLOWED_TAGS: ['b', 'i', 'h3', 'ul', 'li', 'img', 'br', 'p'],
+                  ALLOWED_ATTR: ['src', 'alt', 'class']
+                })
+              }}
+            />
+          ) : (
+            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-xs md:text-sm text-slate-500 leading-relaxed">
+              No additional description provided.
+            </div>
+          )}
         </div>
       </div>
     </div>

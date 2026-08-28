@@ -76,7 +76,7 @@ export default function ProductDetailVisual({ product }) {
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
       {/* [좌측 7열]: 고화질 대표 비주얼 갤러리 */}
       <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
-        <div className="w-full h-80 md:h-[420px] bg-slate-100 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center relative group">
+        <div className="w-full aspect-square bg-slate-100 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center relative group">
           {isVideoActive && product?.video_url ? (
             <video src={product.video_url} controls autoPlay className="w-full h-full object-contain bg-black" />
           ) : selectedImage ? (

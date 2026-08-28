@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import ProductFormModal from '@/components/products/ProductFormModal';
+import { formatProductTitle } from '@/lib/productTitle';
 
 export default function ProductsDashboardPage() {
   const router = useRouter();
@@ -258,8 +259,8 @@ export default function ProductsDashboardPage() {
                 {/* 상품 스펙 요약 정보 카드 */}
                 <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
                   <div className="space-y-1.5">
-                    <h3 className="text-sm font-black text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition">
-                      {item.title_en || item.title || item.title_ko}
+                    <h3 className="notranslate text-sm font-black text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition" translate="no">
+                      {formatProductTitle(item)}
                     </h3>
                     <p className="text-[11px] text-slate-400 font-medium truncate">
                       {item.company_name || companyName}

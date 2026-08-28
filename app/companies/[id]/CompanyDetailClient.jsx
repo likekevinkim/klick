@@ -33,6 +33,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import DOMPurify from 'dompurify';
+import { formatProductTitle } from '@/lib/productTitle';
+import { formatCompanyName } from '@/lib/companyName';
 
 // Helper: UUID 문자열 판별 함수
 const isUuid = (str) => {
@@ -473,12 +475,11 @@ export default function CompanyDetailClient() {
           </div>
 
           <div className="space-y-3 max-w-4xl">
-            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-snug">
-              {company?.company_name_en || company?.company_name_ko || company?.company_name || (isOwner ? 'Welcome! Register Your Company' : 'Unregistered Company Showroom')}
+            <h1 className="notranslate text-3xl md:text-5xl font-extrabold tracking-tight leading-snug" translate="no">
+              {company?.company_name_en || company?.company_name_ko || company?.company_name
+                ? formatCompanyName(company)
+                : (isOwner ? 'Welcome! Register Your Company' : 'Unregistered Company Showroom')}
             </h1>
-            {company?.company_name_ko && (
-              <p className="text-slate-400 text-sm font-bold">Company Name (Korean): {company.company_name_ko}</p>
-            )}
             {company?.tagline && (
               <p className="text-slate-300 text-base md:text-lg leading-relaxed font-medium">
                 {company.tagline}
@@ -881,8 +882,8 @@ export default function CompanyDetailClient() {
                           <span>Showroom Item</span>
                         </div>
 
-                        <h3 className="text-base font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition">
-                          {item.title_en || item.title_ko || item.product_name || 'Export Item'}
+                        <h3 className="notranslate text-base font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition" translate="no">
+                          {formatProductTitle(item)}
                         </h3>
 
                         <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">

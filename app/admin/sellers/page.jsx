@@ -17,7 +17,7 @@ import {
   X
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { PRODUCT_CATEGORIES } from '@/lib/categories';
+import ProductFormModal from '@/components/products/ProductFormModal';
 
 const FILTERS = [
   { key: 'all', label: '전체' },
@@ -49,15 +49,8 @@ export default function AdminSellersPage() {
   const [newSellerNameEn, setNewSellerNameEn] = useState('');
   const [creatingSeller, setCreatingSeller] = useState(false);
 
-  // 특정 셀러에 상품 등록 모달 상태
+  // 특정 셀러에 상품 등록 모달 상태 (실제 셀러용 ProductFormModal을 관리자 모드로 재사용)
   const [productModalCompany, setProductModalCompany] = useState(null);
-  const [newProductTitleKo, setNewProductTitleKo] = useState('');
-  const [newProductTitleEn, setNewProductTitleEn] = useState('');
-  const [newProductCategory, setNewProductCategory] = useState(PRODUCT_CATEGORIES[0]);
-  const [newProductMoq, setNewProductMoq] = useState('');
-  const [newProductPrice, setNewProductPrice] = useState('');
-  const [newProductDesc, setNewProductDesc] = useState('');
-  const [creatingProduct, setCreatingProduct] = useState(false);
 
   useEffect(() => {
     fetchCompanies();
@@ -96,42 +89,6 @@ export default function AdminSellersPage() {
       alert('셀러 생성 실패: ' + err.message);
     } finally {
       setCreatingSeller(false);
-    }
-  };
-
-  const resetProductForm = () => {
-    setProductModalCompany(null);
-    setNewProductTitleKo('');
-    setNewProductTitleEn('');
-    setNewProductCategory(PRODUCT_CATEGORIES[0]);
-    setNewProductMoq('');
-    setNewProductPrice('');
-    setNewProductDesc('');
-  };
-
-  const handleCreateProduct = async (e) => {
-    e.preventDefault();
-    if (!productModalCompany) return;
-    try {
-      setCreatingProduct(true);
-      await callAdminApi('/api/admin/create-product', {
-        targetUserId: productModalCompany.user_id,
-        titleKo: newProductTitleKo,
-        titleEn: newProductTitleEn,
-        companyName: productModalCompany.company_name_en || productModalCompany.company_name,
-        location: productModalCompany.location,
-        category: newProductCategory,
-        moq: newProductMoq,
-        price: newProductPrice,
-        description: newProductDesc
-      });
-      alert('상품이 등록되었습니다.');
-      resetProductForm();
-      await fetchCompanies();
-    } catch (err) {
-      alert('상품 등록 실패: ' + err.message);
-    } finally {
-      setCreatingProduct(false);
     }
   };
 
@@ -427,76 +384,18 @@ export default function AdminSellersPage() {
         </div>
       )}
 
-      {productModalCompany && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100000] p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-extrabold text-slate-900">
-                {productModalCompany.company_name_en || productModalCompany.company_name}에 상품 등록
-              </h2>
-              <button type="button" onClick={resetProductForm} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleCreateProduct} className="space-y-3">
-              <input
-                type="text"
-                value={newProductTitleKo}
-                onChange={(e) => setNewProductTitleKo(e.target.value)}
-                placeholder="상품명 (한글)"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
-              <input
-                type="text"
-                required
-                value={newProductTitleEn}
-                onChange={(e) => setNewProductTitleEn(e.target.value)}
-                placeholder="Product Title (English)"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
-              <select
-                value={newProductCategory}
-                onChange={(e) => setNewProductCategory(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
-              >
-                {PRODUCT_CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  type="text"
-                  value={newProductMoq}
-                  onChange={(e) => setNewProductMoq(e.target.value)}
-                  placeholder="MOQ"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
-                />
-                <input
-                  type="text"
-                  value={newProductPrice}
-                  onChange={(e) => setNewProductPrice(e.target.value)}
-                  placeholder="가격 (USD)"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
-                />
-              </div>
-              <textarea
-                value={newProductDesc}
-                onChange={(e) => setNewProductDesc(e.target.value)}
-                placeholder="상품 설명"
-                rows={3}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
-              <button
-                type="submit"
-                disabled={creatingProduct}
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-300 text-white font-extrabold text-xs rounded-xl transition cursor-pointer"
-              >
-                {creatingProduct ? '등록 중...' : '상품 등록'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+      <ProductFormModal
+        isOpen={!!productModalCompany}
+        onClose={() => setProductModalCompany(null)}
+        adminMode
+        targetUserId={productModalCompany?.user_id}
+        targetCompanyName={productModalCompany?.company_name_en || productModalCompany?.company_name}
+        targetCompanyLocation={productModalCompany?.location}
+        onProductCreated={async () => {
+          setProductModalCompany(null);
+          await fetchCompanies();
+        }}
+      />
     </div>
   );
 }

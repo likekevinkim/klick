@@ -24,8 +24,10 @@ import {
   Factory
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import ImageCropModal from '@/components/products/ImageCropModal';
+import DOMPurify from 'dompurify';
 
-export default function ProductFormModal({ isOpen, onClose, onProductCreated, isEditMode = false, initialData = null, onSubmit = null }) {
+export default function ProductFormModal({ isOpen, onClose, onProductCreated, isEditMode = false, initialData = null, onSubmit = null, adminMode = false, targetUserId = null, targetCompanyName = null, targetCompanyLocation = null }) {
   const router = useRouter();
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [companyName, setCompanyName] = useState('');
@@ -60,12 +62,19 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
 
   const [coverImage, setCoverImage] = useState(null);
   const [uploadingCover, setUploadingCover] = useState(false);
+  // 대표 사진 자르기 모달에 띄울 원본 이미지 (선택 직후, 업로드 전 단계)
+  const [coverCropSrc, setCoverCropSrc] = useState(null);
   const [demoVideo, setDemoVideo] = useState(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
 
   // 추가 갤러리 사진 (복수)
   const [galleryImages, setGalleryImages] = useState([]);
   const [uploadingGallery, setUploadingGallery] = useState(false);
+  // 갤러리 사진도 대표 사진처럼 한 장씩 자르기 모달을 거친 뒤 업로드 — 여러 장을 고르면 큐에 쌓아서 순서대로 처리
+  const [galleryCropQueue, setGalleryCropQueue] = useState([]);
+
+  // 상세 설명 본문에 삽입하는 사진 업로드
+  const [uploadingDetailImage, setUploadingDetailImage] = useState(false);
 
   // AI 짧은 요약 (바이어에게 가장 먼저 보이는 요약문)
   const [aiSummary, setAiSummary] = useState('');
@@ -80,18 +89,37 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
   const coverInputRef = useRef(null);
   const videoInputRef = useRef(null);
   const galleryInputRef = useRef(null);
+  const detailImageInputRef = useRef(null);
+  const detailsEditorRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
       if (isEditMode && initialData) {
         populateFromInitialData(initialData);
+      } else if (adminMode) {
+        resetForm();
+        setLoadingProfile(false);
+        setCompanyName(targetCompanyName || '');
+        setFactoryLocation(targetCompanyLocation || 'South Korea');
       } else {
         resetForm();
         fetchSellerProfile();
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, isEditMode, initialData]);
+  }, [isOpen, isEditMode, initialData, adminMode]);
+
+  // 상세 설명 에디터: 코드(태그)가 아니라 실제 렌더링된 모습(사진 포함)을 그대로 보여주기 위해
+  // textarea 대신 contentEditable을 쓴다. AI 자동생성/사진삽입/서식버튼처럼 state가 바깥에서
+  // 바뀔 때만 DOM에 반영하고, 사용자가 직접 타이핑할 때는 건드리지 않아 커서가 안 튀게 한다.
+  useEffect(() => {
+    if (detailsEditorRef.current && detailsEditorRef.current.innerHTML !== detailsText) {
+      detailsEditorRef.current.innerHTML = DOMPurify.sanitize(detailsText || '', {
+        ALLOWED_TAGS: ['b', 'i', 'h3', 'ul', 'li', 'img', 'br', 'p'],
+        ALLOWED_ATTR: ['src', 'alt', 'class']
+      });
+    }
+  }, [detailsText]);
 
   // 수정 모드: 기존 제품 데이터를 폼 필드에 채워넣기
   const populateFromInitialData = (data) => {
@@ -220,19 +248,26 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
     }
   };
 
-  const handleCoverUpload = async (e) => {
+  // 대표 사진은 바로 업로드하지 않고, 먼저 자르기 모달을 띄운다
+  const handleCoverUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setCoverCropSrc(reader.result);
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
+  const handleCoverCropConfirm = async (blob) => {
+    setCoverCropSrc(null);
     try {
       setUploadingCover(true);
-      const fileExt = file.name.split('.').pop();
-      const fileName = `cover_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const fileName = `cover_${Date.now()}_${Math.random().toString(36).substring(2)}.jpg`;
       const filePath = `product_covers/${fileName}`;
 
       const { error: uploadErr } = await supabase.storage
         .from('company-images')
-        .upload(filePath, file);
+        .upload(filePath, blob);
 
       if (uploadErr) throw uploadErr;
 
@@ -241,7 +276,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
         .getPublicUrl(filePath);
 
       if (publicUrlData?.publicUrl) {
-        setCoverImage({ name: file.name, url: publicUrlData.publicUrl });
+        setCoverImage({ name: fileName, url: publicUrlData.publicUrl });
       }
     } catch (err) {
       console.error('Cover upload error:', err);
@@ -282,43 +317,54 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
     }
   };
 
-  // 갤러리 사진 여러 장 업로드 (알리바바 상세페이지 스타일 멀티 이미지)
+  // 갤러리 사진 여러 장 선택 → 바로 업로드하지 않고 한 장씩 자르기 큐에 넣는다
   const handleGalleryUpload = async (e) => {
     const files = Array.from(e.target.files || []);
+    if (galleryInputRef.current) galleryInputRef.current.value = '';
     if (files.length === 0) return;
 
+    const dataUrls = await Promise.all(files.map((file) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    })));
+
+    setGalleryCropQueue((prev) => [...prev, ...dataUrls]);
+  };
+
+  // 큐의 맨 앞 사진을 자른 뒤 업로드하고, 큐에서 빼서 다음 사진으로 넘어간다
+  const handleGalleryCropConfirm = async (blob) => {
     try {
       setUploadingGallery(true);
-      const uploaded = [];
+      const fileName = `gallery_${Date.now()}_${Math.random().toString(36).substring(2)}.jpg`;
+      const filePath = `product_gallery/${fileName}`;
 
-      for (const file of files) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `gallery_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const filePath = `product_gallery/${fileName}`;
+      const { error: uploadErr } = await supabase.storage
+        .from('company-images')
+        .upload(filePath, blob);
 
-        const { error: uploadErr } = await supabase.storage
-          .from('company-images')
-          .upload(filePath, file);
+      if (uploadErr) throw uploadErr;
 
-        if (uploadErr) throw uploadErr;
+      const { data: publicUrlData } = supabase.storage
+        .from('company-images')
+        .getPublicUrl(filePath);
 
-        const { data: publicUrlData } = supabase.storage
-          .from('company-images')
-          .getPublicUrl(filePath);
-
-        if (publicUrlData?.publicUrl) {
-          uploaded.push({ name: file.name, url: publicUrlData.publicUrl });
-        }
+      if (publicUrlData?.publicUrl) {
+        setGalleryImages((prev) => [...prev, { name: fileName, url: publicUrlData.publicUrl }]);
       }
-
-      setGalleryImages((prev) => [...prev, ...uploaded]);
     } catch (err) {
       console.error('Gallery upload error:', err);
       alert('사진 업로드에 실패했습니다: ' + (err.message || 'Storage error'));
     } finally {
       setUploadingGallery(false);
-      if (galleryInputRef.current) galleryInputRef.current.value = '';
+      setGalleryCropQueue((prev) => prev.slice(1));
     }
+  };
+
+  // 자르기를 취소하면 그 사진만 건너뛰고 큐의 다음 사진으로
+  const handleGalleryCropSkip = () => {
+    setGalleryCropQueue((prev) => prev.slice(1));
   };
 
   const handleRemoveGalleryImage = (idx) => {
@@ -454,6 +500,54 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
     }
   };
 
+  // 상세 설명 서식 툴바 — 굵게/기울임/제목/목록 태그를 본문 끝에 덧붙인다
+  // (EditCompanyModal.jsx의 회사 소개글 에디터와 동일한 패턴)
+  const handleInsertEditorTag = (tagType) => {
+    const tags = {
+      bold: ['<b>', '</b>'],
+      italic: ['<i>', '</i>'],
+      heading: ['<h3>', '</h3>'],
+      list: ['<ul>\n  <li>', '</li>\n</ul>']
+    };
+    const [prefix, suffix] = tags[tagType] || [];
+    if (!prefix) return;
+    setDetailsText((prev) => (prev || '') + `\n${prefix}${suffix}`);
+  };
+
+  // 상세 설명 본문에 넣을 사진 업로드 — 업로드 후 <img> 태그를 본문 끝에 삽입
+  const handleDetailImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingDetailImage(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `detail_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `product_detail_images/${fileName}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from('company-images')
+        .upload(filePath, file);
+
+      if (uploadErr) throw uploadErr;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('company-images')
+        .getPublicUrl(filePath);
+
+      if (publicUrlData?.publicUrl) {
+        const imgTag = `<img src="${publicUrlData.publicUrl}" alt="Product Detail Image" class="w-full my-3 rounded-2xl border" />`;
+        setDetailsText((prev) => `${imgTag}\n${prev || ''}`);
+      }
+    } catch (err) {
+      console.error('Detail image upload error:', err);
+      alert('상세 설명 사진 업로드에 실패했습니다: ' + (err.message || 'Storage error'));
+    } finally {
+      setUploadingDetailImage(false);
+      if (detailImageInputRef.current) detailImageInputRef.current.value = '';
+    }
+  };
+
   const handleSubmitProduct = async (e) => {
     e.preventDefault();
     try {
@@ -508,6 +602,23 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
         return;
       }
 
+      // 관리자 대행 등록: 서비스 롤로 우회 삽입하는 관리자 전용 API 호출
+      if (adminMode) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch('/api/admin/create-product', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+          body: JSON.stringify({ ...payload, targetUserId })
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || '상품 등록에 실패했습니다.');
+
+        alert('상품이 성공적으로 등록되었습니다!');
+        if (onProductCreated) onProductCreated(json.product);
+        onClose();
+        return;
+      }
+
       // 등록 모드: 신규 상품 insert
       const { data: { session } } = await supabase.auth.getSession();
       const currentUser = session?.user;
@@ -541,6 +652,24 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
   if (!isOpen) return null;
 
   return (
+    <>
+    {coverCropSrc && (
+      <ImageCropModal
+        imageSrc={coverCropSrc}
+        aspect={1}
+        onCancel={() => setCoverCropSrc(null)}
+        onConfirm={handleCoverCropConfirm}
+      />
+    )}
+    {galleryCropQueue.length > 0 && (
+      <ImageCropModal
+        key={galleryCropQueue.length}
+        imageSrc={galleryCropQueue[0]}
+        aspect={1}
+        onCancel={handleGalleryCropSkip}
+        onConfirm={handleGalleryCropConfirm}
+      />
+    )}
     <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl p-6 md:p-8 max-w-4xl w-full border border-slate-200 shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto animate-fadeIn text-sm">
 
@@ -1059,21 +1188,40 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
               </button>
             </div>
 
-            <p className="text-sm text-slate-400">타이틀과 스펙만 입력했다면, 버튼 한 번으로 AI가 영문 상세 설명 전체를 자동으로 써드려요. 이후 직접 수정도 가능합니다.</p>
+            <p className="text-sm text-slate-400">타이틀과 스펙만 입력했다면, 버튼 한 번으로 AI가 영문 상세 설명 전체를 자동으로 써드려요. 사진 아이콘을 누르면 상세페이지 본문에 사진을 넣을 수 있어요. 이후 직접 수정도 가능합니다.</p>
+
+            <input
+              type="file"
+              ref={detailImageInputRef}
+              onChange={handleDetailImageUpload}
+              accept="image/*"
+              className="hidden"
+            />
 
             <div className="p-2 bg-slate-50 border border-slate-200 rounded-t-2xl flex items-center gap-2 border-b-0 text-slate-600">
-              <button type="button" className="p-1.5 hover:bg-slate-200 rounded-lg"><Bold className="w-3.5 h-3.5" /></button>
-              <button type="button" className="p-1.5 hover:bg-slate-200 rounded-lg"><Italic className="w-3.5 h-3.5" /></button>
-              <button type="button" className="p-1.5 hover:bg-slate-200 rounded-lg"><Heading className="w-3.5 h-3.5" /></button>
-              <button type="button" className="p-1.5 hover:bg-slate-200 rounded-lg"><List className="w-3.5 h-3.5" /></button>
+              <button type="button" onClick={() => handleInsertEditorTag('bold')} title="굵게" className="p-1.5 hover:bg-slate-200 rounded-lg cursor-pointer"><Bold className="w-3.5 h-3.5" /></button>
+              <button type="button" onClick={() => handleInsertEditorTag('italic')} title="기울임" className="p-1.5 hover:bg-slate-200 rounded-lg cursor-pointer"><Italic className="w-3.5 h-3.5" /></button>
+              <button type="button" onClick={() => handleInsertEditorTag('heading')} title="제목" className="p-1.5 hover:bg-slate-200 rounded-lg cursor-pointer"><Heading className="w-3.5 h-3.5" /></button>
+              <button type="button" onClick={() => handleInsertEditorTag('list')} title="목록" className="p-1.5 hover:bg-slate-200 rounded-lg cursor-pointer"><List className="w-3.5 h-3.5" /></button>
+              <div className="w-px h-4 bg-slate-300 mx-0.5" />
+              <button
+                type="button"
+                disabled={uploadingDetailImage}
+                onClick={() => detailImageInputRef.current?.click()}
+                title="사진 삽입"
+                className="p-1.5 hover:bg-slate-200 rounded-lg cursor-pointer disabled:opacity-50"
+              >
+                {uploadingDetailImage ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
+              </button>
             </div>
 
-            <textarea
-              rows={5}
-              value={detailsText}
-              onChange={(e) => setDetailsText(e.target.value)}
-              placeholder=""
-              className="w-full p-4 rounded-b-2xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium leading-relaxed bg-white"
+            <div
+              ref={detailsEditorRef}
+              contentEditable
+              suppressContentEditableWarning
+              onInput={(e) => setDetailsText(e.currentTarget.innerHTML)}
+              data-placeholder="상품 상세 설명을 입력하세요. 사진 아이콘으로 넣은 사진은 바로 여기에 보입니다."
+              className="empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400 whitespace-pre-wrap w-full min-h-[140px] p-4 rounded-b-2xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium leading-relaxed bg-white prose prose-sm max-w-none"
             />
           </div>
 
@@ -1095,7 +1243,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
 
             <button
               type="submit"
-              disabled={isSubmitting || uploadingCover || uploadingVideo || uploadingGallery}
+              disabled={isSubmitting || uploadingCover || uploadingVideo || uploadingGallery || uploadingDetailImage}
               className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isSubmitting ? (
@@ -1115,5 +1263,6 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
         </form>
       </div>
     </div>
+    </>
   );
 }

@@ -6,6 +6,8 @@ import Header from '@/components/Header';
 import { useRouter } from 'next/navigation';
 import { Heart, Package, Building2, ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { formatProductTitle } from '@/lib/productTitle';
+import { formatCompanyName } from '@/lib/companyName';
 
 export default function BuyerFavoritesPage() {
   const router = useRouter();
@@ -207,8 +209,8 @@ export default function BuyerFavoritesPage() {
                       <span className="truncate">{item.company_name || 'Verified Factory'}</span>
                     </div>
 
-                    <h3 className="text-xs font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition min-h-[32px]">
-                      {item.title_en || item.title_ko || item.product_name || 'Verified B2B Product'}
+                    <h3 className="notranslate text-xs font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition min-h-[32px]" translate="no">
+                      {formatProductTitle(item)}
                     </h3>
 
                     <div className="pt-1 border-t border-slate-100">
@@ -263,8 +265,8 @@ export default function BuyerFavoritesPage() {
                     </button>
                   </div>
 
-                  <h3 className="text-xs font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition min-h-[32px]">
-                    {item.company_name_en || item.company_name_ko || item.company_name || 'Korean Manufacturer'}
+                  <h3 className="notranslate text-xs font-extrabold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition min-h-[32px]" translate="no">
+                    {formatCompanyName(item)}
                   </h3>
 
                   <div className="pt-1 border-t border-slate-100 text-[10px] text-slate-500 font-bold">
