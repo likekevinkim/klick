@@ -23,7 +23,7 @@ export default function Footer() {
             <span className="notranslate" translate="no">KLICK</span>
           </div>
           {isKo ? (
-            <p className="leading-relaxed font-medium max-w-sm notranslate" translate="no">
+            <p className="leading-relaxed font-medium max-w-sm notranslate break-keep" translate="no">
               <span className="notranslate" translate="no">KLICK</span>은 한국 제조업체와 전 세계 바이어를 직접 연결하는 B2B 수출 플랫폼입니다. 언어 장벽 없이 투명하고 신속한 글로벌 무역을 지원합니다.
             </p>
           ) : (
