@@ -5,13 +5,14 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Header from '@/components/Header';
-import { ShieldCheck, Users, Building2, Lock, Loader2 } from 'lucide-react';
+import { ShieldCheck, Users, Building2, Lock, Loader2, MessageSquare } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { ADMIN_EMAILS } from '@/lib/adminEmails';
 
 const NAV_ITEMS = [
   { href: '/admin/sellers', label: '셀러 관리', icon: Building2 },
-  { href: '/admin/buyers', label: '바이어 관리', icon: Users }
+  { href: '/admin/buyers', label: '바이어 관리', icon: Users },
+  { href: '/admin/chat-logs', label: '채팅 로그', icon: MessageSquare }
 ];
 
 export default function AdminLayout({ children }) {

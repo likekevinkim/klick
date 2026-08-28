@@ -62,7 +62,7 @@ function SignupProfileContent() {
     setErrorMessage('');
 
     if (password.length < 6) {
-      setErrorMessage('Password must be at least 6 characters long.');
+      setErrorMessage('비밀번호는 6자 이상이어야 해요.');
       setIsLoading(false);
       return;
     }
@@ -72,7 +72,7 @@ function SignupProfileContent() {
       const currentUser = session?.user || user;
 
       if (!currentUser) {
-        setErrorMessage('Authentication session expired. Please check your email link again.');
+        setErrorMessage('인증 세션이 만료됐어요. 이메일로 받으신 링크를 다시 확인해주세요.');
         setIsLoading(false);
         return;
       }
@@ -123,7 +123,7 @@ function SignupProfileContent() {
       router.push('/');
     } catch (err) {
       console.error('Complete signup error:', err);
-      setErrorMessage('Failed to save profile: ' + (err.message || 'Unknown error'));
+      setErrorMessage('프로필 저장에 실패했어요: ' + (err.message || '알 수 없는 오류'));
     } finally {
       setIsLoading(false);
     }
@@ -142,7 +142,7 @@ function SignupProfileContent() {
               <ShieldCheck className="w-6 h-6 text-emerald-600" />
             </div>
             <h1 className="text-xl font-extrabold text-slate-900">
-              Email Verified! Complete Your Profile
+              이메일 인증 완료! 프로필을 마저 입력해주세요
             </h1>
             <p className="text-xs text-slate-500">
               이메일 인증이 확인되었습니다! 회원가입을 완결하기 위해 비밀번호와 상호명 정보를 입력해 주세요.
@@ -173,7 +173,7 @@ function SignupProfileContent() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Company Name (English) *</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">회사 상호명 (영문) *</label>
                     <input
                       type="text"
                       required
@@ -186,22 +186,22 @@ function SignupProfileContent() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Main Product Category</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">주요 상품 카테고리</label>
                     <select
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
                       className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm bg-white"
                     >
-                      <option value="Industrial Machinery">Industrial Machinery & Parts</option>
-                      <option value="K-Beauty & Cosmetics">K-Beauty & Cosmetics</option>
-                      <option value="K-Food & Beverages">K-Food & Beverages</option>
-                      <option value="Electronics & Smart IT">Electronics & Smart IT</option>
-                      <option value="General Manufacturing">General Manufacturing</option>
+                      <option value="Industrial Machinery">산업 기계 & 부품</option>
+                      <option value="K-Beauty & Cosmetics">K-뷰티 & 화장품</option>
+                      <option value="K-Food & Beverages">K-푸드 & 식음료</option>
+                      <option value="Electronics & Smart IT">전자 & IT 기기</option>
+                      <option value="General Manufacturing">일반 제조업</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Contact Phone Number</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">연락처(전화번호)</label>
                     <input
                       type="text"
                       value={sellerPhone}
@@ -216,7 +216,7 @@ function SignupProfileContent() {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Full Name / Contact Person *</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">담당자 이름 *</label>
                     <input
                       type="text"
                       required
@@ -227,7 +227,7 @@ function SignupProfileContent() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">Company Name (English) *</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">회사 상호명 (영문) *</label>
                     <input
                       type="text"
                       required
@@ -239,19 +239,19 @@ function SignupProfileContent() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Country / Region</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">국가 / 지역</label>
                   <select
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm bg-white"
                   >
-                    <option value="United States">United States</option>
-                    <option value="China">China</option>
-                    <option value="Japan">Japan</option>
-                    <option value="Germany">Germany</option>
-                    <option value="Vietnam">Vietnam</option>
-                    <option value="United Arab Emirates">United Arab Emirates</option>
-                    <option value="Other">Other Global Region</option>
+                    <option value="United States">미국</option>
+                    <option value="China">중국</option>
+                    <option value="Japan">일본</option>
+                    <option value="Germany">독일</option>
+                    <option value="Vietnam">베트남</option>
+                    <option value="United Arab Emirates">아랍에미리트</option>
+                    <option value="Other">기타 지역</option>
                   </select>
                 </div>
               </>
@@ -259,7 +259,7 @@ function SignupProfileContent() {
 
             {/* 비밀번호 설정 */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Set Password (at least 6 characters) *</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">비밀번호 설정 (6자 이상) *</label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                 <input
@@ -282,11 +282,11 @@ function SignupProfileContent() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Saving Profile...</span>
+                  <span>프로필 저장 중...</span>
                 </>
               ) : (
                 <>
-                  <span>Complete Account Registration</span>
+                  <span>가입 완료하기</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -305,7 +305,7 @@ export default function SignupProfilePage() {
         <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
           <div className="flex items-center gap-2 text-slate-600 text-xs font-bold">
             <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-            <span>Verifying Email Link & Loading Profile Setup...</span>
+            <span>이메일 인증 확인 및 프로필 화면을 불러오는 중...</span>
           </div>
         </div>
       }

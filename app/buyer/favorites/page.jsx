@@ -52,10 +52,10 @@ export default function BuyerFavoritesPage() {
 
       const [productsResult, companiesResult] = await Promise.all([
         productIds.length
-          ? supabase.from('products').select('*').in('id', productIds)
+          ? supabase.from('products').select('id, title_en, title_ko, title, product_name, company_name, image_url, price').in('id', productIds)
           : Promise.resolve({ data: [] }),
         companyIds.length
-          ? supabase.from('companies').select('*').in('id', companyIds)
+          ? supabase.from('companies').select('id, company_name_en, company_name_ko, company_name, banner_url, category').in('id', companyIds)
           : Promise.resolve({ data: [] })
       ]);
 

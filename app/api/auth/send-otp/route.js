@@ -6,6 +6,27 @@ export const runtime = 'nodejs';
 
 const RESEND_COOLDOWN_MS = 60 * 1000;
 
+// ponytail: in-memory, per-instance only — 여러 인스턴스에 걸친 남용이 실제로 발생하면
+// Supabase 테이블이나 Upstash 같은 영속 저장소로 교체
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+const RATE_LIMIT_MAX = 5;
+const sendAttemptsByEmail = new Map();
+
+function isRateLimited(email) {
+  const now = Date.now();
+  const key = email.toLowerCase();
+  const recent = (sendAttemptsByEmail.get(key) || []).filter(
+    (t) => now - t < RATE_LIMIT_WINDOW_MS
+  );
+  if (recent.length >= RATE_LIMIT_MAX) {
+    sendAttemptsByEmail.set(key, recent);
+    return true;
+  }
+  recent.push(now);
+  sendAttemptsByEmail.set(key, recent);
+  return false;
+}
+
 export async function POST(request) {
   try {
     // 0. 재전송 쿨다운: 이전 OTP 세션이 60초 이내에 발급됐으면 재발송 거부
@@ -44,6 +65,13 @@ export async function POST(request) {
       return NextResponse.json(
         { error: 'Please enter a valid email address.' },
         { status: 400 }
+      );
+    }
+
+    if (isRateLimited(email)) {
+      return NextResponse.json(
+        { error: 'Too many verification code requests for this email. Please try again later.' },
+        { status: 429 }
       );
     }
 

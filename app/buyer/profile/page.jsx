@@ -222,7 +222,7 @@ function BuyerProfileContent() {
     try {
       const userIdStr = user?.id ? user.id.toString() : 'guest_buyer';
 
-      await supabase.from('buyers').upsert([
+      const { error: buyersError } = await supabase.from('buyers').upsert([
         {
           auth_user_id: userIdStr,
           buyer_name: contactPerson,
@@ -232,8 +232,9 @@ function BuyerProfileContent() {
           interest_category: interestCategory,
         }
       ], { onConflict: 'auth_user_id' });
+      if (buyersError) throw buyersError;
 
-      await supabase.from('buyer_profiles').upsert([
+      const { error: profileError } = await supabase.from('buyer_profiles').upsert([
         {
           auth_user_id: userIdStr,
           company_name: companyName,
@@ -244,6 +245,7 @@ function BuyerProfileContent() {
           updated_at: new Date().toISOString()
         }
       ], { onConflict: 'auth_user_id' });
+      if (profileError) throw profileError;
 
       setSaveSuccess(true);
       setTimeout(() => {

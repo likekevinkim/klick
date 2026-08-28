@@ -1,7 +1,7 @@
 // app/terms/page.jsx
 import Header from '@/components/Header';
-import { protectKlick } from '@/components/Klick';
-import { FileText } from 'lucide-react';
+import Klick, { protectKlick } from '@/components/Klick';
+import { FileText, AlertTriangle } from 'lucide-react';
 
 const SECTIONS = [
   {
@@ -58,6 +58,16 @@ export default function TermsPage() {
           </span>
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">Terms of Service</h1>
           <p className="text-xs text-slate-400">Effective Date: August 20, 2026</p>
+        </div>
+
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 md:p-6 space-y-2">
+          <div className="flex items-center gap-2 text-amber-800">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <h2 className="text-sm font-extrabold">통신판매중개자 고지 (전자상거래 등에서의 소비자보호에 관한 법률 제20조의2)</h2>
+          </div>
+          <p className="text-xs text-amber-900 leading-relaxed">
+            <Klick />(이하 &quot;회사&quot;)은 통신판매의 당사자가 아닌 <strong>통신판매중개자</strong>로서, 셀러(판매자)와 바이어(구매자)가 서로를 찾고 정보를 교환할 수 있도록 상품 정보 게시, 견적 요청(RFQ), 실시간 번역 채팅 기능을 제공할 뿐입니다. 회사는 셀러가 등록한 상품 정보의 정확성, 거래조건, 대금 결제, 배송, 계약 이행 등에 대해 책임을 지지 않으며, 실제 거래는 플랫폼 밖에서 셀러와 바이어 당사자 간에 직접 이루어집니다. 거래 관련 분쟁이 발생한 경우 원칙적으로 당사자 간 해결을 원칙으로 하며, 회사는 관련 법령이 정한 범위 내에서만 협조합니다.
+          </p>
         </div>
 
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm divide-y divide-slate-100">

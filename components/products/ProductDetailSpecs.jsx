@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import DOMPurify from 'dompurify';
+import { sanitizeProductHtml } from '@/lib/sanitizeHtml';
 import { Globe, Star, Clock, Package, MessageSquare, ShoppingBag, Layers, FileText, Ruler, Sparkles, Factory, Award, Heart, Eye } from 'lucide-react';
 import { formatProductTitle } from '@/lib/productTitle';
 
@@ -233,10 +233,7 @@ export default function ProductDetailSpecs({
               // 셀러가 상세 설명 에디터 툴바로 넣을 수 있는 태그(굵게/기울임/제목/목록/이미지)만
               // 허용하고 나머지는 제거 — CompanyDetailClient.jsx의 회사 소개글과 동일한 XSS 방지 패턴
               dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(product.description || product.details, {
-                  ALLOWED_TAGS: ['b', 'i', 'h3', 'ul', 'li', 'img', 'br', 'p'],
-                  ALLOWED_ATTR: ['src', 'alt', 'class']
-                })
+                __html: sanitizeProductHtml(product.description || product.details)
               }}
             />
           ) : (

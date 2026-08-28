@@ -190,7 +190,8 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
         const { data: { session } } = await supabase.auth.getSession();
         const uid = session?.user?.id?.toString();
         if (uid) {
-          await supabase.from('companies').update({ seal_url: dataUrl }).eq('user_id', uid);
+          const { error: sealError } = await supabase.from('companies').update({ seal_url: dataUrl }).eq('user_id', uid);
+          if (sealError) throw sealError;
         }
       } catch (err) {
         console.error('Failed to save official seal:', err);

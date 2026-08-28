@@ -32,7 +32,7 @@ import {
   Heart
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import DOMPurify from 'dompurify';
+import { sanitizeProductHtml } from '@/lib/sanitizeHtml';
 import { formatProductTitle } from '@/lib/productTitle';
 import { formatCompanyName } from '@/lib/companyName';
 
@@ -319,11 +319,15 @@ export default function CompanyDetailClient() {
         .eq('user_id', activeUserId)
         .maybeSingle();
 
-      const { error: saveError } = existingComp
-        ? await supabase.from('companies').update(updatedPayload).eq('user_id', activeUserId)
-        : await supabase.from('companies').insert([updatedPayload]);
+      const { data: savedRows, error: saveError } = existingComp
+        ? await supabase.from('companies').update(updatedPayload).eq('user_id', activeUserId).select()
+        : await supabase.from('companies').insert([updatedPayload]).select();
 
       if (saveError) throw saveError;
+      // RLS가 UPDATE를 막으면 error 없이 영향받은 행이 0개로 조용히 끝나므로 직접 확인해야 한다.
+      if (!savedRows || savedRows.length === 0) {
+        throw new Error('No rows were saved — this is usually a Supabase RLS policy blocking the update, not a code error.');
+      }
 
       alert('Company profile saved successfully!');
 
@@ -449,7 +453,11 @@ export default function CompanyDetailClient() {
                     <ShieldCheck className="w-3.5 h-3.5" /> Upload Business Registration Cert to Get Verified
                   </button>
                 )
-              ) : null}
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-slate-500/20 text-slate-300 text-xs font-bold border border-slate-500/30">
+                  Unregistered / Not Yet Verified
+                </span>
+              )}
               {company?.business_type && (
                 <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold border border-blue-500/30">
                   <Factory className="w-3.5 h-3.5" /> {company.business_type}
@@ -696,10 +704,7 @@ export default function CompanyDetailClient() {
                     dangerouslySetInnerHTML={{
                       // 셀러가 입력한 소개글은 에디터 툴바가 넣을 수 있는 태그(굵게/기울임/제목/목록/이미지)만
                       // 허용하고 나머지는 전부 제거 — 저장형 XSS 방지
-                      __html: DOMPurify.sanitize(company.description, {
-                        ALLOWED_TAGS: ['b', 'i', 'h3', 'ul', 'li', 'img', 'br', 'p'],
-                        ALLOWED_ATTR: ['src', 'alt', 'class']
-                      })
+                      __html: sanitizeProductHtml(company.description)
                     }}
                   />
                 ) : (

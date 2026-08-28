@@ -26,6 +26,17 @@ import { FILTER_CATEGORIES } from '@/lib/categories';
 import { formatProductTitle } from '@/lib/productTitle';
 import { formatCompanyName } from '@/lib/companyName';
 
+// Google Translate turns "All" into stiff literal Korean ("모두") — show the
+// more natural phrasing directly instead when Korean is selected.
+const CATEGORY_LABEL_KO = {
+  All: '전체',
+  'Industrial Machinery': '산업 기계',
+  'K-Beauty & Cosmetics': 'K-뷰티/화장품',
+  'K-Food & Beverages': 'K-푸드/식품',
+  'Electronics & Smart IT': '전자/IT',
+  'General Manufacturing': '일반 제조업'
+};
+
 export default function HomeClient() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -310,8 +321,8 @@ export default function HomeClient() {
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
                 }`}
               >
-                {currentLang === 'ko' && cat === 'All' ? (
-                  <span className="notranslate" translate="no">전체</span>
+                {currentLang === 'ko' && CATEGORY_LABEL_KO[cat] ? (
+                  <span className="notranslate" translate="no">{CATEGORY_LABEL_KO[cat]}</span>
                 ) : (
                   cat
                 )}

@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import ImageCropModal from '@/components/products/ImageCropModal';
-import DOMPurify from 'dompurify';
+import { sanitizeProductHtml } from '@/lib/sanitizeHtml';
 
 export default function ProductFormModal({ isOpen, onClose, onProductCreated, isEditMode = false, initialData = null, onSubmit = null, adminMode = false, targetUserId = null, targetCompanyName = null, targetCompanyLocation = null }) {
   const router = useRouter();
@@ -114,10 +114,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
   // 바뀔 때만 DOM에 반영하고, 사용자가 직접 타이핑할 때는 건드리지 않아 커서가 안 튀게 한다.
   useEffect(() => {
     if (detailsEditorRef.current && detailsEditorRef.current.innerHTML !== detailsText) {
-      detailsEditorRef.current.innerHTML = DOMPurify.sanitize(detailsText || '', {
-        ALLOWED_TAGS: ['b', 'i', 'h3', 'ul', 'li', 'img', 'br', 'p'],
-        ALLOWED_ATTR: ['src', 'alt', 'class']
-      });
+      detailsEditorRef.current.innerHTML = sanitizeProductHtml(detailsText);
     }
   }, [detailsText]);
 
@@ -695,10 +692,32 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
           </button>
         </div>
 
+        {/* 진행 단계 표시 바 — 클릭하면 해당 섹션으로 스크롤 이동 */}
+        <div className="sticky top-0 z-10 -mx-6 md:-mx-8 px-6 md:px-8 py-2 bg-white/95 backdrop-blur-sm border-b border-slate-100 flex items-center gap-1 overflow-x-auto text-[11px] font-bold text-slate-500">
+          {[
+            { id: 'product-form-section-1', label: '1.기본정보' },
+            { id: 'product-form-section-2', label: '2.제조사' },
+            { id: 'product-form-section-3', label: '3.스펙표' },
+            { id: 'product-form-section-4', label: '4.가격' },
+            { id: 'product-form-section-5', label: '5.사진/영상' },
+            { id: 'product-form-section-6', label: '6.AI요약' },
+            { id: 'product-form-section-7', label: '7.상세설명' },
+          ].map((step) => (
+            <button
+              key={step.id}
+              type="button"
+              onClick={() => document.getElementById(step.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className="px-2.5 py-1 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition whitespace-nowrap cursor-pointer"
+            >
+              {step.label}
+            </button>
+          ))}
+        </div>
+
         <form onSubmit={handleSubmitProduct} className="space-y-6">
 
           {/* 1. 기본 정보 */}
-          <div className="space-y-3">
+          <div id="product-form-section-1" className="space-y-3">
             <h3 className="text-sm font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
               <span>1단계. 기본 상품 정보</span>
             </h3>
@@ -806,7 +825,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
           </div>
 
           {/* 2. 제조사 프로필 & 인증 & OEM/ODM */}
-          <div className="space-y-3">
+          <div id="product-form-section-2" className="space-y-3">
             <h3 className="text-sm font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-blue-600" />
               <span>2단계. 제조사 정보 및 인증</span>
@@ -868,7 +887,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
           </div>
 
           {/* 3. 제품 속성 스펙 테이블 */}
-          <div className="space-y-3">
+          <div id="product-form-section-3" className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
               <h3 className="text-sm font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-blue-600" />
@@ -923,7 +942,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
           </div>
 
           {/* 4. 수량별 단가 */}
-          <div className="space-y-3">
+          <div id="product-form-section-4" className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
               <h3 className="text-sm font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
                 <span>4단계. 수량별 단가 (달러 기준)</span>
@@ -999,7 +1018,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
           </div>
 
           {/* 5. 사진 & 영상 */}
-          <div className="space-y-3">
+          <div id="product-form-section-5" className="space-y-3">
             <h3 className="text-sm font-black text-blue-600 uppercase tracking-wider border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
               <span>5단계. 상품 사진 및 공장 영상</span>
             </h3>
@@ -1141,7 +1160,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
           </div>
 
           {/* 6. AI 요약 (바이어가 가장 먼저 보는 짧은 요약) */}
-          <div className="space-y-3">
+          <div id="product-form-section-6" className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
               <h3 className="text-sm font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-amber-500" />
@@ -1171,7 +1190,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
           </div>
 
           {/* 7. 상세 스펙 에디터 (전체 상세페이지 설명) */}
-          <div className="space-y-3">
+          <div id="product-form-section-7" className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
               <h3 className="text-sm font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
                 <span>7단계. 상세 설명 (전체 상세페이지)</span>

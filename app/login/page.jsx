@@ -95,13 +95,13 @@ function AuthPageContent() {
       });
 
       if (error) {
-        setResetStatus('Error: ' + error.message);
+        setResetStatus('오류가 발생했어요: ' + error.message);
       } else {
-        setResetStatus('Password reset link has been sent to your email address.');
+        setResetStatus('비밀번호 재설정 링크를 이메일로 보내드렸어요.');
       }
     } catch (err) {
       console.error('Reset password error:', err);
-      setResetStatus('Failed to send password reset email.');
+      setResetStatus('비밀번호 재설정 이메일 발송에 실패했어요.');
     } finally {
       setResetLoading(false);
     }
@@ -110,7 +110,7 @@ function AuthPageContent() {
   // Step 1: Send 6-digit OTP verification code via Next.js Route Handler
   const handleSendOtpCode = async () => {
     if (!email || !email.includes('@')) {
-      setEmailStatusMessage({ type: 'error', text: 'Please enter a valid email address.' });
+      setEmailStatusMessage({ type: 'error', text: '올바른 이메일 주소를 입력해주세요.' });
       return;
     }
 
@@ -129,17 +129,17 @@ function AuthPageContent() {
       const data = await res.json();
 
       if (!res.ok) {
-        setEmailStatusMessage({ type: 'error', text: data.error || 'Failed to send verification code.' });
+        setEmailStatusMessage({ type: 'error', text: data.error || '인증번호 발송에 실패했어요.' });
       } else {
         setIsOtpSent(true);
-        setEmailStatusMessage({ 
-          type: 'success', 
-          text: `[${email}] A 6-digit verification code has been sent to your inbox.` 
+        setEmailStatusMessage({
+          type: 'success',
+          text: `[${email}] 주소로 6자리 인증번호를 보내드렸어요. 메일함을 확인해주세요.`
         });
       }
     } catch (err) {
       console.error('Send OTP Exception:', err);
-      setEmailStatusMessage({ type: 'error', text: 'An error occurred while sending the verification code.' });
+      setEmailStatusMessage({ type: 'error', text: '인증번호 발송 중 오류가 발생했어요.' });
     } finally {
       setIsSendingOtp(false);
     }
@@ -148,7 +148,7 @@ function AuthPageContent() {
   // Step 2: Verify 6-digit OTP code on server
   const handleVerifyOtpCode = async () => {
     if (!otpCode || otpCode.length < 6) {
-      setEmailStatusMessage({ type: 'error', text: 'Please enter the 6-digit verification code sent to your email.' });
+      setEmailStatusMessage({ type: 'error', text: '이메일로 받으신 6자리 인증번호를 입력해주세요.' });
       return;
     }
 
@@ -165,18 +165,18 @@ function AuthPageContent() {
       const data = await res.json();
 
       if (!res.ok) {
-        setEmailStatusMessage({ type: 'error', text: data.error || 'Verification code does not match.' });
+        setEmailStatusMessage({ type: 'error', text: data.error || '인증번호가 일치하지 않아요.' });
         setIsEmailVerified(false);
       } else {
         setIsEmailVerified(true);
-        setEmailStatusMessage({ 
-          type: 'success', 
-          text: 'Email verified successfully! Please complete your company details below.' 
+        setEmailStatusMessage({
+          type: 'success',
+          text: '이메일 인증이 완료됐어요! 아래에 정보를 마저 입력해주세요.'
         });
       }
     } catch (err) {
       console.error('Verify OTP Error:', err);
-      setEmailStatusMessage({ type: 'error', text: 'An error occurred during verification.' });
+      setEmailStatusMessage({ type: 'error', text: '인증 처리 중 오류가 발생했어요.' });
       setIsEmailVerified(false);
     } finally {
       setIsVerifyingOtp(false);
@@ -193,13 +193,13 @@ function AuthPageContent() {
     try {
       if (isSignUp) {
         if (!isEmailVerified) {
-          setErrorMessage('Email verification is required before completing registration.');
+          setErrorMessage('회원가입을 완료하려면 먼저 이메일 인증을 해주세요.');
           setIsLoading(false);
           return;
         }
 
         if (password.length < 6) {
-          setErrorMessage('Password must be at least 6 characters long.');
+          setErrorMessage('비밀번호는 6자 이상이어야 해요.');
           setIsLoading(false);
           return;
         }
@@ -255,7 +255,7 @@ function AuthPageContent() {
           }
         }
 
-        setSuccessMessage('Registration completed successfully! Redirecting to login...');
+        setSuccessMessage('회원가입이 완료됐어요! 로그인 화면으로 이동할게요...');
 
         setTimeout(() => {
           setIsSignUp(false);
@@ -310,12 +310,12 @@ function AuthPageContent() {
             await supabase.auth.signOut(); // 로그인 해제
             setIsLoading(false);
             setErrorMessage(
-              `Account Role Mismatch! This account is registered as [${actualRole.toUpperCase()}]. Please switch to the ${actualRole === 'seller' ? 'Korean Seller' : 'Global Buyer'} tab to log in.`
+              `이 계정은 ${actualRole === 'seller' ? '셀러(판매자)' : '바이어(구매자)'}로 가입되어 있어요. ${actualRole === 'seller' ? '한국 셀러' : '글로벌 바이어'} 탭으로 바꾼 뒤 다시 로그인해주세요.`
             );
             return;
           }
 
-          setSuccessMessage(`Successfully signed in as ${actualRole === 'seller' ? 'Seller' : 'Buyer'}! Redirecting to Home...`);
+          setSuccessMessage(`${actualRole === 'seller' ? '셀러' : '바이어'}로 로그인했어요! 홈 화면으로 이동할게요...`);
 
           // ★ 역할을 불문하고 첫 화면(홈 화면)으로 리다이렉트 처리
           setTimeout(() => {
@@ -325,14 +325,14 @@ function AuthPageContent() {
       }
     } catch (error) {
       console.error('Auth Error:', error);
-      let msg = error.message || 'Authentication process failed.';
+      let msg = error.message || '처리 중 오류가 발생했어요.';
 
       if (msg.includes('Failed to fetch') || msg.includes('fetch')) {
-        msg = 'Failed to connect to server. Please check your internet connection.';
+        msg = '서버에 연결하지 못했어요. 인터넷 연결 상태를 확인해주세요.';
       } else if (msg.includes('Invalid login credentials')) {
-        msg = 'Invalid email or password.';
+        msg = '이메일 또는 비밀번호가 올바르지 않아요.';
       } else if (msg.includes('User already registered')) {
-        msg = 'This email is already registered. Please switch to Sign In mode.';
+        msg = '이미 가입된 이메일이에요. 로그인 화면으로 전환해주세요.';
       }
 
       setErrorMessage(msg);
@@ -357,35 +357,35 @@ function AuthPageContent() {
           <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-snug">
             {userRole === 'seller' ? (
               <>
-                Global B2B Export Center <br />
-                <span className="text-blue-600">For Korean Manufacturers</span>
+                국내 제조업체를 위한 <br />
+                <span className="text-blue-600">글로벌 수출 플랫폼</span>
               </>
             ) : (
               <>
-                Sourcing High-Quality Products <br />
-                <span className="text-blue-600">Directly from Korean Factories</span>
+                한국 공장에서 직접 <br />
+                <span className="text-blue-600">고품질 제품을 소싱하세요</span>
               </>
             )}
           </h1>
 
           <p className="text-slate-600 text-sm md:text-base leading-relaxed">
             {userRole === 'seller'
-              ? 'Register your factory and products without a dedicated sales team. AI automatically generates buyer-customized English detail pages for global exposure.'
-              : 'Join as a Global Buyer to directly send RFQs, request wholesale pricing, and trade with verified Korean manufacturers with zero middleman markup.'}
+              ? '별도 영업팀 없이도 우리 공장과 제품을 등록해보세요. AI가 알아서 해외 바이어용 영문 상세페이지를 만들어드려요.'
+              : '글로벌 바이어로 가입하면 검증된 한국 제조사에 직접 견적을 요청하고, 중간 마진 없이 바로 거래할 수 있어요.'}
           </p>
 
           <div className="space-y-3 pt-2">
             <div className="flex items-center gap-3 text-sm text-slate-700 font-medium">
               <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-              <span>Seller & Buyer Account Management System</span>
+              <span>셀러(판매자) · 바이어(구매자) 계정 관리</span>
             </div>
             <div className="flex items-center gap-3 text-sm text-slate-700 font-medium">
               <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-              <span>Real-time Multilingual Translation & Direct RFQ System</span>
+              <span>실시간 다국어 번역 채팅 & 견적 요청(RFQ)</span>
             </div>
             <div className="flex items-center gap-3 text-sm text-slate-700 font-medium">
               <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-              <span>Verified Korean Factory Virtual Showroom & Quotation Hub</span>
+              <span>검증된 한국 공장 온라인 쇼룸 & 견적 허브</span>
             </div>
           </div>
         </div>
@@ -408,7 +408,7 @@ function AuthPageContent() {
               }`}
             >
               <Building2 className="w-4 h-4" />
-              <span>Korean Seller</span>
+              <span>한국 셀러</span>
             </button>
 
             <button
@@ -425,27 +425,27 @@ function AuthPageContent() {
               }`}
             >
               <Globe className="w-4 h-4" />
-              <span>Global Buyer</span>
+              <span>글로벌 바이어</span>
             </button>
           </div>
 
           <div className="border-b border-slate-100 pb-2">
             <h2 className="text-xl font-extrabold text-slate-900">
               {isSignUp
-                ? userRole === 'seller' ? 'Seller Sign Up' : 'Global Buyer Registration'
-                : userRole === 'seller' ? 'Seller Sign In' : 'Global Buyer Sign In'}
+                ? userRole === 'seller' ? '셀러 회원가입' : '글로벌 바이어 회원가입'
+                : userRole === 'seller' ? '셀러 로그인' : '글로벌 바이어 로그인'}
             </h2>
             <p className="text-xs text-slate-500 mt-1">
               {isSignUp
-                ? 'Step 1: Enter email and verify with 6-digit code sent to your inbox.'
-                : 'Please sign in with your registered email address and password.'}
+                ? '1단계: 이메일을 입력하고, 받으신 6자리 인증번호를 확인해주세요.'
+                : '가입하신 이메일 주소와 비밀번호로 로그인해주세요.'}
             </p>
           </div>
 
           <form onSubmit={handleAuthSubmit} className="space-y-4">
             {/* Step 1: Email Input */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700">Email Address *</label>
+              <label className="block text-xs font-bold text-slate-700">이메일 주소 *</label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
@@ -471,7 +471,7 @@ function AuthPageContent() {
                     ) : (
                       <>
                         {isOtpSent ? <RefreshCw className="w-3.5 h-3.5 text-blue-400" /> : <Send className="w-3.5 h-3.5 text-blue-400" />}
-                        <span>{isOtpSent ? 'Resend' : 'Send Code'}</span>
+                        <span>{isOtpSent ? '재발송' : '인증번호 받기'}</span>
                       </>
                     )}
                   </button>
@@ -484,9 +484,9 @@ function AuthPageContent() {
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-extrabold text-blue-900 flex items-center gap-1.5">
                       <Key className="w-3.5 h-3.5 text-blue-600" />
-                      Enter 6-digit verification code *
+                      6자리 인증번호를 입력해주세요 *
                     </label>
-                    <span className="text-[10px] text-blue-600 font-semibold">Valid for 10 min</span>
+                    <span className="text-[10px] text-blue-600 font-semibold">유효시간 10분</span>
                   </div>
 
                   <div className="flex gap-2">
@@ -496,7 +496,7 @@ function AuthPageContent() {
                         maxLength={6}
                         value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
-                        placeholder="6-Digit Code"
+                        placeholder="6자리 숫자"
                         className="w-full px-4 py-3 rounded-xl border border-blue-300 bg-white font-mono tracking-widest text-base font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none text-center text-slate-900"
                       />
                     </div>
@@ -512,7 +512,7 @@ function AuthPageContent() {
                       ) : (
                         <>
                           <ShieldCheck className="w-4 h-4" />
-                          <span>Verify Code</span>
+                          <span>인증 확인</span>
                         </>
                       )}
                     </button>
@@ -543,7 +543,7 @@ function AuthPageContent() {
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Company Name (English) *</label>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">회사 상호명 (영문) *</label>
                         <input
                           type="text"
                           required
@@ -554,7 +554,7 @@ function AuthPageContent() {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Company Name (Korean / Optional)</label>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">회사 상호명 (한글 / 선택)</label>
                         <input
                           type="text"
                           value={companyNameKo}
@@ -566,22 +566,22 @@ function AuthPageContent() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Main Product Category</label>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">주요 상품 카테고리</label>
                         <select
                           value={category}
                           onChange={(e) => setCategory(e.target.value)}
                           className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm bg-white"
                         >
-                          <option value="Industrial Machinery">Industrial Machinery & Parts</option>
-                          <option value="K-Beauty & Cosmetics">K-Beauty & Cosmetics</option>
-                          <option value="K-Food & Beverages">K-Food & Beverages</option>
-                          <option value="Electronics & Smart IT">Electronics & Smart IT</option>
-                          <option value="General Manufacturing">General Manufacturing</option>
+                          <option value="Industrial Machinery">산업 기계 & 부품</option>
+                          <option value="K-Beauty & Cosmetics">K-뷰티 & 화장품</option>
+                          <option value="K-Food & Beverages">K-푸드 & 식음료</option>
+                          <option value="Electronics & Smart IT">전자 & IT 기기</option>
+                          <option value="General Manufacturing">일반 제조업</option>
                         </select>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Contact Phone Number</label>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">연락처(전화번호)</label>
                         <input
                           type="text"
                           value={sellerPhone}
@@ -595,7 +595,7 @@ function AuthPageContent() {
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Full Name / Contact Person *</label>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">담당자 이름 *</label>
                         <input
                           type="text"
                           required
@@ -606,7 +606,7 @@ function AuthPageContent() {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Company Name (English) *</label>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">회사 상호명 (영문) *</label>
                         <input
                           type="text"
                           required
@@ -618,19 +618,19 @@ function AuthPageContent() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Country / Region</label>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">국가 / 지역</label>
                       <select
                         value={country}
                         onChange={(e) => setCountry(e.target.value)}
                         className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm bg-white"
                       >
-                        <option value="United States">United States</option>
-                        <option value="China">China</option>
-                        <option value="Japan">Japan</option>
-                        <option value="Germany">Germany</option>
-                        <option value="Vietnam">Vietnam</option>
-                        <option value="United Arab Emirates">United Arab Emirates</option>
-                        <option value="Other">Other Global Region</option>
+                        <option value="United States">미국</option>
+                        <option value="China">중국</option>
+                        <option value="Japan">일본</option>
+                        <option value="Germany">독일</option>
+                        <option value="Vietnam">베트남</option>
+                        <option value="United Arab Emirates">아랍에미리트</option>
+                        <option value="Other">기타 지역</option>
                       </select>
                     </div>
                   </>
@@ -641,14 +641,14 @@ function AuthPageContent() {
             {/* Password Input */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-700">Password (at least 6 characters) *</label>
+                <label className="block text-xs font-bold text-slate-700">비밀번호 (6자 이상) *</label>
                 {!isSignUp && (
                   <button
                     type="button"
                     onClick={() => setIsForgotPasswordOpen(true)}
                     className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
                   >
-                    Forgot Password?
+                    비밀번호를 잊으셨나요?
                   </button>
                 )}
               </div>
@@ -689,14 +689,14 @@ function AuthPageContent() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Processing...</span>
+                  <span>처리 중...</span>
                 </>
               ) : (
                 <>
                   <span>
                     {isSignUp
-                      ? userRole === 'seller' ? 'Complete Seller Registration' : 'Complete Buyer Registration'
-                      : 'Sign In'}
+                      ? userRole === 'seller' ? '셀러 가입 완료하기' : '바이어 가입 완료하기'
+                      : '로그인'}
                   </span>
                   <ArrowRight className="w-4 h-4" />
                 </>
@@ -706,7 +706,7 @@ function AuthPageContent() {
 
           {/* Mode Switcher */}
           <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>{isSignUp ? 'Already have an account?' : "Don't have an account yet?"}</span>
+            <span>{isSignUp ? '이미 계정이 있으신가요?' : '아직 계정이 없으신가요?'}</span>
             <button
               type="button"
               onClick={() => {
@@ -717,7 +717,7 @@ function AuthPageContent() {
               }}
               className="font-bold text-blue-600 hover:underline cursor-pointer"
             >
-              {isSignUp ? 'Switch to Sign In ➡️' : 'Create Free Account ➡️'}
+              {isSignUp ? '로그인하러 가기 ➡️' : '무료로 회원가입하기 ➡️'}
             </button>
           </div>
         </div>
@@ -729,7 +729,7 @@ function AuthPageContent() {
           <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-slate-200 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <span className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                <KeyRound className="w-4 h-4 text-blue-600" /> Reset Your Password
+                <KeyRound className="w-4 h-4 text-blue-600" /> 비밀번호 재설정
               </span>
               <button
                 type="button"
@@ -741,7 +741,7 @@ function AuthPageContent() {
             </div>
 
             <p className="text-xs text-slate-500 leading-relaxed">
-              Enter your registered email address below. We will send you a verification link to reset your password.
+              가입하신 이메일 주소를 입력해주세요. 비밀번호를 재설정할 수 있는 링크를 보내드릴게요.
             </p>
 
             {resetStatus && (
@@ -752,7 +752,7 @@ function AuthPageContent() {
 
             <form onSubmit={handleSendPasswordReset} className="space-y-3">
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">Your Registered Email</label>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">가입하신 이메일 주소</label>
                 <input
                   type="email"
                   required
@@ -769,14 +769,14 @@ function AuthPageContent() {
                   onClick={() => setIsForgotPasswordOpen(false)}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer"
                 >
-                  Cancel
+                  취소
                 </button>
                 <button
                   type="submit"
                   disabled={resetLoading}
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition cursor-pointer disabled:opacity-50"
                 >
-                  {resetLoading ? 'Sending...' : 'Send Verification Email'}
+                  {resetLoading ? '발송 중...' : '재설정 메일 보내기'}
                 </button>
               </div>
             </form>
@@ -794,7 +794,7 @@ export default function AuthPage() {
         <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
           <div className="flex items-center gap-2 text-slate-600 text-xs font-bold">
             <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-            <span>Loading Authentication Portal...</span>
+            <span>로그인 화면을 불러오는 중...</span>
           </div>
         </div>
       }

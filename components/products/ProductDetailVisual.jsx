@@ -133,9 +133,13 @@ export default function ProductDetailVisual({ product }) {
         <div className="space-y-4">
           <div className="border-b border-slate-100 pb-3 space-y-1">
             <div className="flex items-center justify-between">
-              {product?.is_verified && (
+              {product?.is_verified ? (
                 <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-100 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Verified Supplier
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2.5 py-0.5 rounded-md border border-slate-100">
+                  Unregistered / Not Yet Verified
                 </span>
               )}
               <span className="text-[10px] text-slate-400 font-bold">South Korea 🇰🇷</span>

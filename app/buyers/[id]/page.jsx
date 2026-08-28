@@ -68,13 +68,13 @@ function PublicBuyerShowroomContent() {
       // optional extended business-profile fields. Merge both, buyers as the name source.
       const { data: buyerRow } = await supabase
         .from('buyers')
-        .select('*')
+        .select('auth_user_id, buyer_name, company_name, country, interest_category')
         .eq('auth_user_id', buyerIdStr)
         .maybeSingle();
 
       const { data: profile } = await supabase
         .from('buyer_profiles')
-        .select('*')
+        .select('auth_user_id, company_name, country, business_type, website_url, description')
         .eq('auth_user_id', buyerIdStr)
         .maybeSingle();
 
@@ -104,7 +104,7 @@ function PublicBuyerShowroomContent() {
       if (buyerIdStr) {
         const { data: rfqList, error: rfqErr } = await supabase
           .from('public_rfqs')
-          .select('*')
+          .select('id, user_id, category, created_at, product_name, title, drawing_url, target_price, order_quantity, moq, details, quote_count')
           .eq('user_id', buyerIdStr)
           .order('created_at', { ascending: false });
 

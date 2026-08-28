@@ -20,7 +20,14 @@ import { formatProductTitle } from '@/lib/productTitle';
 
 // Google Translate turns "All" into stiff literal Korean ("모두") — show the
 // more natural phrasing directly instead when Korean is selected.
-const CATEGORY_LABEL_KO = { All: '전체' };
+const CATEGORY_LABEL_KO = {
+  All: '전체',
+  'Industrial Machinery': '산업 기계',
+  'K-Beauty & Cosmetics': 'K-뷰티/화장품',
+  'K-Food & Beverages': 'K-푸드/식품',
+  'Electronics & Smart IT': '전자/IT',
+  'General Manufacturing': '일반 제조업'
+};
 
 export default function CatalogClient() {
   const router = useRouter();
@@ -213,12 +220,12 @@ export default function CatalogClient() {
                       <Package className="w-8 h-8 text-slate-300" />
                     )}
 
-                    <span className="absolute top-2 left-2 bg-[#0F172A]/80 backdrop-blur-sm text-white text-[9px] font-extrabold px-2 py-0.5 rounded-md">
+                    <span className="absolute top-2 left-2 bg-[#0F172A]/80 backdrop-blur-sm text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md">
                       {item.category || 'Manufacturing'}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 truncate">
+                  <div className="flex items-center gap-1 text-[11px] font-bold text-slate-500 truncate">
                     <Building2 className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
                     <span className="truncate">{item.company_name || 'Korean Manufacturer'}</span>
                     {item.is_verified && (
@@ -231,12 +238,16 @@ export default function CatalogClient() {
                   </h3>
 
                   <div className="pt-1 border-t border-slate-100 space-y-0.5">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-sm font-extrabold text-emerald-600">{item.price || '$0.00'}</span>
-                      <span className="text-[10px] text-slate-400 font-semibold">/ Unit</span>
-                    </div>
+                    {item.price ? (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-sm font-extrabold text-emerald-600">{item.price}</span>
+                        <span className="text-[11px] text-slate-400 font-semibold">/ Unit</span>
+                      </div>
+                    ) : (
+                      <div className="text-sm font-extrabold text-slate-500">Price on Request</div>
+                    )}
 
-                    <div className="text-[10px] text-slate-500 font-medium">
+                    <div className="text-[11px] text-slate-500 font-medium">
                       MOQ: <span className="font-extrabold text-slate-800">{item.moq || '1 Unit'}</span>
                     </div>
                   </div>

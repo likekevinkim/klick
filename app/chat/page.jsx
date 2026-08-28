@@ -457,8 +457,6 @@ function ChatContent() {
             buyer_name: buyerDisplayName,
             seller_id: userIdStr,
             seller_name: mySellerName,
-            company_name: mySellerName,
-            title: rfqProductTitle,
             seller_lang: 'ko',
             buyer_lang: 'en',
             last_message: 'Inquiry initialized.',
@@ -471,7 +469,10 @@ function ChatContent() {
             .insert([newRoomPayload])
             .select();
 
-          if (!createError && createdRoomData && createdRoomData.length > 0) {
+          if (createError) {
+            console.error('Failed to create chat room from RFQ:', createError);
+            alert('Failed to start the chat. Please try again: ' + createError.message);
+          } else if (createdRoomData && createdRoomData.length > 0) {
             matchedRoom = { ...createdRoomData[0], unread_count: 0, buyer_profile_name: buyerDisplayName };
             currentRoomsList = [matchedRoom, ...currentRoomsList];
 
@@ -536,8 +537,6 @@ function ChatContent() {
             buyer_name: myBuyerName,
             seller_id: targetSellerIdPayload,
             seller_name: companySeller,
-            company_name: companySeller,
-            title: companyTitle,
             seller_lang: 'ko',
             buyer_lang: getSiteTranslateLang('en'),
             last_message: `Inquiry initialized.`,
@@ -550,7 +549,10 @@ function ChatContent() {
             .insert([newRoomPayload])
             .select();
 
-          if (!createError && createdRoomData && createdRoomData.length > 0) {
+          if (createError) {
+            console.error('Failed to create chat room from company page:', createError);
+            alert('Failed to start the chat. Please try again: ' + createError.message);
+          } else if (createdRoomData && createdRoomData.length > 0) {
             matchedRoom = { ...createdRoomData[0], unread_count: 0 };
             currentRoomsList = [matchedRoom, ...currentRoomsList];
 

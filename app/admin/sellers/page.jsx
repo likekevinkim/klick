@@ -119,11 +119,8 @@ export default function AdminSellersPage() {
   const handleViewCert = async (path) => {
     if (!path) return;
     try {
-      const { data, error } = await supabase.storage
-        .from(path.startsWith('http') ? 'company-images' : 'company-private-docs')
-        .createSignedUrl(path.startsWith('http') ? path.split('/').slice(-2).join('/') : path, 300);
-      if (error) throw error;
-      if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+      const { signedUrl } = await callAdminApi('/api/admin/cert-url', { path });
+      if (signedUrl) window.open(signedUrl, '_blank', 'noopener,noreferrer');
     } catch (err) {
       console.error('Signed URL fetch error:', err);
       alert('Failed to open file: ' + (err.message || 'Storage connection error'));
