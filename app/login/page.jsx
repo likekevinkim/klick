@@ -86,7 +86,9 @@ function AuthPageContent() {
       setResetLoading(true);
       setResetStatus('');
 
-      const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://klick-six.vercel.app';
+      // window.location.origin을 쓰면 로컬(localhost)에서 보낸 링크가 로컬 주소로 가버리므로,
+      // 어디서 요청했든 항상 실제 운영 도메인으로 보낸다
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://klick.biz';
 
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
         redirectTo: `${siteUrl}/reset-password`

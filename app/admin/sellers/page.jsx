@@ -11,9 +11,13 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  Search
+  Search,
+  Plus,
+  PackagePlus,
+  X
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { PRODUCT_CATEGORIES } from '@/lib/categories';
 
 const FILTERS = [
   { key: 'all', label: '전체' },
@@ -38,9 +42,98 @@ export default function AdminSellersPage() {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
 
+  // 신규 셀러 계정 생성 모달 상태
+  const [isNewSellerOpen, setIsNewSellerOpen] = useState(false);
+  const [newSellerEmail, setNewSellerEmail] = useState('');
+  const [newSellerNameKo, setNewSellerNameKo] = useState('');
+  const [newSellerNameEn, setNewSellerNameEn] = useState('');
+  const [creatingSeller, setCreatingSeller] = useState(false);
+
+  // 특정 셀러에 상품 등록 모달 상태
+  const [productModalCompany, setProductModalCompany] = useState(null);
+  const [newProductTitleKo, setNewProductTitleKo] = useState('');
+  const [newProductTitleEn, setNewProductTitleEn] = useState('');
+  const [newProductCategory, setNewProductCategory] = useState(PRODUCT_CATEGORIES[0]);
+  const [newProductMoq, setNewProductMoq] = useState('');
+  const [newProductPrice, setNewProductPrice] = useState('');
+  const [newProductDesc, setNewProductDesc] = useState('');
+  const [creatingProduct, setCreatingProduct] = useState(false);
+
   useEffect(() => {
     fetchCompanies();
   }, []);
+
+  const callAdminApi = async (path, body) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+      body: JSON.stringify(body)
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || `요청 실패 (${res.status})`);
+    return json;
+  };
+
+  const handleCreateSeller = async (e) => {
+    e.preventDefault();
+    if (!newSellerEmail.trim()) return;
+    try {
+      setCreatingSeller(true);
+      await callAdminApi('/api/admin/create-account', {
+        type: 'seller',
+        email: newSellerEmail,
+        companyNameKo: newSellerNameKo,
+        companyNameEn: newSellerNameEn
+      });
+      alert('셀러 계정과 회사 정보가 생성되었습니다. 본인은 로그인 화면의 "Forgot Password"로 비밀번호를 설정해야 합니다.');
+      setIsNewSellerOpen(false);
+      setNewSellerEmail('');
+      setNewSellerNameKo('');
+      setNewSellerNameEn('');
+      await fetchCompanies();
+    } catch (err) {
+      alert('셀러 생성 실패: ' + err.message);
+    } finally {
+      setCreatingSeller(false);
+    }
+  };
+
+  const resetProductForm = () => {
+    setProductModalCompany(null);
+    setNewProductTitleKo('');
+    setNewProductTitleEn('');
+    setNewProductCategory(PRODUCT_CATEGORIES[0]);
+    setNewProductMoq('');
+    setNewProductPrice('');
+    setNewProductDesc('');
+  };
+
+  const handleCreateProduct = async (e) => {
+    e.preventDefault();
+    if (!productModalCompany) return;
+    try {
+      setCreatingProduct(true);
+      await callAdminApi('/api/admin/create-product', {
+        targetUserId: productModalCompany.user_id,
+        titleKo: newProductTitleKo,
+        titleEn: newProductTitleEn,
+        companyName: productModalCompany.company_name_en || productModalCompany.company_name,
+        location: productModalCompany.location,
+        category: newProductCategory,
+        moq: newProductMoq,
+        price: newProductPrice,
+        description: newProductDesc
+      });
+      alert('상품이 등록되었습니다.');
+      resetProductForm();
+      await fetchCompanies();
+    } catch (err) {
+      alert('상품 등록 실패: ' + err.message);
+    } finally {
+      setCreatingProduct(false);
+    }
+  };
 
   const fetchCompanies = async () => {
     try {
@@ -158,12 +251,21 @@ export default function AdminSellersPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-          <Building2 className="w-5 h-5 text-blue-600" />
-          Seller Management
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">셀러 목록 조회 및 사업자등록증 인증 승인/반려.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-blue-600" />
+            Seller Management
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">셀러 목록 조회 및 사업자등록증 인증 승인/반려.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsNewSellerOpen(true)}
+          className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer flex-shrink-0"
+        >
+          <Plus className="w-4 h-4" /> 신규 셀러 등록
+        </button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
@@ -235,6 +337,13 @@ export default function AdminSellersPage() {
               </div>
 
               <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setProductModalCompany(c)}
+                  className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <PackagePlus className="w-3.5 h-3.5" /> 상품 등록
+                </button>
                 {c._status === 'verified' ? (
                   <button
                     type="button"
@@ -268,6 +377,124 @@ export default function AdminSellersPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {isNewSellerOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100000] p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-extrabold text-slate-900">신규 셀러 계정 생성</h2>
+              <button type="button" onClick={() => setIsNewSellerOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              계정과 회사 프로필이 즉시 생성됩니다. 비밀번호는 생성하지 않으니, 셀러 본인이 로그인 화면의 "Forgot Password"로 직접 설정해야 합니다.
+            </p>
+            <form onSubmit={handleCreateSeller} className="space-y-3">
+              <input
+                type="email"
+                required
+                value={newSellerEmail}
+                onChange={(e) => setNewSellerEmail(e.target.value)}
+                placeholder="셀러 이메일"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+              <input
+                type="text"
+                value={newSellerNameKo}
+                onChange={(e) => setNewSellerNameKo(e.target.value)}
+                placeholder="회사명 (한글)"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+              <input
+                type="text"
+                value={newSellerNameEn}
+                onChange={(e) => setNewSellerNameEn(e.target.value)}
+                placeholder="Company Name (English)"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+              <button
+                type="submit"
+                disabled={creatingSeller}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-extrabold text-xs rounded-xl transition cursor-pointer"
+              >
+                {creatingSeller ? '생성 중...' : '셀러 계정 생성'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {productModalCompany && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100000] p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-extrabold text-slate-900">
+                {productModalCompany.company_name_en || productModalCompany.company_name}에 상품 등록
+              </h2>
+              <button type="button" onClick={resetProductForm} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateProduct} className="space-y-3">
+              <input
+                type="text"
+                value={newProductTitleKo}
+                onChange={(e) => setNewProductTitleKo(e.target.value)}
+                placeholder="상품명 (한글)"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+              <input
+                type="text"
+                required
+                value={newProductTitleEn}
+                onChange={(e) => setNewProductTitleEn(e.target.value)}
+                placeholder="Product Title (English)"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+              <select
+                value={newProductCategory}
+                onChange={(e) => setNewProductCategory(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                {PRODUCT_CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  value={newProductMoq}
+                  onChange={(e) => setNewProductMoq(e.target.value)}
+                  placeholder="MOQ"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+                <input
+                  type="text"
+                  value={newProductPrice}
+                  onChange={(e) => setNewProductPrice(e.target.value)}
+                  placeholder="가격 (USD)"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </div>
+              <textarea
+                value={newProductDesc}
+                onChange={(e) => setNewProductDesc(e.target.value)}
+                placeholder="상품 설명"
+                rows={3}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+              <button
+                type="submit"
+                disabled={creatingProduct}
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-300 text-white font-extrabold text-xs rounded-xl transition cursor-pointer"
+              >
+                {creatingProduct ? '등록 중...' : '상품 등록'}
+              </button>
+            </form>
+          </div>
         </div>
       )}
     </div>
