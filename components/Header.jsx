@@ -396,7 +396,7 @@ export default function Header() {
                         className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
                       >
                         <Building2 className="w-4 h-4 text-blue-500" />
-                        <span>My Company & Showroom</span>
+                        <span className="notranslate" translate="no">{currentLang === 'KO' ? '회사 및 쇼룸' : 'My Company & Showroom'}</span>
                       </Link>
 
                       {/* Product Dashboard 클릭 시 /products 페이지로 고정 */}

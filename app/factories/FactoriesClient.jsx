@@ -146,10 +146,10 @@ function FactoriesDirectoryContent() {
           </div>
 
           <div className="space-y-2 max-w-3xl">
-            <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight leading-snug">
+            <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight leading-snug break-keep">
               Connect Directly with <span className="text-blue-400">Verified Korean Companies</span>
             </h1>
-            <p className="text-slate-300 text-xs md:text-sm leading-relaxed font-medium">
+            <p className="text-slate-300 text-xs md:text-sm leading-relaxed font-medium break-keep">
               Explore authentic company profiles, inspect production facilities, and access direct wholesale product catalogs without middleman markup.
             </p>
           </div>

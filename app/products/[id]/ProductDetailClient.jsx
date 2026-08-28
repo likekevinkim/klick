@@ -91,6 +91,30 @@ export default function ProductDetailClient() {
             title_ko: data.title_ko || data.title || '',
             image_url: data.image_url || (data.gallery_images && data.gallery_images[0]) || ''
           };
+
+          // 사업유형/공장위치/자격증/회사명은 상품 생성 시점에 스냅샷으로 저장된 값이 아니라,
+          // 셀러가 companies 프로필을 나중에 수정해도 바로 반영되도록 항상 최신 값으로 덮어씀
+          if (foundProduct.user_id) {
+            const { data: sellerCompany } = await supabase
+              .from('companies')
+              .select('company_name_en, company_name_ko, business_type, location, certifications, is_verified')
+              .eq('user_id', foundProduct.user_id)
+              .maybeSingle();
+
+            if (sellerCompany) {
+              foundProduct = {
+                ...foundProduct,
+                company_name_en: sellerCompany.company_name_en || foundProduct.company_name || '',
+                company_name_ko: sellerCompany.company_name_ko || '',
+                business_type: sellerCompany.business_type || foundProduct.business_type,
+                factory_location: sellerCompany.location || foundProduct.location || foundProduct.factory_location,
+                certifications: Array.isArray(sellerCompany.certifications)
+                  ? sellerCompany.certifications.join(', ')
+                  : (sellerCompany.certifications || foundProduct.certifications),
+                is_verified: sellerCompany.is_verified
+              };
+            }
+          }
         }
       }
 

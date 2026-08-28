@@ -24,6 +24,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { FILTER_CATEGORIES } from '@/lib/categories';
 import { formatProductTitle } from '@/lib/productTitle';
+import { formatCompanyName } from '@/lib/companyName';
 
 export default function HomeClient() {
   const router = useRouter();
@@ -170,13 +171,12 @@ export default function HomeClient() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      // is_verified는 companies 테이블에만 있으므로 실제 인증된 셀러의 user_id만 별도 조회해
-      // "Verified" 표시가 진짜 인증 여부와 무관하게 항상 뜨지 않도록 함
-      const { data: verifiedCompanies } = await supabase
+      // is_verified와 회사명(영/한)은 companies 테이블에만 있으므로 별도 조회 후 user_id로 병합
+      const { data: allCompanies } = await supabase
         .from('companies')
-        .select('user_id')
-        .eq('is_verified', true);
-      const verifiedSellerIds = new Set((verifiedCompanies || []).map((c) => c.user_id));
+        .select('user_id, company_name_en, company_name_ko, is_verified');
+      const verifiedSellerIds = new Set((allCompanies || []).filter((c) => c.is_verified).map((c) => c.user_id));
+      const companyNameById = new Map((allCompanies || []).map((c) => [c.user_id, c]));
 
       if (error) {
         console.error('Supabase fetch error on homepage:', error);
@@ -197,11 +197,15 @@ export default function HomeClient() {
             }
           }
 
+          const sellerCompany = companyNameById.get(item.user_id);
+
           return {
             ...item,
             image_url: mainImg,
             title_en: item.title_en || item.product_name || item.title_ko || '',
             title_ko: item.title_ko || item.product_name || item.title_en || '',
+            company_name_en: sellerCompany?.company_name_en || item.company_name || '',
+            company_name_ko: sellerCompany?.company_name_ko || '',
             is_verified: verifiedSellerIds.has(item.user_id)
           };
         });
@@ -264,13 +268,12 @@ export default function HomeClient() {
             )}
           </div>
 
-          <div className="space-y-3 max-w-3xl">
-            <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight leading-snug">
-              Source High-Quality Products Directly From <br className="hidden md:block" />
-              <span className="text-blue-400">Business-Verified Korean Manufacturers</span>
+          <div className="space-y-2 max-w-3xl">
+            <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight leading-snug break-keep">
+              Source High-Quality Products Directly From <span className="text-blue-400">Business-Verified Korean Manufacturers</span>
             </h1>
 
-            <p className="text-slate-300 text-xs md:text-sm leading-relaxed font-medium">
+            <p className="text-slate-300 text-xs md:text-sm leading-relaxed font-medium break-keep">
               Zero middleman markup. Connect with South Korean manufacturers with AI-translated English specifications, instant RFQs, and standard-format B2B trade documents.
             </p>
           </div>
@@ -415,7 +418,7 @@ export default function HomeClient() {
 
                   <div className="flex items-center gap-1 text-xs font-bold text-slate-500 truncate">
                     <Building2 className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                    <span className="truncate">{item.company_name || 'Korean Manufacturer'}</span>
+                    <span className="notranslate truncate" translate="no">{formatCompanyName(item)}</span>
                     {item.is_verified && (
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
                     )}

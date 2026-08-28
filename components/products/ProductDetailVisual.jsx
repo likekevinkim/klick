@@ -15,6 +15,7 @@ import {
   CheckCircle2, 
   MessageSquare
 } from 'lucide-react';
+import { formatCompanyName } from '@/lib/companyName';
 
 export default function ProductDetailVisual({ product }) {
   const router = useRouter();
@@ -132,22 +133,24 @@ export default function ProductDetailVisual({ product }) {
         <div className="space-y-4">
           <div className="border-b border-slate-100 pb-3 space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-100 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Verified Supplier
-              </span>
+              {product?.is_verified && (
+                <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-100 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Verified Supplier
+                </span>
+              )}
               <span className="text-[10px] text-slate-400 font-bold">South Korea 🇰🇷</span>
             </div>
 
-            <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-1.5 pt-1.5">
+            <h3 className="notranslate text-base font-extrabold text-slate-900 flex items-center gap-1.5 pt-1.5" translate="no">
               <Building2 className="w-4.5 h-4.5 text-blue-600 flex-shrink-0" />
-              {product?.company_name || 'Hankook Precision Co., Ltd.'}
+              {formatCompanyName(product)}
             </h3>
           </div>
 
           <div className="space-y-2.5 text-xs">
             <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
               <span className="text-slate-400 font-bold">Business Type:</span>
-              <span className="font-extrabold text-slate-800">Direct Manufacturer</span>
+              <span className="font-extrabold text-slate-800">{product?.business_type || 'Direct Manufacturer'}</span>
             </div>
 
             <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
@@ -164,7 +167,7 @@ export default function ProductDetailVisual({ product }) {
                 <Award className="w-3.5 h-3.5 text-amber-500" /> Certifications:
               </span>
               <span className="font-extrabold text-blue-600">
-                {product?.certifications || 'ISO 9001, CE Certified'}
+                {product?.certifications || 'Not specified'}
               </span>
             </div>
           </div>

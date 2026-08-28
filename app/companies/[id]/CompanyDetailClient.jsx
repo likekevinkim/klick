@@ -550,7 +550,7 @@ export default function CompanyDetailClient() {
               }`}
             >
               <Package className="w-4 h-4" />
-              <span>Showroom ({products.length})</span>
+              <span>Showroom</span>
             </button>
           </div>
 

@@ -581,7 +581,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
         lead_time: leadTime,
         dimensions: dimensions,
         hs_code: hsCode,
-        certifications: certifications || 'Standard Production Spec',
+        certifications: certifications || '',
         oem_odm: oemOdmValue,
         fob_price: mainFobPrice,
         price: mainFobPrice,
