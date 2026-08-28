@@ -24,7 +24,7 @@ export default function Footer() {
           </div>
           {isKo ? (
             <p className="leading-relaxed font-medium max-w-sm notranslate break-keep" translate="no">
-              <span className="notranslate" translate="no">KLICK</span>은 한국 제조업체와 전 세계 바이어를 직접 연결하는 B2B 수출 플랫폼입니다. 언어 장벽 없이 투명하고 신속한 글로벌 무역을 지원합니다.
+              <span className="notranslate" translate="no">KLICK</span>(클릭)은 한국 제조기업과 해외 바이어를 실시간 채팅으로 연결하는 B2B 수출·무역 플랫폼입니다. 언어 장벽 없이 빠르고 투명하게 글로벌 무역을 진행할 수 있도록 돕습니다.
             </p>
           ) : (
             <p className="leading-relaxed font-medium max-w-sm">
