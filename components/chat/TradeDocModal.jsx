@@ -6,8 +6,9 @@ import { FileText, X, Printer, ShieldCheck, Upload, Plus, Trash2 } from 'lucide-
 import { supabase } from '@/lib/supabase';
 import Klick from '@/components/Klick';
 
-// Small inline-editable field that still reads cleanly on the printed sheet
-function Field({ label, value, onChange, className = '', placeholder = '', disabled = false }) {
+// Small inline-editable field that still reads cleanly on the printed sheet.
+// `help`, if given, is on-screen guidance only — print:hidden keeps it off the actual document.
+function Field({ label, value, onChange, className = '', placeholder = '', disabled = false, help = '' }) {
   return (
     <div className={className}>
       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">{label}</span>
@@ -19,13 +20,14 @@ function Field({ label, value, onChange, className = '', placeholder = '', disab
         disabled={disabled}
         className="w-full bg-transparent border-0 border-b border-dashed border-slate-300 focus:border-blue-500 focus:outline-none text-xs font-bold text-slate-900 py-0.5 print:border-none disabled:opacity-100 disabled:cursor-default"
       />
+      {help && <span className="block text-[10px] text-slate-400 font-medium mt-0.5 print:hidden">{help}</span>}
     </div>
   );
 }
 
 // Same look as Field, but a dropdown — falls back to including the stored value as an
 // extra option so a previously-sent doc with an older/custom value still displays correctly.
-function SelectField({ label, value, onChange, options, className = '', disabled = false }) {
+function SelectField({ label, value, onChange, options, className = '', disabled = false, help = '' }) {
   const allOptions = value && !options.includes(value) ? [value, ...options] : options;
   return (
     <div className={className}>
@@ -40,6 +42,7 @@ function SelectField({ label, value, onChange, options, className = '', disabled
           <option key={opt} value={opt}>{opt}</option>
         ))}
       </select>
+      {help && <span className="block text-[10px] text-slate-400 font-medium mt-0.5 print:hidden">{help}</span>}
     </div>
   );
 }
@@ -454,12 +457,18 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs border-b border-slate-200 pb-6">
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Consignee</span>
+                {!isViewingSent && (
+                  <p className="text-[10px] text-slate-400 font-medium print:hidden">화물을 실제로 받는 쪽입니다. 특별한 경우가 아니면 바이어와 동일하게 비워두세요.</p>
+                )}
                 <Field label="Company Name" value={consigneeCompany} onChange={setConsigneeCompany} placeholder="Same as Importer/Buyer if blank" disabled={isViewingSent} />
                 <Field label="Address" value={consigneeAddress} onChange={setConsigneeAddress} placeholder="Same as Importer/Buyer if blank" disabled={isViewingSent} />
               </div>
 
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Notify Party</span>
+                {!isViewingSent && (
+                  <p className="text-[10px] text-slate-400 font-medium print:hidden">화물 도착 시 연락받을 곳(주로 바이어 측 포워더)입니다. 모르면 비워두세요.</p>
+                )}
                 <Field label="Company Name" value={notifyPartyCompany} onChange={setNotifyPartyCompany} placeholder="e.g. Freight Forwarder" disabled={isViewingSent} />
                 <Field label="Address" value={notifyPartyAddress} onChange={setNotifyPartyAddress} disabled={isViewingSent} />
               </div>
@@ -468,13 +477,45 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
 
           {/* Shipment Terms */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs border-b border-slate-200 pb-6">
-            <SelectField label="Payment Terms" value={paymentTerms} onChange={setPaymentTerms} options={PAYMENT_TERMS_OPTIONS} disabled={isViewingSent} />
-            <SelectField label="Incoterm" value={incoterm} onChange={setIncoterm} options={INCOTERM_OPTIONS} disabled={isViewingSent} />
+            <SelectField
+              label="Payment Terms"
+              value={paymentTerms}
+              onChange={setPaymentTerms}
+              options={PAYMENT_TERMS_OPTIONS}
+              disabled={isViewingSent}
+              help={!isViewingSent ? '대금을 어떻게 받을지 방식입니다. 보통 T/T(계좌 송금)를 가장 많이 씁니다.' : ''}
+            />
+            <SelectField
+              label="Incoterm"
+              value={incoterm}
+              onChange={setIncoterm}
+              options={INCOTERM_OPTIONS}
+              disabled={isViewingSent}
+              help={!isViewingSent ? '운임·보험을 누가 부담하는지 정하는 국제 무역 조건입니다. FOB(선적항까지만 셀러 부담)가 가장 흔합니다.' : ''}
+            />
             <Field label="Country of Origin" value={countryOfOrigin} onChange={setCountryOfOrigin} disabled={isViewingSent} />
-            <Field label="Port of Loading" value={portOfLoading} onChange={setPortOfLoading} disabled={isViewingSent} />
-            <Field label="Port of Discharge" value={portOfDischarge} onChange={setPortOfDischarge} disabled={isViewingSent} />
+            <Field
+              label="Port of Loading"
+              value={portOfLoading}
+              onChange={setPortOfLoading}
+              disabled={isViewingSent}
+              help={!isViewingSent ? '한국에서 화물을 배/비행기에 싣는 항구·공항입니다.' : ''}
+            />
+            <Field
+              label="Port of Discharge"
+              value={portOfDischarge}
+              onChange={setPortOfDischarge}
+              disabled={isViewingSent}
+              help={!isViewingSent ? '바이어 국가에서 화물을 내리는 항구·공항입니다.' : ''}
+            />
             {docType === 'BL' && (
-              <Field label="Freight" value={freightTerm} onChange={setFreightTerm} disabled={isViewingSent} />
+              <Field
+                label="Freight"
+                value={freightTerm}
+                onChange={setFreightTerm}
+                disabled={isViewingSent}
+                help={!isViewingSent ? '운임을 미리 냈으면 Prepaid, 도착 후 받는 쪽이 내면 Collect.' : ''}
+              />
             )}
           </div>
 
@@ -485,7 +526,13 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
               <Field label="Bank Name" value={bankName} onChange={setBankName} disabled={isViewingSent} />
               <Field label="Account Holder Name" value={bankAccountName} onChange={setBankAccountName} disabled={isViewingSent} />
               <Field label="Account Number" value={bankAccountNo} onChange={setBankAccountNo} disabled={isViewingSent} />
-              <Field label="SWIFT / BIC Code" value={swiftCode} onChange={setSwiftCode} disabled={isViewingSent} />
+              <Field
+                label="SWIFT / BIC Code"
+                value={swiftCode}
+                onChange={setSwiftCode}
+                disabled={isViewingSent}
+                help={!isViewingSent ? '은행 국제 송금용 고유 코드입니다. 거래 은행에 문의하면 알려줍니다.' : ''}
+              />
               <Field label="Bank Address" value={bankAddress} onChange={setBankAddress} className="sm:col-span-2" disabled={isViewingSent} />
               {!isViewingSent && (
                 <p className="sm:col-span-2 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 print:hidden">
@@ -500,7 +547,13 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs border-b border-slate-200 pb-6">
               <Field label="Vessel / Voyage No." value={vesselVoyage} onChange={setVesselVoyage} disabled={isViewingSent} />
               <Field label="Container / Seal No." value={containerSealNo} onChange={setContainerSealNo} disabled={isViewingSent} />
-              <Field label="Marks & Numbers" value={marksNumbers} onChange={setMarksNumbers} disabled={isViewingSent} />
+              <Field
+                label="Marks & Numbers"
+                value={marksNumbers}
+                onChange={setMarksNumbers}
+                disabled={isViewingSent}
+                help={!isViewingSent ? '박스 겉면에 표시된 화물 식별 마크입니다. 없으면 N/M(No Marks)로 둡니다.' : ''}
+              />
             </div>
           )}
 
@@ -530,7 +583,12 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
               <thead>
                 <tr className="bg-slate-900 text-white font-extrabold">
                   <th className="p-3 rounded-l-xl">Description of Goods</th>
-                  <th className="p-3">HS Code</th>
+                  <th className="p-3">
+                    HS Code
+                    {!isViewingSent && (
+                      <span className="block text-[9px] font-medium normal-case text-slate-300 print:hidden">관세 분류 코드 (관세청 조회 가능)</span>
+                    )}
+                  </th>
                   <th className="p-3">Quantity</th>
                   <th className="p-3">Unit Price (USD)</th>
                   <th className="p-3 text-right">Total (USD)</th>
