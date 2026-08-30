@@ -725,6 +725,7 @@ function BuyerProfileContent() {
                     required
                     value={contactPerson}
                     onChange={(e) => setContactPerson(e.target.value)}
+                    placeholder="Please enter in English"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
@@ -735,7 +736,7 @@ function BuyerProfileContent() {
                     type="text"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder=""
+                    placeholder="Please enter in English"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>

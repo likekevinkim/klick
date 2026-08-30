@@ -152,13 +152,13 @@ function PublicBuyerShowroomContent() {
             </div>
 
             <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight">
-              {companyName ? `${companyName} (${country})` : `Buyer (${country})`}
+              {companyName ? <><span className="notranslate" translate="no">{companyName}</span> ({country})</> : `Buyer (${country})`}
             </h1>
 
             <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 font-bold pt-1">
               <div className="flex items-center gap-1.5">
                 <User className="w-4 h-4 text-blue-400" />
-                <span>Contact Person: <strong className="text-white">{contactPerson}</strong></span>
+                <span>Contact Person: <strong className="text-white notranslate" translate="no">{contactPerson}</strong></span>
               </div>
 
               <div className="flex items-center gap-1.5">
@@ -197,7 +197,7 @@ function PublicBuyerShowroomContent() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-100 space-y-1">
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Contact Person</span>
-                <span className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
+                <span className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5 notranslate" translate="no">
                   <User className="w-4 h-4 text-blue-600" />
                   {contactPerson}
                 </span>
@@ -205,7 +205,7 @@ function PublicBuyerShowroomContent() {
 
               <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-100 space-y-1">
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Company Name</span>
-                <span className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
+                <span className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5 notranslate" translate="no">
                   <Building2 className="w-4 h-4 text-blue-600" />
                   {companyName}
                 </span>

@@ -793,7 +793,7 @@ export default function ProductDetailClient() {
                           <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-extrabold text-xs">
                             <User className="w-4 h-4" />
                           </div>
-                          <span className="text-xs font-extrabold text-slate-900">{rev.buyer_name}</span>
+                          <span className="text-xs font-extrabold text-slate-900 notranslate" translate="no">{rev.buyer_name}</span>
                         </div>
 
                         <div className="flex items-center gap-1 text-amber-500 text-xs font-bold">

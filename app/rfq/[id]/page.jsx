@@ -244,7 +244,7 @@ function RfqDetailContent() {
                 <div className="flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-blue-400" />
                   <Link href={`/buyers/${rfq?.user_id}`} className="font-bold hover:underline text-blue-400">
-                    {buyerCompany} ({buyerCountry})
+                    <span className="notranslate" translate="no">{buyerCompany}</span> ({buyerCountry})
                   </Link>
                 </div>
 

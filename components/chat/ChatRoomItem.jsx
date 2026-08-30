@@ -240,7 +240,7 @@ export default function ChatRoomItem({
       >
         <div className="space-y-1 flex-1 pr-4">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100 flex items-center gap-1">
+            <span className={`text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100 flex items-center gap-1 ${userRole === 'seller' ? 'notranslate' : ''}`} translate={userRole === 'seller' ? 'no' : undefined}>
               <Building2 className="w-3 h-3" />
               {partnerName}
             </span>
@@ -253,7 +253,7 @@ export default function ChatRoomItem({
           </div>
 
           <h3 className="text-sm font-extrabold text-slate-900 line-clamp-1">
-            Direct Trade Channel with {partnerName}
+            Direct Trade Channel with <span className={userRole === 'seller' ? 'notranslate' : ''} translate={userRole === 'seller' ? 'no' : undefined}>{partnerName}</span>
           </h3>
         </div>
 
