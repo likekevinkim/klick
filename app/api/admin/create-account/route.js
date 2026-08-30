@@ -40,21 +40,20 @@ export async function POST(request) {
     if (type === 'seller') {
       const { error: companyError } = await supabaseAdmin.from('companies').insert([{
         user_id: newUserId,
-        company_name: companyNameEn || companyNameKo || 'New Factory',
+        company_name: companyNameEn || companyNameKo || 'Not specified',
         company_name_ko: companyNameKo || '',
         company_name_en: companyNameEn || '',
         description: `Official Global B2B Showroom of ${companyNameEn || companyNameKo}.`,
-        business_type: 'Direct Manufacturer',
         location: 'South Korea'
       }]);
       if (companyError) throw companyError;
     } else {
       const { error: buyerError } = await supabaseAdmin.from('buyers').insert([{
         auth_user_id: newUserId,
-        buyer_name: buyerName || 'Global Buyer',
+        buyer_name: buyerName || 'Not specified',
         company_name_en: companyNameEn || '',
         buyer_email: email.trim(),
-        country: country || 'United States',
+        country: country || 'Not specified',
         interest_category: category || 'Industrial Machinery'
       }]);
       if (buyerError) throw buyerError;

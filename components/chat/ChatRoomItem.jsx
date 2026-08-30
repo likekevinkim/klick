@@ -219,7 +219,7 @@ export default function ChatRoomItem({
   // Bind partner name correctly — prefer the live-looked-up company/contact name over
   // whatever was stored on the room at creation time (see fetchChatRoomsAndInit).
   const partnerName = userRole === 'seller'
-    ? (room.buyer_profile_name || room.buyer_contact_person || room.buyer_name || 'Global Buyer')
+    ? (room.buyer_profile_name || room.buyer_contact_person || room.buyer_name || 'Not specified')
     : (room.seller_profile_name || room.seller_name || room.company_name || 'Korean Manufacturer');
 
   const productName = room.product_title || room.title || '';

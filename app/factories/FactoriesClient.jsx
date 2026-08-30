@@ -110,9 +110,9 @@ function FactoriesDirectoryContent() {
         return {
           id: fac.id,
           target_id: sellerTargetId, // 쇼룸 URL 파라미터로 연결될 고유 셀러 ID
-          company_name_en: fac.company_name_en || fac.company_name || 'Registered Korean Company',
+          company_name_en: fac.company_name_en || fac.company_name || 'Not specified',
           company_name_ko: fac.company_name_ko || '',
-          category: fac.category || 'General Manufacturing',
+          category: fac.category || 'Not specified',
           location: fac.location || 'South Korea',
           certifications: certDisplay,
           tagline: fac.tagline || fac.description || '',

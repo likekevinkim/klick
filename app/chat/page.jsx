@@ -342,7 +342,7 @@ function ChatContent() {
 
           currentRoomsList = currentRoomsList.map((r) => ({
             ...r,
-            buyer_profile_name: profileMap[r.buyer_id] || companyMap[r.buyer_id] || r.buyer_name || 'Global Buyer',
+            buyer_profile_name: profileMap[r.buyer_id] || companyMap[r.buyer_id] || r.buyer_name || 'Not specified',
             buyer_company_name: companyMap[r.buyer_id] || ''
           }));
         }
@@ -447,7 +447,7 @@ function ChatContent() {
               .select('company_name')
               .eq('auth_user_id', targetBuyerId)
               .maybeSingle();
-            buyerDisplayName = buyerProf?.company_name || buyerRow?.company_name || buyerRow?.buyer_name || 'Global Buyer';
+            buyerDisplayName = buyerProf?.company_name || buyerRow?.company_name || buyerRow?.buyer_name || 'Not specified';
           }
 
           const newRoomPayload = {
@@ -504,7 +504,7 @@ function ChatContent() {
         }
       } else if (paramCompany || paramTitle) {
         const companyTitle = paramTitle ? decodeURIComponent(paramTitle) : 'Export Product Inquiry';
-        const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Verified Korean Company';
+        const companySeller = paramCompany ? decodeURIComponent(paramCompany) : 'Not specified';
 
         let matchedRoom = currentRoomsList.find(
           (r) => (r.product_title === companyTitle || r.title === companyTitle) &&

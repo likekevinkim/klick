@@ -31,12 +31,13 @@ function SignupProfileContent() {
   const [companyNameKo, setCompanyNameKo] = useState('');
   const [companyNameEn, setCompanyNameEn] = useState('');
   const [sellerPhone, setSellerPhone] = useState('');
-  const [category, setCategory] = useState('Industrial Machinery');
+  const [category, setCategory] = useState('');
+  const [businessType, setBusinessType] = useState('');
 
   // 바이어 정보
   const [buyerName, setBuyerName] = useState('');
   const [buyerCompanyNameEn, setBuyerCompanyNameEn] = useState('');
-  const [country, setCountry] = useState('United States');
+  const [country, setCountry] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -97,11 +98,12 @@ function SignupProfileContent() {
         await supabase.from('companies').upsert([
           {
             user_id: currentUser.id,
-            company_name: companyNameEn || companyNameKo || 'Hankook Precision Co., Ltd.',
+            company_name: companyNameEn || companyNameKo || 'Not specified',
             company_name_ko: companyNameKo,
             company_name_en: companyNameEn,
             description: `Official Global B2B Showroom of ${companyNameEn || companyNameKo}.`,
-            business_type: 'Direct Manufacturer',
+            category: category,
+            business_type: businessType,
             location: 'South Korea',
           }
         ], { onConflict: 'user_id' });
@@ -109,11 +111,10 @@ function SignupProfileContent() {
         await supabase.from('buyers').upsert([
           {
             auth_user_id: currentUser.id,
-            buyer_name: buyerName || 'Global Buyer',
+            buyer_name: buyerName || 'Not specified',
             company_name_en: buyerCompanyNameEn,
             buyer_email: currentUser.email,
             country: country,
-            interest_category: category,
           }
         ], { onConflict: 'auth_user_id' });
       }
@@ -190,13 +191,32 @@ function SignupProfileContent() {
                     <select
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
+                      required
                       className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm bg-white"
                     >
+                      <option value="" disabled>선택해주세요</option>
                       <option value="Industrial Machinery">산업 기계 & 부품</option>
                       <option value="K-Beauty & Cosmetics">K-뷰티 & 화장품</option>
                       <option value="K-Food & Beverages">K-푸드 & 식음료</option>
                       <option value="Electronics & Smart IT">전자 & IT 기기</option>
                       <option value="General Manufacturing">일반 제조업</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">사업 형태</label>
+                    <select
+                      value={businessType}
+                      onChange={(e) => setBusinessType(e.target.value)}
+                      required
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm bg-white"
+                    >
+                      <option value="" disabled>선택해주세요</option>
+                      <option value="Direct Manufacturer">직접 제조사</option>
+                      <option value="OEM / ODM Manufacturer">OEM / ODM 제조사</option>
+                      <option value="High-Tech Direct Manufacturer">첨단기술 직접 제조사</option>
+                      <option value="Export Trading House">수출 무역회사</option>
+                      <option value="etc">기타</option>
                     </select>
                   </div>
 
@@ -243,8 +263,10 @@ function SignupProfileContent() {
                   <select
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
+                    required
                     className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 transition text-sm bg-white"
                   >
+                    <option value="" disabled>선택해주세요</option>
                     <option value="United States">미국</option>
                     <option value="China">중국</option>
                     <option value="Japan">일본</option>

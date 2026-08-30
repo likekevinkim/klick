@@ -19,7 +19,7 @@ export default function AdminBuyersPage() {
   const [newBuyerEmail, setNewBuyerEmail] = useState('');
   const [newBuyerName, setNewBuyerName] = useState('');
   const [newBuyerCompanyEn, setNewBuyerCompanyEn] = useState('');
-  const [newBuyerCountry, setNewBuyerCountry] = useState('United States');
+  const [newBuyerCountry, setNewBuyerCountry] = useState('');
   const [creatingBuyer, setCreatingBuyer] = useState(false);
 
   // 특정 바이어에 RFQ 등록 모달 상태

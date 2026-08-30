@@ -188,7 +188,7 @@ function RfqDetailContent() {
 
   if (!mounted) return null;
 
-  const buyerCompany = rfq?.company_name || rfq?.buyer_company_name || 'Global Buyer';
+  const buyerCompany = rfq?.company_name || rfq?.buyer_company_name || 'Not specified';
   const buyerCountry = rfq?.country || 'Not specified';
   const orderQuantity = rfq?.order_quantity || rfq?.moq || rfq?.target_quantity || '1 Unit';
   const isRfqOwner = !!(user?.id && rfq?.user_id && user.id === rfq.user_id);

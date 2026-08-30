@@ -61,10 +61,11 @@ function BuyerProfileContent() {
   // Buyer Profile State Fields
   const [contactPerson, setContactPerson] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [country, setCountry] = useState('United States');
+  const [country, setCountry] = useState('');
   const [businessType, setBusinessType] = useState('Wholesaler / Distributor');
   const [websiteUrl, setWebsiteUrl] = useState('');
-  const [interestCategory, setInterestCategory] = useState('Industrial Machinery');
+  const [address, setAddress] = useState('');
+  const [interestCategory, setInterestCategory] = useState('');
   const [description, setDescription] = useState('');
   const [email, setEmail] = useState('');
 
@@ -149,6 +150,7 @@ function BuyerProfileContent() {
           setBusinessType(profile.business_type || businessType);
           setWebsiteUrl(profile.website_url || websiteUrl);
           setDescription(profile.description || description);
+          setAddress(profile.address || address);
         }
       }
 
@@ -242,6 +244,7 @@ function BuyerProfileContent() {
           business_type: businessType,
           website_url: websiteUrl,
           description: description,
+          address: address,
           updated_at: new Date().toISOString()
         }
       ], { onConflict: 'auth_user_id' });
@@ -331,10 +334,10 @@ function BuyerProfileContent() {
     try {
       setIsSubmittingRfq(true);
       const userIdStr = user.id.toString();
-      const validCompanyName = companyName || 'Global Sourcing LLC';
+      const validCompanyName = companyName || 'Not specified';
 
       const rfqPayload = {
-        buyer_name: contactPerson || 'Global Buyer',
+        buyer_name: contactPerson || 'Not specified',
         company_name: validCompanyName,
         buyer_company_name: validCompanyName,
         product_name: rfqProductName || rfqTitle,
@@ -507,7 +510,7 @@ function BuyerProfileContent() {
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Target Category</span>
                 <span className="font-extrabold text-blue-600 text-sm flex items-center gap-1.5">
                   <Layers className="w-4 h-4 text-blue-600" />
-                  {interestCategory}
+                  {interestCategory || 'Not specified'}
                 </span>
               </div>
             </div>
@@ -746,6 +749,7 @@ function BuyerProfileContent() {
                     onChange={(e) => setCountry(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   >
+                    <option value="">선택해주세요</option>
                     <option value="United States">United States</option>
                     <option value="China">China</option>
                     <option value="Japan">Japan</option>
@@ -783,12 +787,24 @@ function BuyerProfileContent() {
               </div>
 
               <div>
+                <label className="block font-bold text-slate-700 mb-1">Company Address (Optional)</label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="전체 주소 (인보이스, B/L 등 무역서류에 자동으로 채워집니다)"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                />
+              </div>
+
+              <div>
                 <label className="block font-bold text-slate-700 mb-1">Main Target Category</label>
                 <select
                   value={interestCategory}
                   onChange={(e) => setInterestCategory(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 >
+                  <option value="">Not specified</option>
                   <option value="Industrial Machinery">Industrial Machinery & Parts</option>
                   <option value="K-Beauty & Cosmetics">K-Beauty & Cosmetics</option>
                   <option value="K-Food & Beverages">K-Food & Beverages</option>

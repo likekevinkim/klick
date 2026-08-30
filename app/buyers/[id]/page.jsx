@@ -80,23 +80,23 @@ function PublicBuyerShowroomContent() {
 
       if (buyerRow || profile) {
         setBuyerProfile({
-          contact_person: buyerRow?.buyer_name || 'Global Buyer',
-          company_name: profile?.company_name || buyerRow?.company_name || 'Verified Importer',
-          country: profile?.country || buyerRow?.country || 'United States',
-          business_type: profile?.business_type || 'Wholesaler / Distributor',
-          target_category: buyerRow?.interest_category || 'Industrial Machinery',
+          contact_person: buyerRow?.buyer_name || 'Not specified',
+          company_name: profile?.company_name || buyerRow?.company_name || 'Not specified',
+          country: profile?.country || buyerRow?.country || 'Not specified',
+          business_type: profile?.business_type || 'Not specified',
+          target_category: buyerRow?.interest_category || 'Not specified',
           website_url: profile?.website_url || '',
-          description: profile?.description || 'Verified global wholesale buyer on KLICK platform.'
+          description: profile?.description || ''
         });
       } else {
         setBuyerProfile({
-          contact_person: 'Global Buyer',
-          company_name: 'Verified Importer',
-          country: 'United States',
-          business_type: 'Wholesaler / Distributor',
-          target_category: 'Industrial Machinery',
+          contact_person: 'Not specified',
+          company_name: 'Not specified',
+          country: 'Not specified',
+          business_type: 'Not specified',
+          target_category: 'Not specified',
           website_url: '',
-          description: 'Verified global wholesale buyer on KLICK platform.'
+          description: ''
         });
       }
 
@@ -130,11 +130,11 @@ function PublicBuyerShowroomContent() {
 
   if (!mounted) return null;
 
-  const contactPerson = buyerProfile?.contact_person || buyerProfile?.buyer_name || 'Global Buyer';
-  const companyName = buyerProfile?.company_name || 'Verified Importer';
-  const country = buyerProfile?.country || 'United States';
-  const businessType = buyerProfile?.business_type || 'Wholesaler / Distributor';
-  const targetCategory = buyerProfile?.target_category || buyerProfile?.interest_category || 'Industrial Machinery';
+  const contactPerson = buyerProfile?.contact_person || buyerProfile?.buyer_name || 'Not specified';
+  const companyName = buyerProfile?.company_name || 'Not specified';
+  const country = buyerProfile?.country || 'Not specified';
+  const businessType = buyerProfile?.business_type || 'Not specified';
+  const targetCategory = buyerProfile?.target_category || buyerProfile?.interest_category || 'Not specified';
   const websiteUrl = buyerProfile?.website_url || '';
   const description = buyerProfile?.description || '';
 

@@ -393,7 +393,7 @@ function PublicRfqBoardContent() {
                   <div className="flex items-center gap-3 text-xs text-slate-500 font-medium pt-1 border-t border-slate-100">
                     <span className="flex items-center gap-1">
                       <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                      <strong className="text-slate-800">{rfq.company_name || rfq.buyer_company_name || rfq.buyer_name || 'Global Buyer'}</strong>
+                      <strong className="text-slate-800">{rfq.company_name || rfq.buyer_company_name || rfq.buyer_name || 'Not specified'}</strong>
                     </span>
                     <span className="flex items-center gap-1">
                       <MapPin className="w-3.5 h-3.5 text-emerald-600" />

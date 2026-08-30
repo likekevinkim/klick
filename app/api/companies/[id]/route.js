@@ -6,35 +6,24 @@ export async function GET(request, { params }) {
   try {
     const { id } = await params;
 
-    // 해당 회사의 대표 정보 조회
     const { data: company, error: companyError } = await supabase
       .from('companies')
       .select('*')
       .eq('id', id)
       .single();
 
-    // 회사가 없더라도 가상 프로필 기본값 반환 방어 로직
-    const safeCompany = company || {
-      id: id,
-      company_name: '한국정밀공업 (Hankook Precision Co., Ltd.)',
-      tagline: 'Leading Manufacturer of Industrial Machinery & Precision Components in South Korea',
-      description: 'Established in 1998, Hankook Precision specializes in manufacturing ultra-durable hydraulic valves, industrial automation parts, and customized machinery components exported to over 30 countries worldwide.',
-      business_type: 'Direct Manufacturer',
-      location: 'Incheon, South Korea',
-      established_year: '1998',
-      employees_count: '50 - 100 Employees',
-      factory_size: '5,000 sq. meters',
-      certifications: ['ISO 9001', 'CE Certified', 'IATF 16949'],
-    };
+    if (companyError || !company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
 
-    // 해당 제조사가 등록한 전체 수출 상품 목록 조회
     const { data: products } = await supabase
       .from('products')
       .select('*')
+      .eq('user_id', company.user_id)
       .order('created_at', { ascending: false });
 
     return NextResponse.json({
-      company: safeCompany,
+      company,
       products: products || [],
     });
   } catch (error) {

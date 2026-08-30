@@ -146,7 +146,7 @@ export default function ProductDetailClient() {
           .maybeSingle();
 
         setViewerBuyerId(userIdStr);
-        setViewerBuyerName(buyerRow?.buyer_name || buyerRow?.company_name || 'Global Buyer');
+        setViewerBuyerName(buyerRow?.buyer_name || buyerRow?.company_name || 'Not specified');
 
         if (foundProduct?.id) {
           const { data: favRow } = await supabase

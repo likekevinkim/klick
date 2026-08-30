@@ -37,7 +37,7 @@ export async function generateMetadata({ params }) {
     return { title: 'Company | KLICK' };
   }
 
-  const title = company.company_name_en || company.company_name_ko || 'Verified Korean Company';
+  const title = company.company_name_en || company.company_name_ko || 'Company';
   const description = company.tagline || `${company.category || 'Korean manufacturer'} on KLICK — a verified B2B export platform connecting Korean factories with global buyers.`;
 
   return {

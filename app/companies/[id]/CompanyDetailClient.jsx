@@ -74,10 +74,10 @@ export default function CompanyDetailClient() {
 
   const [editCompanyNameKo, setEditCompanyNameKo] = useState('');
   const [editCompanyNameEn, setEditCompanyNameEn] = useState('');
-  const [editCategory, setEditCategory] = useState('Industrial Machinery');
+  const [editCategory, setEditCategory] = useState('');
   const [editTagline, setEditTagline] = useState('');
   const [editDescription, setEditDescription] = useState('');
-  const [editBusinessType, setEditBusinessType] = useState('Direct Manufacturer');
+  const [editBusinessType, setEditBusinessType] = useState('');
   const [editLocation, setEditLocation] = useState('');
   const [editEstablishedYear, setEditEstablishedYear] = useState('');
   const [editEmployeesCount, setEditEmployeesCount] = useState('');
@@ -202,10 +202,10 @@ export default function CompanyDetailClient() {
 
         setEditCompanyNameKo(fetchedCompany.company_name_ko || '');
         setEditCompanyNameEn(fetchedCompany.company_name_en || fetchedCompany.company_name || '');
-        setEditCategory(fetchedCompany.category || 'Industrial Machinery');
+        setEditCategory(fetchedCompany.category || '');
         setEditTagline(fetchedCompany.tagline || '');
         setEditDescription(fetchedCompany.description || '');
-        setEditBusinessType(fetchedCompany.business_type || 'Direct Manufacturer');
+        setEditBusinessType(fetchedCompany.business_type || '');
         setEditLocation(fetchedCompany.location || '');
         setEditEstablishedYear(fetchedCompany.established_year || '');
         setEditEmployeesCount(fetchedCompany.employees_count || '');
@@ -292,10 +292,10 @@ export default function CompanyDetailClient() {
 
       const updatedPayload = {
         user_id: activeUserId,
-        company_name: editCompanyNameEn || editCompanyNameKo || 'Korean Company',
+        company_name: editCompanyNameEn || editCompanyNameKo || 'Not specified',
         company_name_ko: editCompanyNameKo,
         company_name_en: editCompanyNameEn,
-        category: editCategory || 'Industrial Machinery',
+        category: editCategory || 'Not specified',
         tagline: editTagline,
         description: editDescription,
         business_type: editBusinessType,

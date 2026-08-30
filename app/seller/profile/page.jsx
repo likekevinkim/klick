@@ -39,6 +39,7 @@ export default function SellerCompanyProfilePage() {
   const [description, setDescription] = useState('');
   const [businessType, setBusinessType] = useState('Direct Manufacturer');
   const [location, setLocation] = useState('South Korea');
+  const [address, setAddress] = useState('');
   const [establishedYear, setEstablishedYear] = useState('');
   const [employeesCount, setEmployeesCount] = useState('');
   const [factorySize, setFactorySize] = useState('');
@@ -101,6 +102,7 @@ export default function SellerCompanyProfilePage() {
       setDescription(activeCompany.description || '');
       setBusinessType(activeCompany.business_type || 'Direct Manufacturer');
       setLocation(activeCompany.location || activeCompany.country || 'South Korea');
+      setAddress(activeCompany.address || '');
       setEstablishedYear(activeCompany.established_year || '');
       setEmployeesCount(activeCompany.employees_count || '');
       setFactorySize(activeCompany.factory_size || '');
@@ -159,6 +161,7 @@ export default function SellerCompanyProfilePage() {
         description: description,
         business_type: businessType,
         location: location,
+        address: address,
         established_year: establishedYear,
         employees_count: employeesCount,
         factory_size: factorySize,
@@ -333,6 +336,17 @@ export default function SellerCompanyProfilePage() {
                     className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Company Address (Optional)</label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="전체 주소 (인보이스, B/L 등 무역서류에 자동으로 채워집니다)"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">

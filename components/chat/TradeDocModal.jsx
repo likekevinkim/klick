@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { FileText, X, Printer, ShieldCheck, Upload, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Klick from '@/components/Klick';
@@ -177,7 +178,7 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
 
     setSellerCompany(room?.seller_profile_name || room?.seller_name || room?.company_name || 'Korean Manufacturer Co., Ltd.');
     setSellerAddress('');
-    setBuyerCompany(room?.buyer_profile_name || room?.buyer_contact_person || room?.buyer_name || 'Global Buyer');
+    setBuyerCompany(room?.buyer_profile_name || room?.buyer_contact_person || room?.buyer_name || '');
     setBuyerAddress('');
     setConsigneeCompany('');
     setConsigneeAddress('');
@@ -199,8 +200,26 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
     setVesselVoyage('');
     setContainerSealNo('');
 
-    // 연결된 상품의 HS코드, 셀러 본인이 낸 RFQ 견적의 인코텀즈가 있으면 자동으로 채워준다
+    // 연결된 상품의 HS코드, 셀러 본인이 낸 RFQ 견적의 인코텀즈, 양쪽이 프로필에 등록해둔 주소가 있으면 자동으로 채워준다
     (async () => {
+      if (room?.seller_id) {
+        const { data: sellerCompanyRow } = await supabase
+          .from('companies')
+          .select('address')
+          .eq('user_id', room.seller_id.toString())
+          .maybeSingle();
+        if (sellerCompanyRow?.address) setSellerAddress(sellerCompanyRow.address);
+      }
+
+      if (room?.buyer_id) {
+        const { data: buyerProfileRow } = await supabase
+          .from('buyer_profiles')
+          .select('address')
+          .eq('auth_user_id', room.buyer_id.toString())
+          .maybeSingle();
+        if (buyerProfileRow?.address) setBuyerAddress(buyerProfileRow.address);
+      }
+
       if (room?.product_id) {
         const { data: productData } = await supabase
           .from('products')
@@ -451,6 +470,19 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
             </div>
           </div>
 
+          {/* Nudge the current user to save their address to their profile so it auto-fills next time,
+              instead of retyping it on every document — only actionable for their own missing address */}
+          {!isViewingSent && userRole === 'seller' && !sellerAddress && (
+            <p className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 print:hidden">
+              회사 주소가 비어있어요. <Link href="/seller/profile" className="underline">프로필</Link>에 등록해두면 다음 서류 작성 때부터 자동으로 채워집니다.
+            </p>
+          )}
+          {!isViewingSent && userRole === 'buyer' && !buyerAddress && (
+            <p className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 print:hidden">
+              회사 주소가 비어있어요. <Link href="/buyer/profile" className="underline">프로필</Link>에 등록해두면 다음 서류 작성 때부터 자동으로 채워집니다.
+            </p>
+          )}
+
           {/* Consignee / Notify Party — BL/CI only; the buyer isn't always who the goods ship to
               (e.g. L/C shipments consigned "TO ORDER" of the issuing bank, or a forwarder as Notify Party) */}
           {(docType === 'BL' || docType === 'CI') && (
@@ -460,8 +492,8 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
                 {!isViewingSent && (
                   <p className="text-[10px] text-slate-400 font-medium print:hidden">화물을 실제로 받는 쪽입니다. 특별한 경우가 아니면 바이어와 동일하게 비워두세요.</p>
                 )}
-                <Field label="Company Name" value={consigneeCompany} onChange={setConsigneeCompany} placeholder="Same as Importer/Buyer if blank" disabled={isViewingSent} />
-                <Field label="Address" value={consigneeAddress} onChange={setConsigneeAddress} placeholder="Same as Importer/Buyer if blank" disabled={isViewingSent} />
+                <Field label="Company Name" value={consigneeCompany} onChange={setConsigneeCompany} disabled={isViewingSent} />
+                <Field label="Address" value={consigneeAddress} onChange={setConsigneeAddress} disabled={isViewingSent} />
               </div>
 
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
@@ -469,7 +501,7 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
                 {!isViewingSent && (
                   <p className="text-[10px] text-slate-400 font-medium print:hidden">화물 도착 시 연락받을 곳(주로 바이어 측 포워더)입니다. 모르면 비워두세요.</p>
                 )}
-                <Field label="Company Name" value={notifyPartyCompany} onChange={setNotifyPartyCompany} placeholder="e.g. Freight Forwarder" disabled={isViewingSent} />
+                <Field label="Company Name" value={notifyPartyCompany} onChange={setNotifyPartyCompany} disabled={isViewingSent} />
                 <Field label="Address" value={notifyPartyAddress} onChange={setNotifyPartyAddress} disabled={isViewingSent} />
               </div>
             </div>
