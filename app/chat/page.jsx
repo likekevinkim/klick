@@ -96,7 +96,7 @@ function ChatContent() {
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [quoteProductName, setQuoteProductName] = useState(''); // 품명 필드 (기본 빈 값)
   const [quotePrice, setQuotePrice] = useState('');
-  const [quoteMoq, setQuoteMoq] = useState('500 Units');
+  const [quoteMoq, setQuoteMoq] = useState('');
   const [quoteNote, setQuoteNote] = useState(''); // 예시 문장 제거 (빈 값)
 
   const [isDocModalOpen, setIsQuoteDocModalOpen] = useState(false);

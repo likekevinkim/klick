@@ -23,6 +23,44 @@ function Field({ label, value, onChange, className = '', placeholder = '', disab
   );
 }
 
+// Same look as Field, but a dropdown — falls back to including the stored value as an
+// extra option so a previously-sent doc with an older/custom value still displays correctly.
+function SelectField({ label, value, onChange, options, className = '', disabled = false }) {
+  const allOptions = value && !options.includes(value) ? [value, ...options] : options;
+  return (
+    <div className={className}>
+      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className="w-full bg-transparent border-0 border-b border-dashed border-slate-300 focus:border-blue-500 focus:outline-none text-xs font-bold text-slate-900 py-0.5 print:border-none disabled:opacity-100 disabled:cursor-default"
+      >
+        {allOptions.map((opt) => (
+          <option key={opt} value={opt}>{opt}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+const PAYMENT_TERMS_OPTIONS = [
+  'T/T (Bank Wire Transfer)',
+  'L/C (Letter of Credit)',
+  'D/P (Documents against Payment)',
+  'D/A (Documents against Acceptance)',
+  'Western Union',
+  'PayPal',
+];
+
+// Reuses the same Incoterms set already offered on the RFQ proposal form, plus CFR/DAP which are
+// also common for Korean manufacturing exports
+const INCOTERM_OPTIONS = ['FOB', 'CIF', 'CFR', 'EXW', 'FCA', 'DAP', 'DDP'];
+
+// Only these payment terms are actually settled by wire to a bank account —
+// L/C is guaranteed via a separate LC document, PayPal/Western Union don't use bank details
+const BANK_TRANSFER_TERMS = ['T/T (Bank Wire Transfer)', 'D/P (Documents against Payment)', 'D/A (Documents against Acceptance)'];
+
 export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, onSendDocument }) {
   // A message-linked trade doc (msg.file.type === 'trade_doc') is a historical record — read-only
   const isViewingSent = msg?.file?.type === 'trade_doc';
@@ -40,6 +78,13 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
   const [buyerCompany, setBuyerCompany] = useState('');
   const [buyerAddress, setBuyerAddress] = useState('');
 
+  // Consignee/Notify Party — BL/CI only; often a forwarder or bank, not the buyer itself
+  // (e.g. L/C shipments consigning "TO ORDER" of the issuing bank)
+  const [consigneeCompany, setConsigneeCompany] = useState('');
+  const [consigneeAddress, setConsigneeAddress] = useState('');
+  const [notifyPartyCompany, setNotifyPartyCompany] = useState('');
+  const [notifyPartyAddress, setNotifyPartyAddress] = useState('');
+
   const [invoiceNo, setInvoiceNo] = useState('');
   const [issueDate, setIssueDate] = useState('');
   const [paymentTerms, setPaymentTerms] = useState('T/T (Bank Wire Transfer)');
@@ -47,6 +92,13 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
   const [portOfLoading, setPortOfLoading] = useState('Busan, South Korea');
   const [portOfDischarge, setPortOfDischarge] = useState('');
   const [countryOfOrigin, setCountryOfOrigin] = useState('Republic of Korea');
+
+  // Bank info — shown on PI/CI for T/T wire transfer
+  const [bankName, setBankName] = useState('');
+  const [bankAccountName, setBankAccountName] = useState('');
+  const [bankAccountNo, setBankAccountNo] = useState('');
+  const [swiftCode, setSwiftCode] = useState('');
+  const [bankAddress, setBankAddress] = useState('');
 
   // Packing List only
   const [packageCount, setPackageCount] = useState('');
@@ -76,10 +128,19 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
       setSellerAddress(doc.sellerAddress || '');
       setBuyerCompany(doc.buyerCompany || '');
       setBuyerAddress(doc.buyerAddress || '');
+      setConsigneeCompany(doc.consigneeCompany || '');
+      setConsigneeAddress(doc.consigneeAddress || '');
+      setNotifyPartyCompany(doc.notifyPartyCompany || '');
+      setNotifyPartyAddress(doc.notifyPartyAddress || '');
       setInvoiceNo(doc.invoiceNo || '');
       setIssueDate(doc.issueDate || '');
       setPaymentTerms(doc.paymentTerms || '');
       setIncoterm(doc.incoterm || '');
+      setBankName(doc.bankName || '');
+      setBankAccountName(doc.bankAccountName || '');
+      setBankAccountNo(doc.bankAccountNo || '');
+      setSwiftCode(doc.swiftCode || '');
+      setBankAddress(doc.bankAddress || '');
       setPortOfLoading(doc.portOfLoading || '');
       setPortOfDischarge(doc.portOfDischarge || '');
       setCountryOfOrigin(doc.countryOfOrigin || '');
@@ -114,10 +175,19 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
     setSellerAddress('');
     setBuyerCompany(room?.buyer_profile_name || room?.buyer_contact_person || room?.buyer_name || 'Global Buyer');
     setBuyerAddress('');
+    setConsigneeCompany('');
+    setConsigneeAddress('');
+    setNotifyPartyCompany('');
+    setNotifyPartyAddress('');
 
     setInvoiceNo(`KLICK-${Date.now().toString().substring(6)}`);
     setIssueDate(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }));
     setPortOfDischarge('');
+    setBankName('');
+    setBankAccountName('');
+    setBankAccountNo('');
+    setSwiftCode('');
+    setBankAddress('');
     setPackageCount('');
     setGrossWeight('');
     setNetWeight('');
@@ -244,6 +314,11 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
       issueDate,
       paymentTerms,
       incoterm,
+      bankName,
+      bankAccountName,
+      bankAccountNo,
+      swiftCode,
+      bankAddress,
       portOfLoading,
       portOfDischarge,
       countryOfOrigin,
@@ -251,6 +326,10 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
       sellerAddress,
       buyerCompany,
       buyerAddress,
+      consigneeCompany,
+      consigneeAddress,
+      notifyPartyCompany,
+      notifyPartyAddress,
       items: items.map(({ productName, hsCode, quantity, unitPrice }) => ({ productName, hsCode, quantity, unitPrice })),
       grandTotal,
       packageCount,
@@ -269,7 +348,7 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
   };
 
   return (
-    <div className="fixed inset-0 z-[999999] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[999999] bg-slate-900/70 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-3xl w-full border border-slate-200 shadow-2xl overflow-hidden my-8 animate-fadeIn">
 
         {/* Modal Header */}
@@ -343,7 +422,7 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
             </div>
 
             <div className="grid grid-cols-2 gap-x-4 text-right">
-              <Field label="Document No." value={invoiceNo} onChange={setInvoiceNo} disabled={isViewingSent} />
+              <Field label={docType === 'BL' ? 'B/L No.' : 'Document No.'} value={invoiceNo} onChange={setInvoiceNo} disabled={isViewingSent} />
               <Field label="Date" value={issueDate} onChange={setIssueDate} disabled={isViewingSent} />
             </div>
           </div>
@@ -363,10 +442,28 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
             </div>
           </div>
 
+          {/* Consignee / Notify Party — BL/CI only; the buyer isn't always who the goods ship to
+              (e.g. L/C shipments consigned "TO ORDER" of the issuing bank, or a forwarder as Notify Party) */}
+          {(docType === 'BL' || docType === 'CI') && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs border-b border-slate-200 pb-6">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Consignee</span>
+                <Field label="Company Name" value={consigneeCompany} onChange={setConsigneeCompany} placeholder="Same as Importer/Buyer if blank" disabled={isViewingSent} />
+                <Field label="Address" value={consigneeAddress} onChange={setConsigneeAddress} placeholder="Same as Importer/Buyer if blank" disabled={isViewingSent} />
+              </div>
+
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Notify Party</span>
+                <Field label="Company Name" value={notifyPartyCompany} onChange={setNotifyPartyCompany} placeholder="e.g. Freight Forwarder" disabled={isViewingSent} />
+                <Field label="Address" value={notifyPartyAddress} onChange={setNotifyPartyAddress} disabled={isViewingSent} />
+              </div>
+            </div>
+          )}
+
           {/* Shipment Terms */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs border-b border-slate-200 pb-6">
-            <Field label="Payment Terms" value={paymentTerms} onChange={setPaymentTerms} disabled={isViewingSent} />
-            <Field label="Incoterm" value={incoterm} onChange={setIncoterm} disabled={isViewingSent} />
+            <SelectField label="Payment Terms" value={paymentTerms} onChange={setPaymentTerms} options={PAYMENT_TERMS_OPTIONS} disabled={isViewingSent} />
+            <SelectField label="Incoterm" value={incoterm} onChange={setIncoterm} options={INCOTERM_OPTIONS} disabled={isViewingSent} />
             <Field label="Country of Origin" value={countryOfOrigin} onChange={setCountryOfOrigin} disabled={isViewingSent} />
             <Field label="Port of Loading" value={portOfLoading} onChange={setPortOfLoading} disabled={isViewingSent} />
             <Field label="Port of Discharge" value={portOfDischarge} onChange={setPortOfDischarge} disabled={isViewingSent} />
@@ -374,6 +471,23 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
               <Field label="Freight" value={freightTerm} onChange={setFreightTerm} disabled={isViewingSent} />
             )}
           </div>
+
+          {/* Bank Information — only for payment terms actually settled by wire; L/C/PayPal/Western Union don't use this */}
+          {(docType === 'PI' || docType === 'CI') && (BANK_TRANSFER_TERMS.includes(paymentTerms) || (isViewingSent && (bankName || bankAccountNo))) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs border-b border-slate-200 pb-6">
+              <h3 className="sm:col-span-2 text-xs font-extrabold text-slate-900 uppercase tracking-wider">Bank Information ({paymentTerms})</h3>
+              <Field label="Bank Name" value={bankName} onChange={setBankName} disabled={isViewingSent} />
+              <Field label="Account Holder Name" value={bankAccountName} onChange={setBankAccountName} disabled={isViewingSent} />
+              <Field label="Account Number" value={bankAccountNo} onChange={setBankAccountNo} disabled={isViewingSent} />
+              <Field label="SWIFT / BIC Code" value={swiftCode} onChange={setSwiftCode} disabled={isViewingSent} />
+              <Field label="Bank Address" value={bankAddress} onChange={setBankAddress} className="sm:col-span-2" disabled={isViewingSent} />
+              {!isViewingSent && (
+                <p className="sm:col-span-2 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 print:hidden">
+                  Buyers: always verify these bank details by phone or video call with the seller before wiring funds — email-only bank info is a common fraud target.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* BL-specific shipping details */}
           {docType === 'BL' && (
@@ -483,6 +597,13 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
                 <Field label="Measurement" value={measurement} onChange={setMeasurement} disabled={isViewingSent} />
               </div>
             </div>
+          )}
+
+          {/* Commercial Invoice declaration — customs authorities generally expect this certification statement */}
+          {docType === 'CI' && (
+            <p className="text-[11px] text-slate-600 italic border-t border-slate-200 pt-4">
+              We hereby certify that this invoice is true and correct, and that the goods described above are of {countryOfOrigin || 'the stated'} origin unless otherwise noted.
+            </p>
           )}
 
           {/* Signature Area */}
