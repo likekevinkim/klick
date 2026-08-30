@@ -410,13 +410,13 @@ function BuyerProfileContent() {
               </span>
 
               <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight">
-                {companyName ? `${companyName} (${country})` : `Buyer (${country})`}
+                {companyName ? <><span className="notranslate" translate="no">{companyName}</span> ({country})</> : `Buyer (${country})`}
               </h1>
 
               <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 font-medium">
                 <span className="flex items-center gap-1.5">
                   <User className="w-4 h-4 text-blue-400" />
-                  <span>Contact Person: <strong className="text-white">{contactPerson || 'Buyer'}</strong></span>
+                  <span>Contact Person: <strong className="text-white notranslate" translate="no">{contactPerson || 'Buyer'}</strong></span>
                 </span>
                 <span className="flex items-center gap-1">
                   <MapPin className="w-4 h-4 text-emerald-400" /> {country}
@@ -476,7 +476,7 @@ function BuyerProfileContent() {
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Contact Person</span>
-                <span className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
+                <span className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5 notranslate" translate="no">
                   <User className="w-4 h-4 text-blue-600" />
                   {contactPerson || 'Not Specified'}
                 </span>
@@ -484,7 +484,7 @@ function BuyerProfileContent() {
 
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Company Name (Optional)</span>
-                <span className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
+                <span className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5 notranslate" translate="no">
                   <Building2 className="w-4 h-4 text-blue-600" />
                   {companyName || 'Not Specified'}
                 </span>
