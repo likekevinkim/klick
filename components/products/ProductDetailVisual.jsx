@@ -90,9 +90,11 @@ export default function ProductDetailVisual({ product }) {
             <Package className="w-16 h-16 text-slate-300" />
           )}
 
-          <span className="absolute top-4 left-4 bg-[#0F172A]/80 backdrop-blur-md text-emerald-400 text-[10px] font-extrabold px-3 py-1 rounded-full border border-slate-700 flex items-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Verified Factory Direct
-          </span>
+          {product?.is_verified && (
+            <span className="absolute top-4 left-4 bg-[#0F172A]/80 backdrop-blur-md text-emerald-400 text-[10px] font-extrabold px-3 py-1 rounded-full border border-slate-700 flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Verified Factory Direct
+            </span>
+          )}
         </div>
 
         {/* 미디어 썸네일 선택 바 */}
