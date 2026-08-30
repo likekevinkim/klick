@@ -37,7 +37,7 @@ export default function AboutClient() {
                 Connecting Korean Manufacturers with the World
               </h1>
               <p className="text-slate-400 text-sm leading-relaxed max-w-xl">
-                <Klick /> is a B2B export platform built for Korean manufacturers who don&apos;t have a dedicated
+                <Klick />{' '}is a B2B export platform built for Korean manufacturers who don&apos;t have a dedicated
                 overseas sales team — and for global buyers looking to source directly from verified Korean factories.
               </p>
             </>
