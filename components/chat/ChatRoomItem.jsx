@@ -233,8 +233,8 @@ export default function ChatRoomItem({
 
   return (
     <div ref={cardRef} className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm transition hover:border-blue-400">
-      <div className={isOpen ? 'sticky top-16 sm:top-[72px] z-30 bg-white rounded-t-3xl' : ''}>
-      {/* 1. Accordion Header */}
+      <div>
+      {/* 1. Accordion Header — always static so its height/position never shifts on open/close */}
       <div
         onClick={onToggle}
         className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50/80 transition select-none"
