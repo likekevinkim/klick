@@ -16,8 +16,8 @@ export default function OfflineDealModal({ isOpen, onClose, quoteData }) {
   const sellerCompany = quoteData?.sellerCompany || 'the seller';
 
   return (
-    <div className="fixed inset-0 z-[999999] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden animate-fadeIn">
+    <div className="fixed inset-0 z-[999999] bg-slate-900/70 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden my-8 animate-fadeIn">
         <div className="bg-slate-900 text-white p-6 flex items-center justify-between border-b border-slate-800">
           <h3 className="text-base font-extrabold tracking-tight flex items-center gap-2">
             <Handshake className="w-5 h-5 text-emerald-400" />

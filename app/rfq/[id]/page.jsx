@@ -130,7 +130,12 @@ function RfqDetailContent() {
       setSubmitSuccess(false);
 
       const sellerMeta = user?.user_metadata || {};
-      const sellerCompanyName = sellerMeta.company_name_en || sellerMeta.company_name || 'Hankook Precision Co., Ltd.';
+      const { data: myCompany } = await supabase
+        .from('companies')
+        .select('company_name_en, company_name')
+        .eq('user_id', user.id.toString())
+        .maybeSingle();
+      const sellerCompanyName = myCompany?.company_name_en || myCompany?.company_name || sellerMeta.company_name_en || sellerMeta.company_name || 'Not specified';
 
       const newProposal = {
         rfq_id: rfqId,
@@ -184,7 +189,7 @@ function RfqDetailContent() {
   if (!mounted) return null;
 
   const buyerCompany = rfq?.company_name || rfq?.buyer_company_name || 'Global Buyer';
-  const buyerCountry = rfq?.country || 'United States';
+  const buyerCountry = rfq?.country || 'Not specified';
   const orderQuantity = rfq?.order_quantity || rfq?.moq || rfq?.target_quantity || '1 Unit';
   const isRfqOwner = !!(user?.id && rfq?.user_id && user.id === rfq.user_id);
 

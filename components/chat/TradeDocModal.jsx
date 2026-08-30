@@ -65,6 +65,7 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
   // A message-linked trade doc (msg.file.type === 'trade_doc') is a historical record — read-only
   const isViewingSent = msg?.file?.type === 'trade_doc';
   const [docType, setDocType] = useState('PI'); // PI, CI, PL, BL
+  const scrollContainerRef = useRef(null);
   const sealInputRef = useRef(null);
   const [sealUrl, setSealUrl] = useState('');
   const [uploadingSeal, setUploadingSeal] = useState(false);
@@ -347,8 +348,13 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
     onClose();
   };
 
+  const handleDocTypeChange = (type) => {
+    setDocType(type);
+    if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+  };
+
   return (
-    <div className="fixed inset-0 z-[999999] bg-slate-900/70 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
+    <div ref={scrollContainerRef} className="fixed inset-0 z-[999999] bg-slate-900/70 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-3xl w-full border border-slate-200 shadow-2xl overflow-hidden my-8 animate-fadeIn">
 
         {/* Modal Header */}
@@ -384,7 +390,7 @@ export default function TradeDocModal({ isOpen, onClose, msg, room, userRole, on
                 key={type}
                 type="button"
                 disabled={isViewingSent}
-                onClick={() => setDocType(type)}
+                onClick={() => handleDocTypeChange(type)}
                 className={`px-4 py-2 rounded-xl text-xs font-extrabold transition ${isViewingSent ? 'cursor-default' : 'cursor-pointer'} ${
                   docType === type ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-700 hover:bg-slate-200'
                 } ${isViewingSent && docType !== type ? 'opacity-40' : ''}`}

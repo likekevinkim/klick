@@ -63,6 +63,7 @@ function PublicRfqBoardContent() {
   const [newCategory, setNewCategory] = useState('Industrial Machinery');
   const [newQuantity, setNewQuantity] = useState('');
   const [newTargetPrice, setNewTargetPrice] = useState('');
+  const [newCountry, setNewCountry] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [posting, setPosting] = useState(false);
 
@@ -134,15 +135,32 @@ function PublicRfqBoardContent() {
     setPosting(true);
 
     try {
-      const buyerMeta = user.user_metadata || {};
+      const userIdStr = user.id.toString();
+
+      // buyers/buyer_profiles가 실제 이름 소스 — user_metadata는 가입 시점 스냅샷이라 오래됐을 수 있음
+      const { data: buyerRow } = await supabase
+        .from('buyers')
+        .select('buyer_name, company_name')
+        .eq('auth_user_id', userIdStr)
+        .maybeSingle();
+      const { data: buyerProfile } = await supabase
+        .from('buyer_profiles')
+        .select('company_name')
+        .eq('auth_user_id', userIdStr)
+        .maybeSingle();
+
+      const buyerName = buyerRow?.buyer_name || 'Not specified';
+      const companyName = buyerProfile?.company_name || buyerRow?.company_name || 'Not specified';
+
       const newRfqPayload = {
-        user_id: user.id.toString(),
+        user_id: userIdStr,
         title: newTitle,
         product_name: newProductName || newTitle,
         category: newCategory,
-        buyer_name: buyerMeta.contact_person || buyerMeta.buyer_name || 'Global Buyer',
-        company_name: buyerMeta.company_name || 'Global Sourcing LLC',
-        buyer_company_name: buyerMeta.company_name || 'Global Sourcing LLC',
+        buyer_name: buyerName,
+        company_name: companyName,
+        buyer_company_name: companyName,
+        country: newCountry,
         order_quantity: newQuantity,
         moq: newQuantity,
         target_price: newTargetPrice,
@@ -179,6 +197,7 @@ function PublicRfqBoardContent() {
     setNewProductName('');
     setNewQuantity('');
     setNewTargetPrice('');
+    setNewCountry('');
     setNewDescription('');
   };
 
@@ -378,7 +397,7 @@ function PublicRfqBoardContent() {
                     </span>
                     <span className="flex items-center gap-1">
                       <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{rfq.country || 'United States'}</span>
+                      <span>{rfq.country || 'Not specified'}</span>
                     </span>
                   </div>
 
@@ -514,6 +533,18 @@ function PublicRfqBoardContent() {
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Your Country</label>
+                <input
+                  type="text"
+                  required
+                  value={newCountry}
+                  onChange={(e) => setNewCountry(e.target.value)}
+                  placeholder="e.g. United States"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                />
               </div>
 
               <div>

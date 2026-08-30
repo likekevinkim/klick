@@ -49,7 +49,6 @@ export default function ChatRoomItem({
   const [uploadingFile, setUploadingFile] = useState(false);
   const [respondedQuoteIds, setRespondedQuoteIds] = useState({});
 
-  const cardRef = useRef(null);
   const messagesContainerRef = useRef(null);
 
   // Buyer RFQ Modal State in Chat
@@ -89,10 +88,10 @@ export default function ChatRoomItem({
     lastMsgSignatureRef.current = signature;
     wasOpenForScrollRef.current = true;
 
-    if (justOpened || isNewMessage || attachedFile) {
+    if (justOpened || isNewMessage) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
-  }, [messages, isOpen, attachedFile]);
+  }, [messages, isOpen]);
 
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
@@ -232,7 +231,7 @@ export default function ChatRoomItem({
   );
 
   return (
-    <div ref={cardRef} className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm transition hover:border-blue-400">
+    <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm transition hover:border-blue-400">
       <div>
       {/* 1. Accordion Header — always static so its height/position never shifts on open/close */}
       <div
@@ -281,7 +280,7 @@ export default function ChatRoomItem({
         </div>
       </div>
 
-      {/* Top Control Bar — sticks together with the header above so who-you're-chatting-with and the quote/doc buttons stay visible while messages scroll */}
+      {/* Top Control Bar — who-you're-chatting-with and the quote/doc buttons */}
       {isOpen && (
         <div className="border-t border-slate-100 bg-slate-50/50 px-5 pt-3 pb-2">
           <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-200/60">
@@ -338,7 +337,7 @@ export default function ChatRoomItem({
       )}
       </div>
 
-      {/* 2. Accordion Expanded Content — scrolls independently below the sticky header/controls */}
+      {/* 2. Accordion Expanded Content — scrolls independently below the header/controls */}
       {isOpen && (
         <div className="border-t border-slate-100 bg-slate-50/50 p-5 space-y-4 animate-fadeIn">
           {/* Message Thread */}
@@ -639,8 +638,8 @@ export default function ChatRoomItem({
 
       {/* 바이어 전용: RFQ 요청 제출 모달 */}
       {isBuyerRfqModalOpen && (
-        <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 animate-fadeIn">
+        <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 my-8 animate-fadeIn">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
                 <FileText className="w-5 h-5 text-emerald-600" />

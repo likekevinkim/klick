@@ -1000,8 +1000,8 @@ function ChatContent() {
 
       {/* Quotation Modal (예시 문장 전면 제거) */}
       {isQuoteModalOpen && (
-        <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6">
+        <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-6 my-8">
             <div className="border-b border-slate-100 pb-3">
               <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
                 <FileText className="w-5 h-5 text-emerald-600" />

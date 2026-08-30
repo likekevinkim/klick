@@ -44,8 +44,8 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
 
   const [certifications, setCertifications] = useState('');
 
-  // OEM/ODM 지원 여부
-  const [oemOdmAvailable, setOemOdmAvailable] = useState('Available');
+  // OEM/ODM 지원 여부 — 셀러가 직접 선택하기 전까지는 미정 상태 (섣불리 "가능"으로 단정하지 않음)
+  const [oemOdmAvailable, setOemOdmAvailable] = useState('');
   const [oemOdmNote, setOemOdmNote] = useState('');
 
   const [pricingTiers, setTieredPricing] = useState([
@@ -144,7 +144,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
         setOemOdmNote(sepIdx >= 0 ? data.oem_odm.slice(sepIdx + 3) : '');
       }
     } else {
-      setOemOdmAvailable('Available');
+      setOemOdmAvailable('');
       setOemOdmNote('');
     }
 
@@ -188,7 +188,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
     setDimensions('');
     setHsCode('');
     setCertifications('');
-    setOemOdmAvailable('Available');
+    setOemOdmAvailable('');
     setOemOdmNote('');
     setTieredPricing([
       { id: 1, minQty: '', maxQty: '', price: '' },
@@ -224,7 +224,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
 
         const meta = currentUser.user_metadata || {};
 
-        const activeName = compProf?.company_name_en || compProf?.company_name || meta.company_name_en || meta.company_name || 'Hankook Precision Co., Ltd.';
+        const activeName = compProf?.company_name_en || compProf?.company_name || meta.company_name_en || meta.company_name || 'Company Name Not Registered';
         const activeLoc = compProf?.location || 'South Korea';
 
         setCompanyName(activeName);
@@ -238,7 +238,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
       }
     } catch (err) {
       console.error('Error fetching seller profile:', err);
-      setCompanyName('Verified Korean Manufacturer');
+      setCompanyName('Company Name Not Registered');
       setFactoryLocation('South Korea');
     } finally {
       setLoadingProfile(false);
@@ -868,8 +868,10 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
                 <select
                   value={oemOdmAvailable}
                   onChange={(e) => setOemOdmAvailable(e.target.value)}
+                  required
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none font-bold bg-white"
                 >
+                  <option value="" disabled>선택해주세요</option>
                   <option value="Available">가능</option>
                   <option value="Not Available">불가능</option>
                 </select>

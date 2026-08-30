@@ -66,7 +66,7 @@ export default function ProductDetailVisual({ product }) {
   // ★ [Chat with Representative] 클릭 시 셀러와 1:1 직통 대화방 자동 생성 파라미터 전달
   const handleStartChat = () => {
     const pId = product?.id || '';
-    const compName = encodeURIComponent(product?.company_name || 'Hankook Precision Co., Ltd.');
+    const compName = encodeURIComponent(product?.company_name || 'Korean Manufacturer');
     const pTitle = encodeURIComponent(product?.title_en || product?.title_ko || product?.product_name || 'Export Product');
     const sellerId = product?.user_id || '';
     
