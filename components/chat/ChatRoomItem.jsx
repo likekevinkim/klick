@@ -67,10 +67,30 @@ export default function ChatRoomItem({
   const imageInputRef = useRef(null);
   const rfqFileInputRef = useRef(null);
 
-  // Auto scroll to bottom when messages update — scoped to the inner message
-  // box only, so it never drags the whole page (and the input bar) along with it.
+  // Auto scroll to bottom only when a genuinely new message arrives (or the room
+  // just opened) — scoped to the inner message box so it never drags the whole
+  // page along with it. `messages` gets a brand-new array reference on every
+  // translation refresh / chat_rooms realtime sync even when content is
+  // unchanged (see fetchChatRoomsAndInit/refreshRoomTranslations in
+  // app/chat/page.jsx); without the signature check those re-renders kept
+  // snapping the view back down, making it impossible to scroll up and read
+  // earlier messages.
+  const lastMsgSignatureRef = useRef('');
+  const wasOpenForScrollRef = useRef(false);
+
   useEffect(() => {
-    if (isOpen && messagesContainerRef.current) {
+    if (!isOpen || !messagesContainerRef.current) {
+      wasOpenForScrollRef.current = false;
+      return;
+    }
+    const last = messages[messages.length - 1];
+    const signature = `${messages.length}:${last?.id ?? last?.created_at ?? ''}`;
+    const justOpened = !wasOpenForScrollRef.current;
+    const isNewMessage = signature !== lastMsgSignatureRef.current;
+    lastMsgSignatureRef.current = signature;
+    wasOpenForScrollRef.current = true;
+
+    if (justOpened || isNewMessage || attachedFile) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   }, [messages, isOpen, attachedFile]);
