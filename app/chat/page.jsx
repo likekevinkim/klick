@@ -15,7 +15,7 @@ import {
   MessageSquare, 
   Globe
 } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 // Real-time Translation API Helper (Google Translate unofficial endpoint — no API key required)
@@ -55,6 +55,7 @@ const getSiteTranslateLang = (fallback) => {
 };
 
 function ChatContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const paramProductId = searchParams.get('productId');
   const paramCompany = searchParams.get('company');
@@ -514,8 +515,9 @@ function ChatContent() {
         if (!matchedRoom) {
           const targetSellerIdPayload = paramSellerId && paramSellerId.trim() !== '' ? paramSellerId : 'seller_default';
 
-          // Resolve our own (buyer's) real name instead of falling back straight to the email prefix
-          let myBuyerName = currentUserObj?.email ? currentUserObj.email.split('@')[0] : 'Global Buyer';
+          // 바이어 실명/회사명이 없으면 채팅을 시작할 수 없음 — 이메일 앞부분 같은
+          // 대체값을 셀러에게 보여주지 않기 위해, 프로필 미입력 시 여기서 막고
+          // 입력 페이지로 유도한다 (CLAUDE.md 규칙: 이메일로 이름 대체 금지).
           const { data: myBuyerRow } = await supabase
             .from('buyers')
             .select('buyer_name, company_name')
@@ -526,8 +528,20 @@ function ChatContent() {
             .select('company_name')
             .eq('auth_user_id', userIdStr)
             .maybeSingle();
-          if (myBuyerProfile?.company_name || myBuyerRow?.company_name || myBuyerRow?.buyer_name) {
-            myBuyerName = myBuyerProfile?.company_name || myBuyerRow?.company_name || myBuyerRow?.buyer_name;
+
+          const myBuyerName = myBuyerProfile?.company_name || myBuyerRow?.company_name || myBuyerRow?.buyer_name || '';
+
+          if (!myBuyerName) {
+            const goToProfile = window.confirm(
+              '셀러와 대화를 시작하려면 먼저 이름 또는 회사명을 등록해야 해요.\n지금 정보를 입력하러 가시겠습니까?'
+            );
+            if (goToProfile) {
+              router.push('/buyer/profile');
+            } else {
+              router.replace('/chat');
+            }
+            setRooms(currentRoomsList);
+            return;
           }
 
           const newRoomPayload = {
