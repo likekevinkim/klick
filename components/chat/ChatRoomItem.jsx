@@ -51,7 +51,6 @@ export default function ChatRoomItem({
 
   const cardRef = useRef(null);
   const messagesContainerRef = useRef(null);
-  const wasOpenRef = useRef(false);
 
   // Buyer RFQ Modal State in Chat
   const [isBuyerRfqModalOpen, setIsBuyerRfqModalOpen] = useState(false);
@@ -94,15 +93,6 @@ export default function ChatRoomItem({
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   }, [messages, isOpen, attachedFile]);
-
-  // When the accordion is first opened, bring the card's sticky header into view
-  // once so both the header/controls and the message box start on-screen together.
-  useEffect(() => {
-    if (isOpen && !wasOpenRef.current) {
-      cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    wasOpenRef.current = isOpen;
-  }, [isOpen]);
 
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
