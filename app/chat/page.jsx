@@ -940,7 +940,7 @@ function ChatContent() {
     <div className="min-h-screen bg-[#F9FAFB] text-slate-900 pb-16 antialiased">
       <Header />
 
-      <main className="max-w-5xl mx-auto px-6 mt-8 space-y-6">
+      <main className="max-w-5xl mx-auto px-6 mt-8 space-y-4">
         <div className="bg-[#0F172A] text-white rounded-3xl p-6 md:p-8 shadow-md border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">

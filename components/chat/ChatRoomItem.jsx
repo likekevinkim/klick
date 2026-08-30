@@ -247,7 +247,7 @@ export default function ChatRoomItem({
       {/* 1. Accordion Header */}
       <div
         onClick={onToggle}
-        className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/80 transition select-none"
+        className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50/80 transition select-none"
       >
         <div className="space-y-1 flex-1 pr-4">
           <div className="flex items-center gap-2 flex-wrap">
