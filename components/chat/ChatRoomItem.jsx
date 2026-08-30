@@ -390,15 +390,21 @@ export default function ChatRoomItem({
                         </div>
                       )}
 
-                      {/* File Attachment */}
-                      {msg.file && msg.file.type !== 'tracking' && (
+                      {/* File Attachment — images show an inline preview instead of a click-to-view link */}
+                      {msg.file && msg.file.type === 'image' && (
+                        <a href={msg.file.url} target="_blank" rel="noreferrer" className="block mt-1">
+                          <img
+                            src={msg.file.url}
+                            alt={msg.file.name}
+                            className="max-w-full max-h-64 rounded-xl border border-white/20 object-cover cursor-pointer"
+                          />
+                        </a>
+                      )}
+
+                      {msg.file && msg.file.type !== 'tracking' && msg.file.type !== 'image' && (
                         <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 mt-1 ${isMine ? 'bg-blue-700/60 border-blue-500' : 'bg-slate-50 border-slate-200'}`}>
                           <div className="flex items-center gap-2 truncate">
-                            {msg.file.type === 'image' ? (
-                              <ImageIcon className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                            ) : (
-                              <FileText className="w-4 h-4 text-amber-300 flex-shrink-0" />
-                            )}
+                            <FileText className="w-4 h-4 text-amber-300 flex-shrink-0" />
                             <div className="truncate">
                               <span className="font-extrabold block truncate">{msg.file.name}</span>
                               <span className="text-[9px] opacity-75">{msg.file.size}</span>

@@ -21,7 +21,9 @@ import {
   Package,
   Globe,
   Video,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Upload,
+  Loader2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import ProductFormModal from '@/components/products/ProductFormModal';
@@ -49,6 +51,8 @@ export default function SellerCompanyProfilePage() {
   const [videoUrl, setVideoUrl] = useState('');
   const [galleryImages, setGalleryImages] = useState([]);
   const [newImageUrl, setNewImageUrl] = useState('');
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
 
   // 셀러 등록 수출 상품 데이터 및 모달 상태
   const [products, setProducts] = useState([]);
@@ -138,6 +142,46 @@ export default function SellerCompanyProfilePage() {
 
   const handleDeleteImage = (index) => {
     setGalleryImages(galleryImages.filter((_, i) => i !== index));
+  };
+
+  const handleVideoFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploadingVideo(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `video_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `videos/${fileName}`;
+      const { error: uploadError } = await supabase.storage.from('company-images').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: publicUrlData } = supabase.storage.from('company-images').getPublicUrl(filePath);
+      if (publicUrlData?.publicUrl) setVideoUrl(publicUrlData.publicUrl);
+    } catch (err) {
+      console.error('Video upload error:', err);
+      alert('영상 업로드에 실패했습니다: ' + (err.message || 'Storage connection error'));
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
+  const handleGalleryFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploadingGallery(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `gallery_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `gallery/${fileName}`;
+      const { error: uploadError } = await supabase.storage.from('company-images').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: publicUrlData } = supabase.storage.from('company-images').getPublicUrl(filePath);
+      if (publicUrlData?.publicUrl) setGalleryImages((prev) => [...prev, publicUrlData.publicUrl]);
+    } catch (err) {
+      console.error('Gallery upload error:', err);
+      alert('사진 업로드에 실패했습니다: ' + (err.message || 'Storage connection error'));
+    } finally {
+      setUploadingGallery(false);
+    }
   };
 
   const handleSaveProfile = async (e) => {
@@ -400,13 +444,25 @@ export default function SellerCompanyProfilePage() {
                   <Video className="w-4 h-4 text-blue-600" />
                   <span>Factory Promo Video URL (YouTube / Embed Link)</span>
                 </label>
-                <input
-                  type="url"
-                  value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
-                  placeholder=""
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={videoUrl}
+                    onChange={(e) => setVideoUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="flex-1 px-4 py-3 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                  />
+                  <label className={`flex items-center gap-1.5 px-4 py-3 rounded-xl border border-slate-300 text-xs font-bold cursor-pointer transition hover:bg-slate-50 flex-shrink-0 ${uploadingVideo ? 'opacity-60 pointer-events-none' : ''}`}>
+                    {uploadingVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    <span>{uploadingVideo ? '업로드 중...' : '파일 업로드'}</span>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/webm,video/ogg"
+                      onChange={handleVideoFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               </div>
 
               <div className="space-y-3 pt-2 border-t border-slate-100">
@@ -430,6 +486,16 @@ export default function SellerCompanyProfilePage() {
                   >
                     Add Photo
                   </button>
+                  <label className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-bold cursor-pointer transition hover:bg-slate-50 flex-shrink-0 ${uploadingGallery ? 'opacity-60 pointer-events-none' : ''}`}>
+                    {uploadingGallery ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    <span>{uploadingGallery ? '업로드 중...' : '파일 업로드'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleGalleryFileUpload}
+                      className="hidden"
+                    />
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
