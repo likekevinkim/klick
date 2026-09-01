@@ -3,7 +3,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Building2, Mail, Phone, MapPin } from 'lucide-react';
+import Image from 'next/image';
+import { Mail, Phone, MapPin } from 'lucide-react';
 
 export default function Footer() {
   const [isKo, setIsKo] = useState(false);
@@ -18,9 +19,14 @@ export default function Footer() {
         
         {/* 1. Company intro & logo */}
         <div className="space-y-4 md:col-span-2">
-          <div className="flex items-center gap-2 text-white font-black text-lg">
-            <Building2 className="w-6 h-6 text-blue-500" />
-            <span className="notranslate" translate="no">KLICK</span>
+          <div className="notranslate" translate="no">
+            <Image
+              src={isKo ? '/brand/klick-logo-ko.png' : '/brand/klick-logo-en.png'}
+              alt="KLICK"
+              width={1078}
+              height={398}
+              className="h-8 w-auto"
+            />
           </div>
           {isKo ? (
             <p className="leading-relaxed font-medium max-w-sm notranslate break-keep" translate="no">

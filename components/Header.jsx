@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
@@ -297,18 +298,15 @@ export default function Header() {
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-18 flex items-center justify-between gap-2 sm:gap-4">
         {/* KLICK 브랜드 로고 */}
-        <Link href="/" className="flex items-center gap-2 cursor-pointer group notranslate flex-shrink-0" translate="no">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-600 rounded-xl flex items-center justify-center font-extrabold text-white text-lg sm:text-xl shadow-lg group-hover:bg-blue-500 transition">
-            K
-          </div>
-          <div className="flex flex-col">
-            <span className="font-extrabold text-lg sm:text-xl tracking-tight text-white flex items-center gap-1">
-              KLICK
-            </span>
-            <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium tracking-wider hidden xs:block">
-              Global Trade
-            </span>
-          </div>
+        <Link href="/" className="flex items-center cursor-pointer group notranslate flex-shrink-0" translate="no">
+          <Image
+            src={currentLang === 'KO' ? '/brand/klick-logo-ko.png' : '/brand/klick-logo-en.png'}
+            alt="KLICK"
+            width={1078}
+            height={398}
+            priority
+            className="h-8 sm:h-10 w-auto"
+          />
         </Link>
 
         {/* 내비게이션 영역 */}

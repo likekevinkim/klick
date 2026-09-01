@@ -92,6 +92,10 @@ export default function WelcomeModal() {
             />
             다시 보지 않기
           </label>
+
+          <p className="text-center text-xs text-slate-400">
+            회원 가입 후 <span className="font-semibold text-slate-500">info@klick.biz</span>로 연락 주시면 빠르게 도와드릴게요.
+          </p>
         </div>
       </div>
     </div>
