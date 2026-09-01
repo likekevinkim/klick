@@ -2,25 +2,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, PackageSearch, MessageCircle, Handshake } from 'lucide-react';
+import Link from 'next/link';
+import { X, Sparkles, Gift, Users } from 'lucide-react';
 
-const STORAGE_KEY = 'klick_welcome_seen';
+const STORAGE_KEY = 'klick_welcome_seen_v2';
 
-const STEPS = [
+const PERKS = [
   {
-    icon: PackageSearch,
-    title: '1. 상품을 등록하거나 둘러보세요',
-    desc: '판매자는 상품을 등록하고, 바이어는 원하는 상품을 검색해요.'
+    icon: Gift,
+    title: '입점 지원 100% 무료',
+    desc: '상품 등록부터 다국어 상세페이지 제작까지 KLICK이 무료로 도와드려요.'
   },
   {
-    icon: MessageCircle,
-    title: '2. 채팅으로 편하게 문의하세요',
-    desc: '언어가 달라도 자동 번역으로 실시간 대화할 수 있어요.'
-  },
-  {
-    icon: Handshake,
-    title: '3. 직접 대화하며 거래를 진행하세요',
-    desc: 'KLICK은 채팅으로 셀러와 바이어를 연결해 드려요.'
+    icon: Users,
+    title: '선착순 100개 업체 한정',
+    desc: '오픈 기념 특별 혜택으로, 정해진 인원이 채워지면 종료돼요.'
   }
 ];
 
@@ -47,7 +43,10 @@ export default function WelcomeModal() {
     <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full border border-slate-200 shadow-2xl space-y-6 animate-fadeIn">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-extrabold text-slate-900">KLICK 이용 방법</h2>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-600 text-xs font-extrabold rounded-full">
+            <Sparkles className="w-3.5 h-3.5" />
+            KLICK 오픈 기념
+          </span>
           <button
             type="button"
             onClick={handleClose}
@@ -57,8 +56,12 @@ export default function WelcomeModal() {
           </button>
         </div>
 
+        <h2 className="text-xl font-extrabold text-slate-900 leading-snug">
+          선착순 100개 업체,<br />무료 입점을 도와드려요
+        </h2>
+
         <div className="space-y-4">
-          {STEPS.map(({ icon: Icon, title, desc }) => (
+          {PERKS.map(({ icon: Icon, title, desc }) => (
             <div key={title} className="flex items-start gap-3">
               <div className="w-10 h-10 flex-shrink-0 bg-blue-50 rounded-xl flex items-center justify-center">
                 <Icon className="w-5 h-5 text-blue-600" />
@@ -71,8 +74,16 @@ export default function WelcomeModal() {
           ))}
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-          <label className="flex items-center gap-2 text-sm text-slate-500 cursor-pointer select-none">
+        <div className="space-y-3 pt-2 border-t border-slate-100">
+          <Link
+            href="/login"
+            onClick={handleClose}
+            className="block w-full text-center px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl shadow transition cursor-pointer"
+          >
+            무료로 입점 신청하기
+          </Link>
+
+          <label className="flex items-center justify-center gap-2 text-sm text-slate-500 cursor-pointer select-none">
             <input
               type="checkbox"
               checked={dontShowAgain}
@@ -81,14 +92,6 @@ export default function WelcomeModal() {
             />
             다시 보지 않기
           </label>
-
-          <button
-            type="button"
-            onClick={handleClose}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl shadow transition cursor-pointer"
-          >
-            시작하기
-          </button>
         </div>
       </div>
     </div>

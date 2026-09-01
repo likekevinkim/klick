@@ -33,7 +33,8 @@ const COUNTRY_TO_LANG = {
   LY: 'ar', MA: 'ar', OM: 'ar', QA: 'ar', SY: 'ar', TN: 'ar', YE: 'ar',
   BH: 'ar', DZ: 'ar', SD: 'ar',
   VN: 'vi',
-  TH: 'th'
+  TH: 'th',
+  IN: 'hi'
 };
 
 // 접속 IP의 국가를 서버에 물어보고, 지원하는 언어면 그 언어로, 아니면 영어로 매핑.
@@ -75,6 +76,7 @@ export default function Header() {
     { code: 'ar', label: 'AR', name: 'العربية (AR)' },
     { code: 'vi', label: 'VI', name: 'Tiếng Việt (VN)' },
     { code: 'th', label: 'TH', name: 'ภาษาไทย (TH)' },
+    { code: 'hi', label: 'HI', name: 'हिन्दी (IN)' },
   ];
 
   const setGoogleTranslateCookie = (langCode) => {
@@ -223,7 +225,7 @@ export default function Header() {
           new window.google.translate.TranslateElement(
             {
               pageLanguage: 'auto',
-              includedLanguages: 'en,ko,zh-CN,ja,es,ar,vi,th',
+              includedLanguages: 'en,ko,zh-CN,ja,es,ar,vi,th,hi',
               autoDisplay: false,
             },
             'google_translate_element'

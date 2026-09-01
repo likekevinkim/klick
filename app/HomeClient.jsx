@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Klick from '@/components/Klick';
+import WelcomeModal from '@/components/WelcomeModal';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -256,6 +257,7 @@ export default function HomeClient() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] text-slate-900 pb-24 antialiased">
+      <WelcomeModal />
       <Header />
 
       <section className="bg-[#0F172A] text-white relative overflow-hidden border-b border-slate-800 py-16 px-6">
