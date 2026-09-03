@@ -668,9 +668,9 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
       />
     )}
     <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl p-6 md:p-8 max-w-4xl w-full border border-slate-200 shadow-2xl max-h-[92vh] overflow-y-auto animate-fadeIn text-sm">
+      <div className="bg-white rounded-3xl px-6 md:px-8 pb-6 md:pb-8 max-w-4xl w-full border border-slate-200 shadow-2xl max-h-[92vh] overflow-y-auto animate-fadeIn text-sm">
 
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pt-6 md:pt-8 pb-4 mb-6">
           <div className="space-y-1">
             <h2 className="text-base md:text-lg font-black text-slate-900 flex items-center gap-2">
               <Plus className="w-5 h-5 text-blue-600" />
@@ -693,7 +693,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
         </div>
 
         {/* 진행 단계 표시 바 — 클릭하면 해당 섹션으로 스크롤 이동 */}
-        <div className="sticky top-0 z-10 -mx-6 md:-mx-8 px-6 md:px-8 py-2 bg-white/95 backdrop-blur-sm border-b border-slate-100 flex items-center gap-1 overflow-x-auto text-[11px] font-bold text-slate-500">
+        <div className="sticky top-0 z-10 -mx-6 md:-mx-8 px-6 md:px-8 py-2 bg-white border-b border-slate-100 flex items-center gap-1 overflow-x-auto text-[11px] font-bold text-slate-500">
           {[
             { id: 'product-form-section-1', label: '1.기본정보' },
             { id: 'product-form-section-2', label: '2.제조사' },
