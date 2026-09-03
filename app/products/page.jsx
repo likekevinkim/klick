@@ -229,14 +229,14 @@ export default function ProductsDashboardPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {filteredProducts.map((item) => (
               <div
                 key={item.id}
-                className="bg-white rounded-3xl border border-slate-200 overflow-hidden hover:border-blue-400 hover:shadow-lg transition flex flex-col justify-between group"
+                className="bg-white rounded-2xl border border-slate-200 hover:border-blue-400 hover:shadow-lg transition duration-200 overflow-hidden flex flex-col justify-between group p-3.5 space-y-3"
               >
                 {/* 메인 이미지 영역 */}
-                <div className="h-48 bg-slate-100 relative overflow-hidden flex items-center justify-center">
+                <div className="w-full aspect-square bg-slate-100 rounded-xl overflow-hidden border border-slate-100 relative flex items-center justify-center">
                   {item.image_url ? (
                     <img
                       src={item.image_url}
@@ -247,19 +247,19 @@ export default function ProductsDashboardPage() {
                     <Package className="w-10 h-10 text-slate-300 stroke-1" />
                   )}
 
-                  <span className="absolute top-3 left-3 text-[10px] font-extrabold text-blue-700 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-lg border border-blue-100 shadow-sm">
+                  <span className="absolute top-2 left-2 bg-[#0F172A]/80 backdrop-blur-sm text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md">
                     {item.category || 'General'}
                   </span>
 
-                  <span className="absolute top-3 right-3 text-[10px] font-extrabold text-slate-600 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm flex items-center gap-1" title="조회수">
+                  <span className="absolute top-2 right-2 text-[10px] font-extrabold text-slate-600 bg-white/90 backdrop-blur-md px-2 py-0.5 rounded-md border border-slate-200 shadow-sm flex items-center gap-1" title="조회수">
                     <Eye className="w-3 h-3" /> {item.view_count || 0}
                   </span>
                 </div>
 
                 {/* 상품 스펙 요약 정보 카드 */}
-                <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
+                <div className="space-y-2.5 flex-1 flex flex-col justify-between">
                   <div className="space-y-1.5">
-                    <h3 className="notranslate text-sm font-black text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition" translate="no">
+                    <h3 className="notranslate text-xs font-black text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-600 transition" translate="no">
                       {formatProductTitle(item)}
                     </h3>
                     <p className="text-[11px] text-slate-400 font-medium truncate">
@@ -287,7 +287,7 @@ export default function ProductsDashboardPage() {
                     )}
                   </div>
 
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1 text-xs">
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 space-y-1 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-bold text-[11px]">Target FOB Price:</span>
                       <strong className="text-emerald-600 font-extrabold">{item.fob_price || item.price || 'Negotiable'}</strong>
@@ -303,7 +303,7 @@ export default function ProductsDashboardPage() {
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                     <Link
                       href={`/products/${item.id}`}
-                      className="text-xs font-extrabold text-blue-600 hover:underline flex items-center gap-1"
+                      className="text-[11px] font-extrabold text-blue-600 hover:underline flex items-center gap-1"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       <span>View Showroom</span>
