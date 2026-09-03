@@ -668,7 +668,8 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
       />
     )}
     <div className="fixed inset-0 z-[999999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl px-6 md:px-8 pb-6 md:pb-8 max-w-4xl w-full border border-slate-200 shadow-2xl max-h-[92vh] overflow-y-auto animate-fadeIn text-sm">
+      <div className="bg-white rounded-3xl max-w-4xl w-full border border-slate-200 shadow-2xl max-h-[92vh] overflow-hidden animate-fadeIn text-sm">
+      <div className="px-6 md:px-8 pb-6 md:pb-8 max-h-[92vh] overflow-y-auto">
 
         <div className="flex items-center justify-between border-b border-slate-100 pt-6 md:pt-8 pb-4 mb-6">
           <div className="space-y-1">
@@ -1282,6 +1283,7 @@ export default function ProductFormModal({ isOpen, onClose, onProductCreated, is
           </div>
 
         </form>
+      </div>
       </div>
     </div>
     </>
