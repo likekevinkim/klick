@@ -16,6 +16,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { formatCompanyName } from '@/lib/companyName';
+import { supabase } from '@/lib/supabase';
 
 export default function ProductDetailVisual({ product }) {
   const router = useRouter();
@@ -64,7 +65,15 @@ export default function ProductDetailVisual({ product }) {
   }
 
   // ★ [Chat with Representative] 클릭 시 셀러와 1:1 직통 대화방 자동 생성 파라미터 전달
-  const handleStartChat = () => {
+  const handleStartChat = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      const lang = typeof window !== 'undefined' ? localStorage.getItem('klick_lang_code') : 'en';
+      alert(lang === 'ko' ? '메시지를 보내려면 로그인이 필요합니다.' : 'Please sign in to send a message.');
+      router.push('/login');
+      return;
+    }
+
     const pId = product?.id || '';
     const compName = encodeURIComponent(product?.company_name || 'Korean Manufacturer');
     const pTitle = encodeURIComponent(product?.title_en || product?.title_ko || product?.product_name || 'Export Product');

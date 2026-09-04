@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { sanitizeProductHtml } from '@/lib/sanitizeHtml';
 import { Globe, Star, Clock, Package, MessageSquare, ShoppingBag, Layers, FileText, Ruler, Sparkles, Factory, Award, Heart, Eye } from 'lucide-react';
 import { formatProductTitle } from '@/lib/productTitle';
@@ -15,7 +16,18 @@ export default function ProductDetailSpecs({
   onToggleFavorite = null,
   favoriteBusy = false
 }) {
+  const router = useRouter();
   const displayTitle = formatProductTitle(product);
+
+  // 로그인 안 된 상태에서 문의/샘플 요청을 누르면 바로 채팅으로 보내지 말고 로그인부터 유도
+  const handleGuardedChatClick = (e) => {
+    if (!viewerRole) {
+      e.preventDefault();
+      const lang = typeof window !== 'undefined' ? localStorage.getItem('klick_lang_code') : 'en';
+      alert(lang === 'ko' ? '메시지를 보내려면 로그인이 필요합니다.' : 'Please sign in to send a message.');
+      router.push('/login');
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -141,6 +153,7 @@ export default function ProductDetailSpecs({
         <div className="grid grid-cols-2 gap-3 pt-2">
           <Link
             href="/chat"
+            onClick={handleGuardedChatClick}
             className="py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <MessageSquare className="w-4 h-4" />
@@ -149,6 +162,7 @@ export default function ProductDetailSpecs({
 
           <Link
             href="/chat"
+            onClick={handleGuardedChatClick}
             className="py-4 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <ShoppingBag className="w-4 h-4 text-emerald-400" />
