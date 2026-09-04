@@ -58,6 +58,7 @@ export default function CompanyDetailClient() {
   const autoEditParam = searchParams.get('edit');
 
   const [mounted, setMounted] = useState(false);
+  const [currentLang, setCurrentLang] = useState('en');
   const [user, setUser] = useState(null);
   const [company, setCompany] = useState(null);
   const [products, setProducts] = useState([]);
@@ -98,6 +99,7 @@ export default function CompanyDetailClient() {
 
   useEffect(() => {
     setMounted(true);
+    setCurrentLang(localStorage.getItem('klick_lang_code') || 'en');
     fetchExactCompanyProfile();
   }, [routeParamId]);
 
@@ -513,7 +515,9 @@ export default function CompanyDetailClient() {
             <div className="flex items-center gap-2.5">
               <Calendar className="w-4 h-4 text-blue-400 flex-shrink-0" />
               <div>
-                <span className="text-slate-400 block text-[10px]">Established</span>
+                <span className="notranslate text-slate-400 block text-[10px]" translate="no">
+                  {currentLang === 'ko' ? '설립' : 'Established'}
+                </span>
                 <span className="font-bold">{company?.established_year ? `${company.established_year} Year` : 'Not Specified'}</span>
               </div>
             </div>
@@ -670,8 +674,8 @@ export default function CompanyDetailClient() {
                 </div>
 
                 <div className="p-3 bg-white rounded-xl border border-slate-100 space-y-1">
-                  <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
-                    <Calendar className="w-3 h-3 text-blue-600" /> Established
+                  <span className="notranslate text-[10px] text-slate-400 font-bold flex items-center gap-1" translate="no">
+                    <Calendar className="w-3 h-3 text-blue-600" /> {currentLang === 'ko' ? '설립' : 'Established'}
                   </span>
                   <span className="font-extrabold text-slate-900 block truncate">
                     {company?.established_year ? `${company.established_year} Year` : 'Not Specified'}
