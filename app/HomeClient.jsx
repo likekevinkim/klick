@@ -152,7 +152,8 @@ export default function HomeClient() {
   const handleRegisterProductClick = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
-      alert('셀러로 등록해야 제품을 올릴 수 있습니다.');
+      // alert()는 브라우저 네이티브 다이얼로그라 Google Translate 위젯이 번역하지 못함 — 직접 언어 분기 필요
+      alert(currentLang === 'ko' ? '셀러로 등록해야 제품을 올릴 수 있습니다.' : 'Please sign in as a seller to list a product.');
       router.push('/login');
       return;
     }

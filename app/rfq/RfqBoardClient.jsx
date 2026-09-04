@@ -43,6 +43,14 @@ export default function RfqBoardClient() {
   );
 }
 
+// alert()는 브라우저 네이티브 다이얼로그라 Google Translate 위젯이 번역하지 못함 — 직접 언어 분기 필요
+function loginRequiredMessage() {
+  const lang = typeof window !== 'undefined' ? localStorage.getItem('klick_lang_code') : 'en';
+  return lang === 'ko'
+    ? '바이어로 로그인해야 RFQ를 등록할 수 있습니다.'
+    : 'Please sign in as a buyer to post an RFQ.';
+}
+
 function PublicRfqBoardContent() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -116,7 +124,7 @@ function PublicRfqBoardContent() {
   // 로그인한 바이어만 RFQ를 등록할 수 있다 — 두 "Post New RFQ" 버튼 모두 이 핸들러로 진입시킨다
   const handleOpenPostModal = () => {
     if (!user) {
-      alert('바이어로 로그인해야 RFQ를 등록할 수 있습니다.');
+      alert(loginRequiredMessage());
       router.push('/login');
       return;
     }
@@ -127,7 +135,7 @@ function PublicRfqBoardContent() {
     e.preventDefault();
 
     if (!user) {
-      alert('바이어로 로그인해야 RFQ를 등록할 수 있습니다.');
+      alert(loginRequiredMessage());
       router.push('/login');
       return;
     }
