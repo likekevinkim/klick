@@ -395,6 +395,12 @@ export default function CompanyDetailClient() {
   };
 
   const handleStartCompanyChat = () => {
+    if (!user) {
+      const lang = typeof window !== 'undefined' ? localStorage.getItem('klick_lang_code') : 'en';
+      alert(lang === 'ko' ? '메시지를 보내려면 로그인이 필요합니다.' : 'Please sign in to send a message.');
+      router.push('/login');
+      return;
+    }
     const compName = encodeURIComponent(company?.company_name_en || company?.company_name || 'Korean Manufacturer');
     const title = encodeURIComponent('Company Partnership & Wholesale Inquiry');
     const targetSellerId = company?.user_id || routeParamId || '';
@@ -545,7 +551,7 @@ export default function CompanyDetailClient() {
               }`}
             >
               <Building2 className="w-4 h-4" />
-              <span>Company Overview & Certifications</span>
+              <span>Company Overview</span>
             </button>
 
             <button
