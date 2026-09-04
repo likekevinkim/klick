@@ -411,6 +411,10 @@ export default function CompanyDetailClient() {
 
   const hasDescriptionData = company?.description && company.description.trim() !== '';
   const hasCustomCertifications = company?.certifications && Array.isArray(company.certifications) && company.certifications.length > 0;
+  // 데이터 로딩 중엔 'Not Specified'를 그리지 않음 — 이 자리표시 텍스트가 화면에 잠깐 찍히면
+  // Google Translate가 그 DOM 노드를 먼저 번역해버려서, 이후 실제 데이터로 리렌더링해도
+  // 화면엔 번역된 자리표시 텍스트가 그대로 남는 문제(새 브라우저에서 자주 재현)가 있었음.
+  const df = (val) => (loading ? '' : (val || 'Not Specified'));
 
   if (!mounted) return null;
 
@@ -508,7 +512,7 @@ export default function CompanyDetailClient() {
               <MapPin className="w-4 h-4 text-blue-400 flex-shrink-0" />
               <div>
                 <span className="text-slate-400 block text-[10px]">Location</span>
-                <span className="font-bold">{company?.location || 'Not Specified'}</span>
+                <span className="font-bold">{df(company?.location)}</span>
               </div>
             </div>
 
@@ -518,7 +522,7 @@ export default function CompanyDetailClient() {
                 <span className="notranslate text-slate-400 block text-[10px]" translate="no">
                   {currentLang === 'ko' ? '설립' : 'Established'}
                 </span>
-                <span className="font-bold">{company?.established_year ? `${company.established_year} Year` : 'Not Specified'}</span>
+                <span className="font-bold">{company?.established_year ? `${company.established_year} Year` : df(null)}</span>
               </div>
             </div>
 
@@ -526,7 +530,7 @@ export default function CompanyDetailClient() {
               <Users className="w-4 h-4 text-blue-400 flex-shrink-0" />
               <div>
                 <span className="text-slate-400 block text-[10px]">Employees</span>
-                <span className="font-bold">{company?.employees_count || 'Not Specified'}</span>
+                <span className="font-bold">{df(company?.employees_count)}</span>
               </div>
             </div>
 
@@ -534,7 +538,7 @@ export default function CompanyDetailClient() {
               <Layers className="w-4 h-4 text-blue-400 flex-shrink-0" />
               <div>
                 <span className="text-slate-400 block text-[10px]">Factory Area</span>
-                <span className="font-bold">{company?.factory_size || 'Not Specified'}</span>
+                <span className="font-bold">{df(company?.factory_size)}</span>
               </div>
             </div>
           </div>
@@ -651,7 +655,7 @@ export default function CompanyDetailClient() {
                     <Building2 className="w-3 h-3 text-blue-600" /> Main Category
                   </span>
                   <span className="font-extrabold text-slate-900 block truncate">
-                    {company?.category || 'Not Specified'}
+                    {df(company?.category)}
                   </span>
                 </div>
 
@@ -660,7 +664,7 @@ export default function CompanyDetailClient() {
                     <Briefcase className="w-3 h-3 text-blue-600" /> Business Type
                   </span>
                   <span className="font-extrabold text-slate-900 block truncate">
-                    {company?.business_type || 'Not Specified'}
+                    {df(company?.business_type)}
                   </span>
                 </div>
 
@@ -669,7 +673,7 @@ export default function CompanyDetailClient() {
                     <MapPin className="w-3 h-3 text-blue-600" /> Location
                   </span>
                   <span className="font-extrabold text-slate-900 block truncate">
-                    {company?.location || 'Not Specified'}
+                    {df(company?.location)}
                   </span>
                 </div>
 
@@ -678,7 +682,7 @@ export default function CompanyDetailClient() {
                     <Calendar className="w-3 h-3 text-blue-600" /> {currentLang === 'ko' ? '설립' : 'Established'}
                   </span>
                   <span className="font-extrabold text-slate-900 block truncate">
-                    {company?.established_year ? `${company.established_year} Year` : 'Not Specified'}
+                    {company?.established_year ? `${company.established_year} Year` : df(null)}
                   </span>
                 </div>
 
@@ -687,7 +691,7 @@ export default function CompanyDetailClient() {
                     <Users className="w-3 h-3 text-blue-600" /> Staff Size
                   </span>
                   <span className="font-extrabold text-slate-900 block truncate">
-                    {company?.employees_count || 'Not Specified'}
+                    {df(company?.employees_count)}
                   </span>
                 </div>
 
@@ -696,7 +700,7 @@ export default function CompanyDetailClient() {
                     <Layers className="w-3 h-3 text-blue-600" /> Factory Area
                   </span>
                   <span className="font-extrabold text-slate-900 block truncate">
-                    {company?.factory_size || 'Not Specified'}
+                    {df(company?.factory_size)}
                   </span>
                 </div>
               </div>
