@@ -35,7 +35,9 @@ const COUNTRY_TO_LANG = {
   BH: 'ar', DZ: 'ar', SD: 'ar',
   VN: 'vi',
   TH: 'th',
-  IN: 'hi'
+  IN: 'hi',
+  FR: 'fr', BE: 'fr', CH: 'fr',
+  PT: 'pt', BR: 'pt'
 };
 
 // 접속 IP의 국가를 서버에 물어보고, 지원하는 언어면 그 언어로, 아니면 영어로 매핑.
@@ -74,6 +76,8 @@ export default function Header() {
     { code: 'zh-CN', label: 'ZH', name: '中文 (简体)' },
     { code: 'ja', label: 'JA', name: '日本語 (JP)' },
     { code: 'es', label: 'ES', name: 'Español (ES)' },
+    { code: 'fr', label: 'FR', name: 'Français (FR)' },
+    { code: 'pt', label: 'PT', name: 'Português (PT)' },
     { code: 'ar', label: 'AR', name: 'العربية (AR)' },
     { code: 'vi', label: 'VI', name: 'Tiếng Việt (VN)' },
     { code: 'th', label: 'TH', name: 'ภาษาไทย (TH)' },
@@ -226,7 +230,7 @@ export default function Header() {
           new window.google.translate.TranslateElement(
             {
               pageLanguage: 'auto',
-              includedLanguages: 'en,ko,zh-CN,ja,es,ar,vi,th,hi',
+              includedLanguages: 'en,ko,zh-CN,ja,es,fr,pt,ar,vi,th,hi',
               autoDisplay: false,
             },
             'google_translate_element'
